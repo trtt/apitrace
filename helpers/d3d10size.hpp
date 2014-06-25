@@ -84,6 +84,14 @@ _getNumSubResources(const D3D10_TEXTURE3D_DESC *pDesc) {
     return _getNumMipLevels(pDesc);
 }
 
+
+inline bool
+_getResourceType(ID3D10Buffer *pResource)
+{
+    return true;
+}
+
+
 static inline size_t
 _calcSubresourceSize(const D3D10_BUFFER_DESC *pDesc, UINT Subresource, UINT RowPitch = 0, UINT SlicePitch = 0) {
     return pDesc->ByteWidth;
