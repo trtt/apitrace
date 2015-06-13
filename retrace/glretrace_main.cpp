@@ -37,6 +37,7 @@
 #include "os_time.hpp"
 #include "os_memory.hpp"
 #include "highlight.hpp"
+#include "api_gl_amd_performance_monitor.cpp" // placeholder :)
 
 
 /* Synchronous debug output may reduce performance however,
@@ -46,6 +47,9 @@
 #define DEBUG_OUTPUT_SYNCHRONOUS 0
 
 namespace glretrace {
+
+Api_GL_AMD_performance_monitor apiPerfMon;
+bool apiPerfMonSetup = 0;
 
 glprofile::Profile defaultProfile(glprofile::API_GL, 1, 0);
 
@@ -125,7 +129,7 @@ checkGlError(trace::Call &call) {
             break;
         }
         os << "\n";
-    
+
         error = glGetError();
     }
 }
@@ -221,6 +225,9 @@ flushQueries() {
 
 void
 beginProfile(trace::Call &call, bool isDraw) {
+    if (isDraw) glretrace::apiPerfMon.beginQuery();
+    if (!retrace::lastPass()) return;
+
     glretrace::Context *currentContext = glretrace::getCurrentContext();
 
     /* Create call query */
@@ -264,6 +271,8 @@ beginProfile(trace::Call &call, bool isDraw) {
 
 void
 endProfile(trace::Call &call, bool isDraw) {
+    if (isDraw) glretrace::apiPerfMon.endQuery();
+    if (!retrace::lastPass()) return;
 
     /* CPU profiling for all calls */
     if (retrace::profilingCpuTimes) {
@@ -335,6 +344,13 @@ clientWaitSync(trace::Call &call, GLsync sync, GLbitfield flags, GLuint64 timeou
     return result;
 }
 
+void counterCallback(Counter* c) {
+    glretrace::apiPerfMon.enableCounter(c);
+}
+
+void groupCallback(unsigned g) {
+    glretrace::apiPerfMon.enumCounters(g, counterCallback);
+}
 
 /*
  * Called the first time a context is made current.
@@ -423,11 +439,17 @@ initContext() {
         getCurrentRss(currentRss);
         retrace::profiler.setBaseRssUsage(currentRss);
     }
+
+    if (!apiPerfMonSetup) {
+        glretrace::apiPerfMon.enumGroups(groupCallback);
+        apiPerfMonSetup = 1;
+    }
+    glretrace::apiPerfMon.beginPass();
 }
 
 void
 frame_complete(trace::Call &call) {
-    if (retrace::profiling) {
+    if (retrace::profiling && retrace::lastPass()) {
         /* Complete any remaining queries */
         flushQueries();
 
@@ -663,12 +685,38 @@ retrace::flushRendering(void) {
     }
 }
 
+void dataCallback(Counter* counter, int event, void* data) {
+    switch(counter->getNumType()) {
+        case CNT_UINT: std::cout << event << " " << counter->getName() << " " << *(reinterpret_cast<unsigned*>(data)) << "\n"; break;
+        case CNT_FLOAT: std::cout << event << " " << counter->getName() << " " << *(reinterpret_cast<float*>(data)) << "\n"; break;
+        case CNT_UINT64: std::cout << event << " " << counter->getName() << " " << *(reinterpret_cast<uint64_t*>(data)) << "\n"; break;
+    }
+}
+
 void
 retrace::finishRendering(void) {
     glretrace::Context *currentContext = glretrace::getCurrentContext();
     if (currentContext) {
         glFinish();
     }
+    if (lastPass()) {
+        glretrace::apiPerfMon.endPass();
+        glretrace::apiPerfMon.enumData(dataCallback);
+    } else {
+        glretrace::apiPerfMon.endPass();
+    }
+}
+
+int
+retrace::getNumPasses(void) {
+    int numPasses = glretrace::apiPerfMon.getNumPasses();
+    if (numPasses == 0) return 1;
+    else return numPasses;
+}
+
+bool
+retrace::lastPass(void) {
+    return glretrace::apiPerfMon.lastPass();
 }
 
 void

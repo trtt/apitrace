@@ -306,7 +306,7 @@ private:
     RelayRace *race;
 
     unsigned leg;
-    
+
     os::mutex mutex;
     os::condition_variable wake_cond;
 
@@ -576,7 +576,7 @@ static void
 mainLoop() {
     addCallbacks(retracer);
 
-    long long startTime = 0; 
+    long long startTime = 0;
     frameNo = 0;
 
     startTime = os::getTime();
@@ -597,7 +597,7 @@ mainLoop() {
     float timeInterval = (endTime - startTime) * (1.0 / os::timeFrequency);
 
     if ((retrace::verbosity >= -1) || (retrace::profiling)) {
-        std::cout << 
+        std::cout <<
             "Rendered " << frameNo << " frames"
             " in " <<  timeInterval << " secs,"
             " average of " << (frameNo/timeInterval) << " fps\n";
@@ -616,7 +616,7 @@ mainLoop() {
 
 static void
 usage(const char *argv0) {
-    std::cout << 
+    std::cout <<
         "Usage: " << argv0 << " [OPTION] TRACE [...]\n"
         "Replay TRACE.\n"
         "\n"
@@ -879,16 +879,18 @@ int main(int argc, char **argv)
 
     os::setExceptionCallback(exceptionCallback);
 
-    for (i = optind; i < argc; ++i) {
-        if (!retrace::parser.open(argv[i])) {
-            return 1;
+    for (int j = 0; j < retrace::getNumPasses(); j++) {
+        for (i = optind; i < argc; ++i) {
+            if (!retrace::parser.open(argv[i])) {
+                return 1;
+            }
+
+            retrace::mainLoop();
+
+            retrace::parser.close();
         }
-
-        retrace::mainLoop();
-
-        retrace::parser.close();
     }
-    
+
     os::resetExceptionCallback();
 
     // XXX: X often hangs on XCloseDisplay

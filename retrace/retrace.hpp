@@ -242,6 +242,15 @@ flushRendering(void);
 void
 finishRendering(void);
 
+/**
+ * Ask retracer for the needed passes
+ */
+int
+getNumPasses(void);
+
+bool
+lastPass(void);
+
 void
 waitForInput(void);
 
