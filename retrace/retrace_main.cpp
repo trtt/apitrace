@@ -596,12 +596,14 @@ mainLoop() {
     long long endTime = os::getTime();
     float timeInterval = (endTime - startTime) * (1.0 / os::timeFrequency);
 
+    /*
     if ((retrace::verbosity >= -1) || (retrace::profiling)) {
         std::cout <<
             "Rendered " << frameNo << " frames"
             " in " <<  timeInterval << " secs,"
             " average of " << (frameNo/timeInterval) << " fps\n";
     }
+    */
 
     if (waitOnFinish) {
         waitForInput();
@@ -874,7 +876,7 @@ int main(int argc, char **argv)
 
     retrace::setUp();
     if (retrace::profiling) {
-        retrace::profiler.setup(retrace::profilingCpuTimes, retrace::profilingGpuTimes, retrace::profilingPixelsDrawn, retrace::profilingMemoryUsage);
+        //retrace::profiler.setup(retrace::profilingCpuTimes, retrace::profilingGpuTimes, retrace::profilingPixelsDrawn, retrace::profilingMemoryUsage);
     }
 
     os::setExceptionCallback(exceptionCallback);

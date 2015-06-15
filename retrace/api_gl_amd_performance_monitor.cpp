@@ -80,6 +80,7 @@ public:
 
     void endPass() {
         curPass++;
+        curEvent = 0;
     }
 
     unsigned* getDataBuffer(int pass, int event) {
@@ -88,6 +89,10 @@ public:
 
     int getNumEvents() {
         return data[0].size();
+    }
+
+    int getLastEvent() {
+        return (curEvent - 1);
     }
 };
 
@@ -197,7 +202,7 @@ public:
         glDeletePerfMonitorsAMD(2, monitors);
         curPass++;
         collector.endPass();
-        fprintf(stderr, "Events: %i\n", collector.getNumEvents());
+        //fprintf(stderr, "Events: %i\n", collector.getNumEvents());
     }
 
     void beginQuery() {
@@ -224,17 +229,20 @@ public:
         glGetPerfMonitorCounterDataAMD(monitor, GL_PERFMON_RESULT_AMD, size, collector.newDataBuffer(size), nullptr);
     }
 
+    void enumDataQueryId(int id, enumDataCallback callback) {
+        for (int j = 0; j < numPasses; j++) {
+            unsigned* buf = collector.getDataBuffer(j, id);
+            unsigned offset = 0;
+            for (Counter c : passes[j]) {
+                callback(&c, id, &buf[offset]);
+                offset += c.getSize();
+            }
+        }
+    }
     void enumData(enumDataCallback callback) {
         int numEvents = collector.getNumEvents();
         for (int i = 0; i < numEvents; i++) {
-            for (int j = 0; j < numPasses; j++) {
-                unsigned* buf = collector.getDataBuffer(j, i);
-                unsigned offset = 0;
-                for (Counter c : passes[j]) {
-                    callback(&c, i, &buf[offset]);
-                    offset += c.getSize();
-                }
-            }
+            enumDataQueryId(i, callback);
         }
     }
 
@@ -244,5 +252,9 @@ public:
 
     bool lastPass() {
         return (numPasses-1 == curPass);
+    }
+
+    int getLastQueryId() {
+        return collector.getLastEvent();
     }
 };

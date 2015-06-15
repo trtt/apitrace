@@ -38,6 +38,7 @@
 #include "os_memory.hpp"
 #include "highlight.hpp"
 #include "api_gl_amd_performance_monitor.cpp" // placeholder :)
+#include "metric_writer.cpp"
 
 
 /* Synchronous debug output may reduce performance however,
@@ -50,6 +51,7 @@ namespace glretrace {
 
 Api_GL_AMD_performance_monitor apiPerfMon;
 bool apiPerfMonSetup = 0;
+MetricWriter profiler(&apiPerfMon);
 
 glprofile::Profile defaultProfile(glprofile::API_GL, 1, 0);
 
@@ -169,6 +171,7 @@ static void
 completeCallQuery(CallQuery& query) {
     /* Get call start and duration */
     int64_t gpuStart = 0, gpuDuration = 0, cpuDuration = 0, pixels = 0, vsizeDuration = 0, rssDuration = 0;
+    int amdPerfMonQueryId = -1;
 
     if (query.isDraw) {
         if (retrace::profilingGpuTimes) {
@@ -211,7 +214,11 @@ completeCallQuery(CallQuery& query) {
     glDeleteQueries(NUM_QUERIES, query.ids);
 
     /* Add call to profile */
-    retrace::profiler.addCall(query.call, query.sig->name, query.program, pixels, gpuStart, gpuDuration, query.cpuStart, cpuDuration, query.vsizeStart, vsizeDuration, query.rssStart, rssDuration);
+    //retrace::profiler.addCall(query.call, query.sig->name, query.program, pixels, gpuStart, gpuDuration, query.cpuStart, cpuDuration, query.vsizeStart, vsizeDuration, query.rssStart, rssDuration);
+    if (query.isDraw) {
+        amdPerfMonQueryId = apiPerfMon.getLastQueryId();
+    }
+    profiler.addCall(query.call, query.sig->name, query.program, pixels, gpuStart, gpuDuration, query.cpuStart, cpuDuration, query.vsizeStart, vsizeDuration, query.rssStart, rssDuration, amdPerfMonQueryId);
 }
 
 void
@@ -454,7 +461,7 @@ frame_complete(trace::Call &call) {
         flushQueries();
 
         /* Indicate end of current frame */
-        retrace::profiler.addFrameEnd();
+        //retrace::profiler.addFrameEnd();
     }
 
     retrace::frameComplete(call);
@@ -701,7 +708,7 @@ retrace::finishRendering(void) {
     }
     if (lastPass()) {
         glretrace::apiPerfMon.endPass();
-        glretrace::apiPerfMon.enumData(dataCallback);
+        glretrace::profiler.writeAll();
     } else {
         glretrace::apiPerfMon.endPass();
     }
