@@ -249,7 +249,7 @@ int
 getNumPasses(void);
 
 bool
-lastPass(void);
+isLastPass(void);
 
 void
 waitForInput(void);

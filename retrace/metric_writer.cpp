@@ -29,10 +29,10 @@ class MetricWriter
 private:
     static JSONWriter json;
     std::queue<ProfilerCall> queue;
-    Api_GL_AMD_performance_monitor* amdPerfMon;
+    Api_Base* amdPerfMon;
 
 public:
-    MetricWriter(Api_GL_AMD_performance_monitor* _amdPerfMon) : amdPerfMon(_amdPerfMon) {}
+    MetricWriter(Api_Base* _amdPerfMon) : amdPerfMon(_amdPerfMon) {}
 
     void addCall(unsigned no,
                  const char* name,
@@ -51,9 +51,9 @@ public:
     static void writeApiData(Counter* counter, int event, void* data) {
         json.beginMember(counter->getName());
         switch(counter->getNumType()) {
-            case CNT_UINT: json.writeInt(*(reinterpret_cast<unsigned*>(data))); break;
-            case CNT_FLOAT: json.writeFloat(*(reinterpret_cast<float*>(data))); break;
-            case CNT_UINT64: json.writeInt(*(reinterpret_cast<uint64_t*>(data))); break;
+            case CNT_NUM_UINT: json.writeInt(*(reinterpret_cast<unsigned*>(data))); break;
+            case CNT_NUM_FLOAT: json.writeFloat(*(reinterpret_cast<float*>(data))); break;
+            case CNT_NUM_UINT64: json.writeInt(*(reinterpret_cast<uint64_t*>(data))); break;
         }
         json.endMember();
     }

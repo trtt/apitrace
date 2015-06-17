@@ -37,8 +37,8 @@
 #include "os_time.hpp"
 #include "os_memory.hpp"
 #include "highlight.hpp"
-#include "api_gl_amd_performance_monitor.cpp" // placeholder :)
-#include "metric_writer.cpp"
+#include "api_gl_amd_performance_monitor.hpp" // AMD_perfmon
+#include "metric_writer.cpp" // placeholder
 
 
 /* Synchronous debug output may reduce performance however,
@@ -233,7 +233,7 @@ flushQueries() {
 void
 beginProfile(trace::Call &call, bool isDraw) {
     if (isDraw) glretrace::apiPerfMon.beginQuery();
-    if (!retrace::lastPass()) return;
+    if (!retrace::isLastPass()) return;
 
     glretrace::Context *currentContext = glretrace::getCurrentContext();
 
@@ -279,7 +279,7 @@ beginProfile(trace::Call &call, bool isDraw) {
 void
 endProfile(trace::Call &call, bool isDraw) {
     if (isDraw) glretrace::apiPerfMon.endQuery();
-    if (!retrace::lastPass()) return;
+    if (!retrace::isLastPass()) return;
 
     /* CPU profiling for all calls */
     if (retrace::profilingCpuTimes) {
@@ -456,7 +456,7 @@ initContext() {
 
 void
 frame_complete(trace::Call &call) {
-    if (retrace::profiling && retrace::lastPass()) {
+    if (retrace::profiling && retrace::isLastPass()) {
         /* Complete any remaining queries */
         flushQueries();
 
@@ -692,21 +692,13 @@ retrace::flushRendering(void) {
     }
 }
 
-void dataCallback(Counter* counter, int event, void* data) {
-    switch(counter->getNumType()) {
-        case CNT_UINT: std::cout << event << " " << counter->getName() << " " << *(reinterpret_cast<unsigned*>(data)) << "\n"; break;
-        case CNT_FLOAT: std::cout << event << " " << counter->getName() << " " << *(reinterpret_cast<float*>(data)) << "\n"; break;
-        case CNT_UINT64: std::cout << event << " " << counter->getName() << " " << *(reinterpret_cast<uint64_t*>(data)) << "\n"; break;
-    }
-}
-
 void
 retrace::finishRendering(void) {
     glretrace::Context *currentContext = glretrace::getCurrentContext();
     if (currentContext) {
         glFinish();
     }
-    if (lastPass()) {
+    if (isLastPass()) {
         glretrace::apiPerfMon.endPass();
         glretrace::profiler.writeAll();
     } else {
@@ -722,8 +714,8 @@ retrace::getNumPasses(void) {
 }
 
 bool
-retrace::lastPass(void) {
-    return glretrace::apiPerfMon.lastPass();
+retrace::isLastPass(void) {
+    return glretrace::apiPerfMon.isLastPass();
 }
 
 void
