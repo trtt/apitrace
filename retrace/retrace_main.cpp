@@ -596,14 +596,12 @@ mainLoop() {
     long long endTime = os::getTime();
     float timeInterval = (endTime - startTime) * (1.0 / os::timeFrequency);
 
-    /*
     if ((retrace::verbosity >= -1) || (retrace::profiling)) {
-        std::cout <<
+        std::cerr <<
             "Rendered " << frameNo << " frames"
             " in " <<  timeInterval << " secs,"
             " average of " << (frameNo/timeInterval) << " fps\n";
     }
-    */
 
     if (waitOnFinish) {
         waitForInput();

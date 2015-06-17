@@ -1,6 +1,8 @@
 #include <vector>
 #include <string>
 
+#define NUM_MONITORS 1 // number of used AMD_perfmon monitors, stick to one at first
+
 enum CounterNumType {
     CNT_UINT = 0,
     CNT_FLOAT,
@@ -74,7 +76,6 @@ public:
         } else {
             data[curPass].push_back(new unsigned[size]);
         }
-
         return data[curPass][curEvent++];
     }
 
@@ -102,7 +103,7 @@ typedef void (*enumDataCallback)(Counter* counter, int event, void* data);
 class Api_GL_AMD_performance_monitor
 {
 private:
-    unsigned monitors[2]; // For cycling, using 2 in current implementation
+    unsigned monitors[NUM_MONITORS]; // For cycling, using 2 in current implementation
     int curMonitor;
     bool firstRound;
     std::vector<std::vector<Counter>> passes;
@@ -185,21 +186,23 @@ public:
         if (curPass == 0) {
             generatePasses();
         }
-        glGenPerfMonitorsAMD(2, monitors);
+        glGenPerfMonitorsAMD(NUM_MONITORS, monitors);
         unsigned id;
         for (Counter c : passes[curPass]) {
             id = c.getId();
-            glSelectPerfMonitorCountersAMD(monitors[0], 1, c.getGroupId(), 1, &id);
-            glSelectPerfMonitorCountersAMD(monitors[1], 1, c.getGroupId(), 1, &id);
+            for (int k = 0; k < NUM_MONITORS; k++) {
+                glSelectPerfMonitorCountersAMD(monitors[k], 1, c.getGroupId(), 1, &id);
+            }
         }
         curMonitor = 0;
         firstRound = 1;
     }
 
     void endPass() {
-        freeMonitor(monitors[0]);
-        freeMonitor(monitors[1]);
-        glDeletePerfMonitorsAMD(2, monitors);
+        for (int k = 0; k < NUM_MONITORS; k++) {
+            freeMonitor(monitors[k]);
+        }
+        glDeletePerfMonitorsAMD(NUM_MONITORS, monitors);
         curPass++;
         collector.endPass();
         //fprintf(stderr, "Events: %i\n", collector.getNumEvents());
@@ -213,8 +216,8 @@ public:
     void endQuery() {
         glEndPerfMonitorAMD(monitors[curMonitor]);
         curMonitor++;
-        if (curMonitor > 1) firstRound = 0;
-        curMonitor &= 1;
+        if (curMonitor == NUM_MONITORS) firstRound = 0;
+        curMonitor %= NUM_MONITORS;
     }
 
     void freeMonitor(unsigned monitor) {
@@ -225,6 +228,7 @@ public:
         }
         GLuint size;
         glGetPerfMonitorCounterDataAMD(monitor, GL_PERFMON_RESULT_SIZE_AMD, sizeof(GLuint), &size, nullptr);
+        size /= sizeof(unsigned);
         // collect data
         glGetPerfMonitorCounterDataAMD(monitor, GL_PERFMON_RESULT_AMD, size, collector.newDataBuffer(size), nullptr);
     }
@@ -234,11 +238,13 @@ public:
             unsigned* buf = collector.getDataBuffer(j, id);
             unsigned offset = 0;
             for (Counter c : passes[j]) {
+                offset += 2;
                 callback(&c, id, &buf[offset]);
-                offset += c.getSize();
+                offset += c.getSize() / sizeof(unsigned);
             }
         }
     }
+
     void enumData(enumDataCallback callback) {
         int numEvents = collector.getNumEvents();
         for (int i = 0; i < numEvents; i++) {
