@@ -73,7 +73,7 @@ private:
     void freeMonitor(unsigned monitor); // collect metrics data from the monitor
 
 public:
-    Api_GL_AMD_performance_monitor() : numPasses(0), curPass(0) {}
+    Api_GL_AMD_performance_monitor() : numPasses(1), curPass(0) {}
 
     void enumGroups(enumGroupsCallback callback);
 

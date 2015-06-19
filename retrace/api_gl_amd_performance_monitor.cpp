@@ -104,7 +104,8 @@ void Api_GL_AMD_performance_monitor::enumCounters(unsigned group, enumCountersCa
 }
 
 void Api_GL_AMD_performance_monitor::enableCounter(Counter* counter) {
-    metrics.push_back(*static_cast<Counter_GL_AMD_performance_monitor*>(counter));
+    Counter_GL_AMD_performance_monitor metric(counter->getGroupId(), counter->getId());
+    metrics.push_back(metric);
 }
 
 bool Api_GL_AMD_performance_monitor::testCounters(std::vector<Counter_GL_AMD_performance_monitor>* counters) {
@@ -133,7 +134,10 @@ unsigned Api_GL_AMD_performance_monitor::generatePasses() {
         std::vector<Counter_GL_AMD_performance_monitor>::iterator it = copyMetrics.begin();
         while (it != copyMetrics.end()) {
             newPass.push_back(*it);
-            if (!testCounters(&newPass)) break;
+            if (!testCounters(&newPass)) {
+                newPass.pop_back();
+                break;
+            }
             it = copyMetrics.erase(it);
         }
         passes.push_back(newPass);
@@ -167,7 +171,6 @@ void Api_GL_AMD_performance_monitor::endPass() {
     glDeletePerfMonitorsAMD(NUM_MONITORS, monitors);
     curPass++;
     collector.endPass();
-    //fprintf(stderr, "Events: %i\n", collector.getNumEvents());
 }
 
 void Api_GL_AMD_performance_monitor::beginQuery() {
@@ -199,10 +202,11 @@ void Api_GL_AMD_performance_monitor::enumDataQueryId(unsigned id, enumDataCallba
     for (unsigned j = 0; j < numPasses; j++) {
         unsigned* buf = collector.getDataBuffer(j, id);
         unsigned offset = 0;
-        for (Counter_GL_AMD_performance_monitor c : passes[j]) {
+        for (int k = 0; k < passes[j].size(); k++) {
+            Counter_GL_AMD_performance_monitor counter(buf[offset], buf[offset+1]);
             offset += 2;
-            callback(&c, id, &buf[offset]);
-            offset += c.getSize() / sizeof(unsigned);
+            callback(&counter, id, &buf[offset]);
+            offset += counter.getSize() / sizeof(unsigned);
         }
     }
 }
