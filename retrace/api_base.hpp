@@ -54,7 +54,7 @@ public:
 
     virtual void enableCounter(Counter* counter) = 0;
 
-    virtual void beginPass() = 0;
+    virtual void beginPass(bool perFrame = 0) = 0;
     /* Passes are generated in the first beginPass()
      * based on counters enabled via enableCounter().
      * This call must be used after context is initialized.

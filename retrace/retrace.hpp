@@ -121,6 +121,8 @@ extern bool profilingCpuTimes;
 extern bool profilingGpuTimes;
 extern bool profilingPixelsDrawn;
 extern bool profilingMemoryUsage;
+extern bool profilingMetricApis;
+extern bool profilePerFrame;
 
 /**
  * State dumping.

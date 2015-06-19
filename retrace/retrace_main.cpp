@@ -87,6 +87,8 @@ bool profilingGpuTimes = false;
 bool profilingCpuTimes = false;
 bool profilingPixelsDrawn = false;
 bool profilingMemoryUsage = false;
+bool profilingMetricApis = false;
+bool profilePerFrame = false;
 bool useCallNos = true;
 bool singleThread = false;
 
@@ -654,6 +656,7 @@ enum {
     PGPU_OPT,
     PPD_OPT,
     PMEM_OPT,
+    PAMD_OPT,
     SB_OPT,
     SNAPSHOT_FORMAT_OPT,
     LOOP_OPT,
@@ -681,6 +684,7 @@ longOptions[] = {
     {"pgpu", no_argument, 0, PGPU_OPT},
     {"ppd", no_argument, 0, PPD_OPT},
     {"pmem", no_argument, 0, PMEM_OPT},
+    {"pamd", optional_argument, 0, PAMD_OPT},
     {"sb", no_argument, 0, SB_OPT},
     {"snapshot-prefix", required_argument, 0, 's'},
     {"snapshot-format", required_argument, 0, SNAPSHOT_FORMAT_OPT},
@@ -849,6 +853,13 @@ int main(int argc, char **argv)
 
             retrace::profilingMemoryUsage = true;
             break;
+        case PAMD_OPT:
+            retrace::debug = 0;
+            retrace::profiling = true;
+            retrace::verbosity = -1;
+
+            retrace::profilingMetricApis = true;
+            retrace::profilePerFrame = trace::boolOption(optarg);
         default:
             std::cerr << "error: unknown option " << opt << "\n";
             usage(argv[0]);

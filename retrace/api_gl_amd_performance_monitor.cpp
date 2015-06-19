@@ -143,8 +143,9 @@ unsigned Api_GL_AMD_performance_monitor::generatePasses() {
     return numPasses;
 }
 
-void Api_GL_AMD_performance_monitor::beginPass() {
+void Api_GL_AMD_performance_monitor::beginPass(bool perFrame_) {
     if (curPass == 0) {
+        perFrame = perFrame_;
         generatePasses();
     }
     glGenPerfMonitorsAMD(NUM_MONITORS, monitors);

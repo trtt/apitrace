@@ -59,7 +59,7 @@ class Api_GL_AMD_performance_monitor : public Api_Base
 private:
     unsigned monitors[NUM_MONITORS]; // For cycling, using 2 in current implementation
     int curMonitor;
-    bool firstRound;
+    bool firstRound, perFrame;
     std::vector<std::vector<Counter_GL_AMD_performance_monitor>> passes; // metric sets for each pass
     int numPasses;
     int curPass;
@@ -81,7 +81,7 @@ public:
 
     void enableCounter(Counter* counter);
 
-    void beginPass();
+    void beginPass(bool perFrame = false);
 
     void endPass();
 
