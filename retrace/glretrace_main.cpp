@@ -38,6 +38,7 @@
 #include "os_memory.hpp"
 #include "highlight.hpp"
 #include "api_gl_amd_performance_monitor.hpp" // AMD_perfmon
+#include "api_common.hpp" // Common backend (cpu/gpu times)
 #include "metric_writer.cpp" // placeholder
 
 
@@ -50,8 +51,12 @@
 namespace glretrace {
 
 Api_GL_AMD_performance_monitor apiPerfMon;
+Api_common apiCommon;
+std::vector<Api_Base*> metricApis { &apiCommon, &apiPerfMon  };
+std::vector<Api_Base*> curMetricApis;
+
 bool apiPerfMonSetup = 0;
-MetricWriter profiler(&apiPerfMon);
+MetricWriter profiler(&metricApis);
 
 glprofile::Profile defaultProfile(glprofile::API_GL, 1, 0);
 
@@ -171,7 +176,6 @@ static void
 completeCallQuery(CallQuery& query) {
     /* Get call start and duration */
     int64_t gpuStart = 0, gpuDuration = 0, cpuDuration = 0, pixels = 0, vsizeDuration = 0, rssDuration = 0;
-    int amdPerfMonQueryId = -1;
 
     if (query.isDraw) {
         if (retrace::profilingGpuTimes) {
@@ -214,11 +218,7 @@ completeCallQuery(CallQuery& query) {
     glDeleteQueries(NUM_QUERIES, query.ids);
 
     /* Add call to profile */
-    //retrace::profiler.addCall(query.call, query.sig->name, query.program, pixels, gpuStart, gpuDuration, query.cpuStart, cpuDuration, query.vsizeStart, vsizeDuration, query.rssStart, rssDuration);
-    if (query.isDraw) {
-        amdPerfMonQueryId = apiPerfMon.getLastQueryId();
-    }
-    profiler.addCall(query.call, query.sig->name, query.program, pixels, gpuStart, gpuDuration, query.cpuStart, cpuDuration, query.vsizeStart, vsizeDuration, query.rssStart, rssDuration, amdPerfMonQueryId);
+    retrace::profiler.addCall(query.call, query.sig->name, query.program, pixels, gpuStart, gpuDuration, query.cpuStart, cpuDuration, query.vsizeStart, vsizeDuration, query.rssStart, rssDuration);
 }
 
 void
@@ -232,8 +232,14 @@ flushQueries() {
 
 void
 beginProfile(trace::Call &call, bool isDraw) {
-    if (isDraw) glretrace::apiPerfMon.beginQuery();
-    if (!retrace::isLastPass()) return;
+    if (retrace::profilingMetricApis) {
+        if (!retrace::profilePerFrame) {
+            for (Api_Base* a : glretrace::curMetricApis) {
+                a->beginQuery(isDraw);
+            }
+        }
+        return;
+    }
 
     glretrace::Context *currentContext = glretrace::getCurrentContext();
 
@@ -278,8 +284,20 @@ beginProfile(trace::Call &call, bool isDraw) {
 
 void
 endProfile(trace::Call &call, bool isDraw) {
-    if (isDraw) glretrace::apiPerfMon.endQuery();
-    if (!retrace::isLastPass()) return;
+    if (retrace::profilingMetricApis) {
+        if (!retrace::profilePerFrame) {
+            for (Api_Base* a : glretrace::curMetricApis) {
+                a->endQuery(isDraw);
+            }
+            if (retrace::isLastPass()) {
+                glretrace::Context *currentContext = glretrace::getCurrentContext();
+                GLuint program = currentContext ? currentContext->activeProgram : 0;
+                unsigned eventId = apiPerfMon.getLastQueryId();
+                glretrace::profiler.addCall(call.no, call.sig->name, program, eventId);
+            }
+        }
+        return;
+    }
 
     /* CPU profiling for all calls */
     if (retrace::profilingCpuTimes) {
@@ -352,11 +370,19 @@ clientWaitSync(trace::Call &call, GLsync sync, GLbitfield flags, GLuint64 timeou
 }
 
 void counterCallback(Counter* c) {
-    glretrace::apiPerfMon.enableCounter(c);
+    glretrace::apiPerfMon.enableCounter(c, false);
 }
 
 void groupCallback(unsigned g) {
     glretrace::apiPerfMon.enumCounters(g, counterCallback);
+}
+
+void counterCallbackCommon(Counter* c) {
+    glretrace::apiCommon.enableCounter(c, false);
+}
+
+void groupCallbackCommon(unsigned g) {
+    glretrace::apiCommon.enumCounters(g, counterCallbackCommon);
 }
 
 /*
@@ -449,14 +475,34 @@ initContext() {
 
     if (!apiPerfMonSetup) {
         glretrace::apiPerfMon.enumGroups(groupCallback);
+        glretrace::apiCommon.enumGroups(groupCallbackCommon);
         apiPerfMonSetup = 1;
     }
-    glretrace::apiPerfMon.beginPass();
+
+    if (retrace::profilingMetricApis) {
+        glretrace::curMetricApis.clear();
+        for (Api_Base* a : glretrace::metricApis) {
+            if (retrace::curPass < a->getNumPasses()) {
+                glretrace::curMetricApis.push_back(a);
+                a->beginPass(retrace::profilePerFrame);
+            }
+        }
+    }
+
 }
 
 void
 frame_complete(trace::Call &call) {
-    if (retrace::profiling && retrace::isLastPass()) {
+    if (retrace::profilingMetricApis) {
+        if (retrace::profilePerFrame) {
+            for (Api_Base* a : glretrace::curMetricApis) {
+                a->beginQuery(false);
+            }
+        } else {
+            glretrace::profiler.addCall(-1, "", 0, 0);
+        }
+    }
+    else if (retrace::profiling) {
         /* Complete any remaining queries */
         flushQueries();
 
@@ -477,6 +523,16 @@ frame_complete(trace::Call &call) {
         !currentDrawable->pbuffer &&
         !currentDrawable->visible) {
         retrace::warning(call) << "could not infer drawable size (glViewport never called)\n";
+    }
+
+    if (retrace::profilePerFrame) {
+        for (Api_Base* a : glretrace::curMetricApis) {
+            a->endQuery(false);
+        }
+        if (retrace::isLastPass()) {
+            unsigned eventId = apiPerfMon.getLastQueryId();
+            glretrace::profiler.addFrame(eventId);
+        }
     }
 }
 
@@ -698,11 +754,12 @@ retrace::finishRendering(void) {
     if (currentContext) {
         glFinish();
     }
-    if (isLastPass()) {
-        glretrace::apiPerfMon.endPass();
-        glretrace::profiler.writeAll();
-    } else {
-        glretrace::apiPerfMon.endPass();
+
+    if (retrace::profilingMetricApis) {
+        for (Api_Base* a : glretrace::curMetricApis) {
+            a->endPass();
+        }
+        if (isLastPass()) glretrace::profiler.writeAll();
     }
 }
 

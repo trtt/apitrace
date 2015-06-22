@@ -82,6 +82,7 @@ const char *driverModule = NULL;
 bool doubleBuffer = true;
 unsigned samples = 1;
 
+int curPass = 0;
 bool profiling = false;
 bool profilingGpuTimes = false;
 bool profilingCpuTimes = false;
@@ -860,6 +861,7 @@ int main(int argc, char **argv)
 
             retrace::profilingMetricApis = true;
             retrace::profilePerFrame = trace::boolOption(optarg);
+            break;
         default:
             std::cerr << "error: unknown option " << opt << "\n";
             usage(argv[0]);
@@ -892,6 +894,7 @@ int main(int argc, char **argv)
 
     for (int j = 0; j < retrace::getNumPasses(); j++) {
         for (i = optind; i < argc; ++i) {
+            retrace::curPass = j;
             if (!retrace::parser.open(argv[i])) {
                 return 1;
             }

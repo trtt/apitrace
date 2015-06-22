@@ -1,137 +1,132 @@
 #include <queue>
+#include <vector>
 #include "trace_profiler.hpp"
-#include "json.hpp"
 
 struct ProfilerCall {
-    unsigned no;
-
+    int no;
     unsigned program;
-
-    int64_t gpuStart;
-    int64_t gpuDuration;
-
-    int64_t cpuStart;
-    int64_t cpuDuration;
-
-    int64_t vsizeStart;
-    int64_t vsizeDuration;
-    int64_t rssStart;
-    int64_t rssDuration;
-
-    int64_t pixels;
-
     std::string name;
-    int amdPerfMonQueryId;
+    unsigned eventId;
+};
+
+struct ProfilerFrame {
+    unsigned eventId;
 };
 
 class MetricWriter
 {
 private:
-    static JSONWriter json;
+    bool perFrame;
+    static bool header;
     std::queue<ProfilerCall> queue;
-    Api_Base* amdPerfMon;
+    std::queue<ProfilerFrame> queueFrame;
+    std::vector<Api_Base*>* metricApis;
 
 public:
-    MetricWriter(Api_Base* _amdPerfMon) : amdPerfMon(_amdPerfMon) {}
+    MetricWriter(std::vector<Api_Base*>* _metricApis) : perFrame(false), metricApis(_metricApis) {}
 
-    void addCall(unsigned no,
+    void addCall(int no,
                  const char* name,
-                 unsigned program,
-                 int64_t pixels,
-                 int64_t gpuStart, int64_t gpuDuration,
-                 int64_t cpuStart, int64_t cpuDuration,
-                 int64_t vsizeStart, int64_t vsizeDuration,
-                 int64_t rssStart, int64_t rssDuration,
-                 int amdPerfMonQueryId)
+                 unsigned program, unsigned eventId)
     {
-        ProfilerCall tempCall = {no, program, gpuStart, gpuDuration, cpuStart, cpuDuration, vsizeStart, vsizeDuration, rssStart, rssDuration, pixels, std::string(name), amdPerfMonQueryId};
+        ProfilerCall tempCall = {no, program, name, eventId};
         queue.push(tempCall);
     }
 
+    void addFrame(unsigned eventId)
+    {
+        if (!perFrame) perFrame = true;
+        ProfilerFrame tempFrame = {eventId};
+        queueFrame.push(tempFrame);
+    }
+
     static void writeApiData(Counter* counter, int event, void* data) {
-        json.beginMember(counter->getName());
-        switch(counter->getNumType()) {
-            case CNT_NUM_UINT: json.writeInt(*(reinterpret_cast<unsigned*>(data))); break;
-            case CNT_NUM_FLOAT: json.writeFloat(*(reinterpret_cast<float*>(data))); break;
-            case CNT_NUM_UINT64: json.writeInt(*(reinterpret_cast<uint64_t*>(data))); break;
+        if (!header) {
+            std::cout << "\t" << counter->getName();
+            return;
         }
-        json.endMember();
+        if (!data) {
+            std::cout << "\t" << "-";
+            return;
+        }
+        switch(counter->getNumType()) {
+            case CNT_NUM_UINT: std::cout << "\t" << *(reinterpret_cast<unsigned*>(data)); break;
+            case CNT_NUM_FLOAT: std::cout << "\t" << *(reinterpret_cast<float*>(data)); break;
+            case CNT_NUM_UINT64: std::cout << "\t" << *(reinterpret_cast<uint64_t*>(data)); break;
+            case CNT_NUM_INT64: std::cout << "\t" << *(reinterpret_cast<int64_t*>(data)); break;
+        }
     }
 
     void writeCall() {
         ProfilerCall tempCall = queue.front();
-        json.beginObject();
 
-        json.beginMember("no");
-        json.writeInt(tempCall.no);
-        json.endMember();
-
-        json.beginMember("program");
-        json.writeInt(tempCall.program);
-        json.endMember();
-
-        json.beginMember("gpuStart");
-        json.writeInt(tempCall.gpuStart);
-        json.endMember();
-
-        json.beginMember("gpuDuration");
-        json.writeInt(tempCall.gpuDuration);
-        json.endMember();
-
-        json.beginMember("cpuStart");
-        json.writeInt(tempCall.cpuStart);
-        json.endMember();
-
-        json.beginMember("cpuDuration");
-        json.writeInt(tempCall.cpuDuration);
-        json.endMember();
-
-        json.beginMember("vsizeStart");
-        json.writeInt(tempCall.vsizeStart);
-        json.endMember();
-
-        json.beginMember("vsizeDuration");
-        json.writeInt(tempCall.vsizeDuration);
-        json.endMember();
-
-        json.beginMember("rssStart");
-        json.writeInt(tempCall.rssStart);
-        json.endMember();
-
-        json.beginMember("rssDuration");
-        json.writeInt(tempCall.rssDuration);
-        json.endMember();
-
-        json.beginMember("pixels");
-        json.writeInt(tempCall.pixels);
-        json.endMember();
-
-        json.beginMember("name");
-        json.writeString(tempCall.name);
-        json.endMember();
-
-        if (tempCall.amdPerfMonQueryId != -1) {
-            json.beginMember("GL_AMD_performance_monitor");
-            json.beginObject();
-            amdPerfMon->enumDataQueryId(tempCall.amdPerfMonQueryId, &writeApiData);
-            json.endObject();
-            json.endMember();
+        if (!header) {
+            std::cout << "#\tcall no\tprogram\tname";
+            for (Api_Base* a : *metricApis) {
+                a->enumDataQueryId(tempCall.eventId, &writeApiData);
+            }
+            std::cout << std::endl;
+            header = true;
+            return;
         }
 
-        json.endObject();
+        if (tempCall.no == -1) {
+            std::cout << "frame_end" << std::endl;
+            queue.pop();
+            return;
+        }
+
+        std::cout << "call"
+            << "\t" << tempCall.no
+            << "\t" << tempCall.program
+            << "\t" << tempCall.name;
+
+        for (Api_Base* a : *metricApis) {
+            a->enumDataQueryId(tempCall.eventId, &writeApiData);
+        }
+
+        std::cout << std::endl;
+
         queue.pop();
     }
 
-    void writeAll() {
-        json.beginMember("calls");
-        json.beginArray();
-        while (!queue.empty()) {
-            writeCall();
+    void writeFrame() {
+        ProfilerFrame tempFrame = queueFrame.front();
+
+        if (!header) {
+            std::cout << "#";
+            for (Api_Base* a : *metricApis) {
+                a->enumDataQueryId(tempFrame.eventId, &writeApiData);
+            }
+            std::cout << std::endl;
+            header = true;
+            return;
         }
-        json.endArray();
-        json.endMember();
+
+        std::cout << "frame";
+
+        for (Api_Base* a : *metricApis) {
+            a->enumDataQueryId(tempFrame.eventId, &writeApiData);
+        }
+
+        std::cout << std::endl;
+
+        queueFrame.pop();
+    }
+
+    void writeAll() {
+        if (!perFrame) {
+            while (!queue.empty()) {
+                writeCall();
+            }
+        } else {
+            while (!queueFrame.empty()) {
+                writeFrame();
+            }
+        }
     }
 
 };
 
-JSONWriter MetricWriter::json(std::cout);
+bool MetricWriter::header = false;
+

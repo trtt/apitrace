@@ -28,6 +28,7 @@
 #include "glws.hpp"
 #include "retrace.hpp"
 #include "api_gl_amd_performance_monitor.hpp"
+#include "api_common.hpp"
 
 namespace glretrace {
 
@@ -58,6 +59,8 @@ struct Context {
 };
 
 extern Api_GL_AMD_performance_monitor apiPerfMon;
+extern Api_common apiCommon;
+
 extern bool apiPerfMonSetup;
 
 extern glprofile::Profile defaultProfile;

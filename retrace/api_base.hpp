@@ -8,7 +8,8 @@ enum CounterNumType {
     CNT_NUM_FLOAT,
     CNT_NUM_UINT64,
     CNT_NUM_DOUBLE,
-    CNT_NUM_BOOL
+    CNT_NUM_BOOL,
+    CNT_NUM_INT64
 };
 
 // Type of data counter represents
@@ -52,18 +53,18 @@ public:
 
     virtual void enumCounters(unsigned group, enumCountersCallback callback) = 0;
 
-    virtual void enableCounter(Counter* counter) = 0;
+    virtual void enableCounter(Counter* counter, bool perDraw = true) = 0;
 
-    virtual void beginPass(bool perFrame = 0) = 0;
+    virtual void beginPass(bool perFrame = false) = 0;
     /* Passes are generated in the first beginPass()
      * based on counters enabled via enableCounter().
      * This call must be used after context is initialized.
     */
     virtual void endPass() = 0;
 
-    virtual void beginQuery() = 0; // Query some unit (draw-call, frame)
+    virtual void beginQuery(bool isDraw = false) = 0; // Query some unit (draw-call, frame)
 
-    virtual void endQuery() = 0;
+    virtual void endQuery(bool isDraw = false) = 0;
 
     virtual void enumDataQueryId(unsigned id, enumDataCallback callback) = 0;
 

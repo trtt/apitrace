@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <map>
 #include <string>
 
 #include "glproc.hpp"
@@ -35,6 +36,7 @@ class DataCollector
 {
 private:
     std::vector<std::vector<unsigned*>> data;
+    std::map<unsigned, unsigned> eventMap; // drawCallId <-> callId
     unsigned curPass;
     unsigned curEvent;
 
@@ -43,7 +45,7 @@ public:
 
     ~DataCollector();
 
-    unsigned* newDataBuffer(size_t size);
+    unsigned* newDataBuffer(unsigned event, size_t size);
 
     void endPass();
 
@@ -58,11 +60,13 @@ class Api_GL_AMD_performance_monitor : public Api_Base
 {
 private:
     unsigned monitors[NUM_MONITORS]; // For cycling, using 2 in current implementation
-    int curMonitor;
+    unsigned curMonitor;
     bool firstRound, perFrame;
     std::vector<std::vector<Counter_GL_AMD_performance_monitor>> passes; // metric sets for each pass
     int numPasses;
     int curPass;
+    unsigned curEvent; // Currently evaluated event
+    unsigned monitorEvent[NUM_MONITORS]; // Event saved in monitor
     DataCollector collector;
     std::vector<Counter_GL_AMD_performance_monitor> metrics; // store metrics selected for profiling
 
@@ -73,21 +77,21 @@ private:
     void freeMonitor(unsigned monitor); // collect metrics data from the monitor
 
 public:
-    Api_GL_AMD_performance_monitor() : numPasses(1), curPass(0) {}
+    Api_GL_AMD_performance_monitor() : numPasses(1), curPass(0), curEvent(0) {}
 
     void enumGroups(enumGroupsCallback callback);
 
     void enumCounters(unsigned group, enumCountersCallback callback);
 
-    void enableCounter(Counter* counter);
+    void enableCounter(Counter* counter, bool perDraw = true);
 
     void beginPass(bool perFrame = false);
 
     void endPass();
 
-    void beginQuery();
+    void beginQuery(bool isDraw = false);
 
-    void endQuery();
+    void endQuery(bool isDraw = false);
 
     void enumDataQueryId(unsigned id, enumDataCallback callback);
 

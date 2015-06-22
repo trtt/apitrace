@@ -73,6 +73,7 @@ add_library (glretrace_common STATIC
     glstate_shaders.cpp
     glws.cpp
     api_gl_amd_performance_monitor.cpp
+    api_common.cpp
 )
 add_dependencies (glretrace_common glproc)
 target_link_libraries (glretrace_common

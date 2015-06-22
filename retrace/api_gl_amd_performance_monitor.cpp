@@ -51,13 +51,14 @@ DataCollector::~DataCollector() {
     }
 }
 
-unsigned* DataCollector::newDataBuffer(size_t size) {
+unsigned* DataCollector::newDataBuffer(unsigned event, size_t size) {
     if (curEvent == 0) {
         std::vector<unsigned*> vec(1, new unsigned[size]);
         data.push_back(vec);
     } else {
         data[curPass].push_back(new unsigned[size]);
     }
+    eventMap[event] = curEvent;
     return data[curPass][curEvent++];
 }
 
@@ -66,8 +67,11 @@ void DataCollector::endPass() {
     curEvent = 0;
 }
 
-unsigned* DataCollector::getDataBuffer(unsigned pass, unsigned event) {
-    return data[pass][event];
+unsigned* DataCollector::getDataBuffer(unsigned pass, unsigned event_) {
+    if (eventMap.count(event_) > 0) {
+        unsigned event = eventMap[event_];
+        return data[pass][event];
+    } else return nullptr;
 }
 
 unsigned DataCollector::getNumEvents() {
@@ -103,7 +107,7 @@ void Api_GL_AMD_performance_monitor::enumCounters(unsigned group, enumCountersCa
     }
 }
 
-void Api_GL_AMD_performance_monitor::enableCounter(Counter* counter) {
+void Api_GL_AMD_performance_monitor::enableCounter(Counter* counter, bool perDraw) {
     Counter_GL_AMD_performance_monitor metric(counter->getGroupId(), counter->getId());
     metrics.push_back(metric);
 }
@@ -162,30 +166,36 @@ void Api_GL_AMD_performance_monitor::beginPass(bool perFrame_) {
     }
     curMonitor = 0;
     firstRound = 1;
+    curEvent = 0;
 }
 
 void Api_GL_AMD_performance_monitor::endPass() {
     for (int k = 0; k < NUM_MONITORS; k++) {
-        freeMonitor(monitors[k]);
+        freeMonitor(k);
     }
     glDeletePerfMonitorsAMD(NUM_MONITORS, monitors);
     curPass++;
     collector.endPass();
 }
 
-void Api_GL_AMD_performance_monitor::beginQuery() {
-    if (!firstRound) freeMonitor(monitors[curMonitor]);
+void Api_GL_AMD_performance_monitor::beginQuery(bool isDraw) {
+    if (!isDraw && !perFrame) return;
+    if (!firstRound) freeMonitor(curMonitor);
+    monitorEvent[curMonitor] = curEvent;
     glBeginPerfMonitorAMD(monitors[curMonitor]);
 }
 
-void Api_GL_AMD_performance_monitor::endQuery() {
+void Api_GL_AMD_performance_monitor::endQuery(bool isDraw) {
+    curEvent++;
+    if (!isDraw && !perFrame) return;
     glEndPerfMonitorAMD(monitors[curMonitor]);
     curMonitor++;
     if (curMonitor == NUM_MONITORS) firstRound = 0;
     curMonitor %= NUM_MONITORS;
 }
 
-void Api_GL_AMD_performance_monitor::freeMonitor(unsigned monitor) {
+void Api_GL_AMD_performance_monitor::freeMonitor(unsigned monitor_) {
+    unsigned monitor = monitors[monitor_];
     glFlush();
     GLuint dataAvail = 0;
     while (!dataAvail) {
@@ -195,7 +205,7 @@ void Api_GL_AMD_performance_monitor::freeMonitor(unsigned monitor) {
     glGetPerfMonitorCounterDataAMD(monitor, GL_PERFMON_RESULT_SIZE_AMD, sizeof(GLuint), &size, nullptr);
     size /= sizeof(unsigned);
     // collect data
-    glGetPerfMonitorCounterDataAMD(monitor, GL_PERFMON_RESULT_AMD, size, collector.newDataBuffer(size), nullptr);
+    glGetPerfMonitorCounterDataAMD(monitor, GL_PERFMON_RESULT_AMD, size, collector.newDataBuffer(monitorEvent[monitor_], size), nullptr);
 }
 
 void Api_GL_AMD_performance_monitor::enumDataQueryId(unsigned id, enumDataCallback callback) {
@@ -203,17 +213,22 @@ void Api_GL_AMD_performance_monitor::enumDataQueryId(unsigned id, enumDataCallba
         unsigned* buf = collector.getDataBuffer(j, id);
         unsigned offset = 0;
         for (int k = 0; k < passes[j].size(); k++) {
-            Counter_GL_AMD_performance_monitor counter(buf[offset], buf[offset+1]);
-            offset += 2;
-            callback(&counter, id, &buf[offset]);
-            offset += counter.getSize() / sizeof(unsigned);
+            if (buf) {
+                Counter_GL_AMD_performance_monitor counter(buf[offset], buf[offset+1]);
+                offset += 2;
+                callback(&counter, id, &buf[offset]);
+                offset += counter.getSize() / sizeof(unsigned);
+            } else { // No data buffer (in case event #id is not a draw call)
+                offset += 2;
+                callback(&passes[j][k], id, nullptr);
+                offset += passes[j][k].getSize() / sizeof(unsigned);
+            }
         }
     }
 }
 
 void Api_GL_AMD_performance_monitor::enumData(enumDataCallback callback) {
-    unsigned numEvents = collector.getNumEvents();
-    for (unsigned i = 0; i < numEvents; i++) {
+    for (unsigned i = 0; i < curEvent; i++) {
         enumDataQueryId(i, callback);
     }
 }
@@ -223,9 +238,9 @@ unsigned Api_GL_AMD_performance_monitor::getNumPasses() {
 }
 
 bool Api_GL_AMD_performance_monitor::isLastPass() {
-    return (numPasses-1 == curPass);
+    return (numPasses-1 <= curPass);
 }
 
 unsigned Api_GL_AMD_performance_monitor::getLastQueryId() {
-    return collector.getLastEvent();
+    return (curEvent-1);
 }

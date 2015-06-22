@@ -124,6 +124,7 @@ extern bool profilingMemoryUsage;
 extern bool profilingMetricApis;
 extern bool profilePerFrame;
 
+extern int curPass;
 /**
  * State dumping.
  */
