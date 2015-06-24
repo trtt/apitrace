@@ -1,14 +1,14 @@
-#include "api_gl_amd_performance_monitor.hpp"
+#include "metric_backend_amd_perfmon.hpp"
 
-unsigned Counter_GL_AMD_performance_monitor::getId() {
+unsigned Metric_AMD_perfmon::getId() {
     return id;
 }
 
-unsigned Counter_GL_AMD_performance_monitor::getGroupId() {
+unsigned Metric_AMD_perfmon::getGroupId() {
     return group;
 }
 
-std::string Counter_GL_AMD_performance_monitor::getName() {
+std::string Metric_AMD_perfmon::getName() {
     int length;
     std::string name;
     glGetPerfMonitorCounterStringAMD(group, id, 0, &length, nullptr);
@@ -17,7 +17,7 @@ std::string Counter_GL_AMD_performance_monitor::getName() {
     return name;
 }
 
-GLenum Counter_GL_AMD_performance_monitor::getSize() {
+GLenum Metric_AMD_perfmon::getSize() {
     GLenum type;
     glGetPerfMonitorCounterInfoAMD(group, id, GL_COUNTER_TYPE_AMD, &type);
     if (type == GL_UNSIGNED_INT) return sizeof(GLuint);
@@ -26,7 +26,7 @@ GLenum Counter_GL_AMD_performance_monitor::getSize() {
     else return sizeof(GLuint);
 }
 
-CounterNumType Counter_GL_AMD_performance_monitor::getNumType() {
+MetricNumType Metric_AMD_perfmon::getNumType() {
     GLenum type;
     glGetPerfMonitorCounterInfoAMD(group, id, GL_COUNTER_TYPE_AMD, &type);
     if (type == GL_UNSIGNED_INT) return CNT_NUM_UINT;
@@ -35,7 +35,7 @@ CounterNumType Counter_GL_AMD_performance_monitor::getNumType() {
     else return CNT_NUM_UINT;
 }
 
-CounterType Counter_GL_AMD_performance_monitor::getType() {
+MetricType Metric_AMD_perfmon::getType() {
     GLenum type;
     glGetPerfMonitorCounterInfoAMD(group, id, GL_COUNTER_TYPE_AMD, &type);
     if (type == GL_UNSIGNED_INT || type == GL_UNSIGNED_INT64_AMD || type == GL_FLOAT) return CNT_TYPE_GENERIC;
@@ -83,7 +83,7 @@ unsigned DataCollector::getLastEvent() {
 }
 
 
-void Api_GL_AMD_performance_monitor::enumGroups(enumGroupsCallback callback) {
+void MetricBackend_AMD_perfmon::enumGroups(enumGroupsCallback callback) {
     std::vector<unsigned> groups;
     int num_groups;
     glGetPerfMonitorGroupsAMD(&num_groups, 0, nullptr);
@@ -94,29 +94,29 @@ void Api_GL_AMD_performance_monitor::enumGroups(enumGroupsCallback callback) {
     }
 }
 
-void Api_GL_AMD_performance_monitor::enumCounters(unsigned group, enumCountersCallback callback) {
-    std::vector<unsigned> counters;
-    int num_counters;
-    Counter_GL_AMD_performance_monitor counter(0,0);
-    glGetPerfMonitorCountersAMD(group, &num_counters, nullptr,  0, nullptr);
-    counters.resize(num_counters);
-    glGetPerfMonitorCountersAMD(group, nullptr, nullptr, num_counters, &counters[0]);
-    for(unsigned c : counters) {
-        counter = Counter_GL_AMD_performance_monitor(group, c);
-        callback(&counter);
+void MetricBackend_AMD_perfmon::enumMetrics(unsigned group, enumMetricsCallback callback) {
+    std::vector<unsigned> metrics;
+    int num_metrics;
+    Metric_AMD_perfmon metric(0,0);
+    glGetPerfMonitorCountersAMD(group, &num_metrics, nullptr,  0, nullptr);
+    metrics.resize(num_metrics);
+    glGetPerfMonitorCountersAMD(group, nullptr, nullptr, num_metrics, &metrics[0]);
+    for(unsigned c : metrics) {
+        metric = Metric_AMD_perfmon(group, c);
+        callback(&metric);
     }
 }
 
-void Api_GL_AMD_performance_monitor::enableCounter(Counter* counter, bool perDraw) {
-    Counter_GL_AMD_performance_monitor metric(counter->getGroupId(), counter->getId());
+void MetricBackend_AMD_perfmon::enableMetric(Metric* metric_, bool perDraw) {
+    Metric_AMD_perfmon metric(metric_->getGroupId(), metric_->getId());
     metrics.push_back(metric);
 }
 
-bool Api_GL_AMD_performance_monitor::testCounters(std::vector<Counter_GL_AMD_performance_monitor>* counters) {
+bool MetricBackend_AMD_perfmon::testMetrics(std::vector<Metric_AMD_perfmon>* metrics) {
     unsigned monitor;
     unsigned id;
     glGenPerfMonitorsAMD(1, &monitor);
-    for (Counter_GL_AMD_performance_monitor c : *counters) {
+    for (Metric_AMD_perfmon c : *metrics) {
         id = c.getId();
         glSelectPerfMonitorCountersAMD(monitor, 1, c.getGroupId(), 1, &id);
     }
@@ -131,14 +131,14 @@ bool Api_GL_AMD_performance_monitor::testCounters(std::vector<Counter_GL_AMD_per
     return 1;
 }
 
-unsigned Api_GL_AMD_performance_monitor::generatePasses() {
-    std::vector<Counter_GL_AMD_performance_monitor> copyMetrics(metrics);
-    std::vector<Counter_GL_AMD_performance_monitor> newPass;
+unsigned MetricBackend_AMD_perfmon::generatePasses() {
+    std::vector<Metric_AMD_perfmon> copyMetrics(metrics);
+    std::vector<Metric_AMD_perfmon> newPass;
     while (!copyMetrics.empty()) {
-        std::vector<Counter_GL_AMD_performance_monitor>::iterator it = copyMetrics.begin();
+        std::vector<Metric_AMD_perfmon>::iterator it = copyMetrics.begin();
         while (it != copyMetrics.end()) {
             newPass.push_back(*it);
-            if (!testCounters(&newPass)) {
+            if (!testMetrics(&newPass)) {
                 newPass.pop_back();
                 break;
             }
@@ -151,14 +151,14 @@ unsigned Api_GL_AMD_performance_monitor::generatePasses() {
     return numPasses;
 }
 
-void Api_GL_AMD_performance_monitor::beginPass(bool perFrame_) {
+void MetricBackend_AMD_perfmon::beginPass(bool perFrame_) {
     if (curPass == 0) {
         perFrame = perFrame_;
         generatePasses();
     }
     glGenPerfMonitorsAMD(NUM_MONITORS, monitors);
     unsigned id;
-    for (Counter_GL_AMD_performance_monitor c : passes[curPass]) {
+    for (Metric_AMD_perfmon c : passes[curPass]) {
         id = c.getId();
         for (int k = 0; k < NUM_MONITORS; k++) {
             glSelectPerfMonitorCountersAMD(monitors[k], 1, c.getGroupId(), 1, &id);
@@ -169,7 +169,7 @@ void Api_GL_AMD_performance_monitor::beginPass(bool perFrame_) {
     curEvent = 0;
 }
 
-void Api_GL_AMD_performance_monitor::endPass() {
+void MetricBackend_AMD_perfmon::endPass() {
     for (int k = 0; k < NUM_MONITORS; k++) {
         freeMonitor(k);
     }
@@ -178,14 +178,14 @@ void Api_GL_AMD_performance_monitor::endPass() {
     collector.endPass();
 }
 
-void Api_GL_AMD_performance_monitor::beginQuery(bool isDraw) {
+void MetricBackend_AMD_perfmon::beginQuery(bool isDraw) {
     if (!isDraw && !perFrame) return;
     if (!firstRound) freeMonitor(curMonitor);
     monitorEvent[curMonitor] = curEvent;
     glBeginPerfMonitorAMD(monitors[curMonitor]);
 }
 
-void Api_GL_AMD_performance_monitor::endQuery(bool isDraw) {
+void MetricBackend_AMD_perfmon::endQuery(bool isDraw) {
     curEvent++;
     if (!isDraw && !perFrame) return;
     glEndPerfMonitorAMD(monitors[curMonitor]);
@@ -194,7 +194,7 @@ void Api_GL_AMD_performance_monitor::endQuery(bool isDraw) {
     curMonitor %= NUM_MONITORS;
 }
 
-void Api_GL_AMD_performance_monitor::freeMonitor(unsigned monitor_) {
+void MetricBackend_AMD_perfmon::freeMonitor(unsigned monitor_) {
     unsigned monitor = monitors[monitor_];
     glFlush();
     GLuint dataAvail = 0;
@@ -208,16 +208,16 @@ void Api_GL_AMD_performance_monitor::freeMonitor(unsigned monitor_) {
     glGetPerfMonitorCounterDataAMD(monitor, GL_PERFMON_RESULT_AMD, size, collector.newDataBuffer(monitorEvent[monitor_], size), nullptr);
 }
 
-void Api_GL_AMD_performance_monitor::enumDataQueryId(unsigned id, enumDataCallback callback) {
+void MetricBackend_AMD_perfmon::enumDataQueryId(unsigned id, enumDataCallback callback) {
     for (unsigned j = 0; j < numPasses; j++) {
         unsigned* buf = collector.getDataBuffer(j, id);
         unsigned offset = 0;
         for (int k = 0; k < passes[j].size(); k++) {
             if (buf) {
-                Counter_GL_AMD_performance_monitor counter(buf[offset], buf[offset+1]);
+                Metric_AMD_perfmon metric(buf[offset], buf[offset+1]);
                 offset += 2;
-                callback(&counter, id, &buf[offset]);
-                offset += counter.getSize() / sizeof(unsigned);
+                callback(&metric, id, &buf[offset]);
+                offset += metric.getSize() / sizeof(unsigned);
             } else { // No data buffer (in case event #id is not a draw call)
                 offset += 2;
                 callback(&passes[j][k], id, nullptr);
@@ -227,20 +227,20 @@ void Api_GL_AMD_performance_monitor::enumDataQueryId(unsigned id, enumDataCallba
     }
 }
 
-void Api_GL_AMD_performance_monitor::enumData(enumDataCallback callback) {
+void MetricBackend_AMD_perfmon::enumData(enumDataCallback callback) {
     for (unsigned i = 0; i < curEvent; i++) {
         enumDataQueryId(i, callback);
     }
 }
 
-unsigned Api_GL_AMD_performance_monitor::getNumPasses() {
+unsigned MetricBackend_AMD_perfmon::getNumPasses() {
     return numPasses;
 }
 
-bool Api_GL_AMD_performance_monitor::isLastPass() {
+bool MetricBackend_AMD_perfmon::isLastPass() {
     return (numPasses-1 <= curPass);
 }
 
-unsigned Api_GL_AMD_performance_monitor::getLastQueryId() {
+unsigned MetricBackend_AMD_perfmon::getLastQueryId() {
     return (curEvent-1);
 }

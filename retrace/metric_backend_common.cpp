@@ -1,63 +1,63 @@
 #include <iostream>
-#include "api_common.hpp"
+#include "metric_backend_common.hpp"
 
-unsigned Counter_common::getId() {
+unsigned Metric_common::getId() {
     return id;
 }
 
-unsigned Counter_common::getGroupId() {
+unsigned Metric_common::getGroupId() {
     return group;
 }
 
-std::string Counter_common::getName() {
+std::string Metric_common::getName() {
     return name;
 }
 
-CounterNumType Counter_common::getNumType() {
+MetricNumType Metric_common::getNumType() {
     return nType;
 }
 
-CounterType Counter_common::getType() {
+MetricType Metric_common::getType() {
     return type;
 }
 
 
-int64_t Counter_cpu::getCurrentTime() {
+int64_t Metric_cpu::getCurrentTime() {
     GLint64 timestamp = 0;
     glGetInteger64v(GL_TIMESTAMP, &timestamp);
     return timestamp;
 }
 
-void Counter_cpu::setup() {
+void Metric_cpu::setup() {
     double cpuTimeScale = 1.0E9 / 1000000000;
     baseTime = getCurrentTime() * cpuTimeScale;
 }
 
-void Counter_cpu::beginQuery() {
+void Metric_cpu::beginQuery() {
     if (start) data.push_back(getCurrentTime() - baseTime);
 }
 
-void Counter_cpu::endQuery() {
+void Metric_cpu::endQuery() {
     if (!start) data.push_back(getCurrentTime() - baseTime);
 }
 
-void* Counter_cpu::getData(unsigned event) {
+void* Metric_cpu::getData(unsigned event) {
     return &data[event];
 }
 
 
-int64_t Counter_gpu::getCurrentTime() {
+int64_t Metric_gpu::getCurrentTime() {
     GLint64 timestamp = 0;
     glGetInteger64v(GL_TIMESTAMP, &timestamp);
     return timestamp;
 }
 
-void Counter_gpu::setup() {
+void Metric_gpu::setup() {
     double cpuTimeScale = 1.0E9 / 1000000000;
     baseTime = getCurrentTime() * cpuTimeScale;
 }
 
-void Counter_gpu::beginQuery() {
+void Metric_gpu::beginQuery() {
     glGenQueries(1, &query);
     if (start) {
         glQueryCounter(query, GL_TIMESTAMP);
@@ -66,7 +66,7 @@ void Counter_gpu::beginQuery() {
     }
 }
 
-void Counter_gpu::endQuery() {
+void Metric_gpu::endQuery() {
     int64_t stamp;
     if (!start) glEndQuery(GL_TIME_ELAPSED);
     glGetQueryObjecti64v(query, GL_QUERY_RESULT, &stamp);
@@ -75,11 +75,11 @@ void Counter_gpu::endQuery() {
     glDeleteQueries(1, &query);
 }
 
-void* Counter_gpu::getData(unsigned event) {
+void* Metric_gpu::getData(unsigned event) {
     return &data[event];
 }
 
-Api_common::Api_common()
+MetricBackend_common::MetricBackend_common()
 : curEvent(0), curDrawEvent(0),
 cpuStart(1, 1, true),
 cpuEnd(1, 2, false),
@@ -87,12 +87,12 @@ gpuStart(2, 1, true),
 gpuDuration(2, 2, false)
 {}
 
-void Api_common::enumGroups(enumGroupsCallback callback) {
+void MetricBackend_common::enumGroups(enumGroupsCallback callback) {
     callback(1);
     callback(2);
 }
 
-void Api_common::enumCounters(unsigned group, enumCountersCallback callback) {
+void MetricBackend_common::enumMetrics(unsigned group, enumMetricsCallback callback) {
     switch(group) {
     case 1:
         callback(&cpuStart);
@@ -105,10 +105,10 @@ void Api_common::enumCounters(unsigned group, enumCountersCallback callback) {
     }
 }
 
-void Api_common::enableCounter(Counter* counter, bool perDraw) {
-    switch(counter->getGroupId()) {
+void MetricBackend_common::enableMetric(Metric* metric, bool perDraw) {
+    switch(metric->getGroupId()) {
     case 1:
-        switch(counter->getId()) {
+        switch(metric->getId()) {
         case 1:
             metrics.push_back(&cpuStart);
             cpuStart.perDraw = perDraw;
@@ -120,7 +120,7 @@ void Api_common::enableCounter(Counter* counter, bool perDraw) {
         }
         break;
     case 2:
-        switch(counter->getId()) {
+        switch(metric->getId()) {
         case 1:
             metrics.push_back(&gpuStart);
             gpuStart.perDraw = perDraw;
@@ -134,25 +134,25 @@ void Api_common::enableCounter(Counter* counter, bool perDraw) {
     }
 }
 
-void Api_common::beginPass(bool perFrame_) {
-    for (Counter_common* c : metrics) {
+void MetricBackend_common::beginPass(bool perFrame_) {
+    for (Metric_common* c : metrics) {
         c->setup();
     }
 }
 
-void Api_common::endPass() {
+void MetricBackend_common::endPass() {
 }
 
-void Api_common::beginQuery(bool isDraw) {
+void MetricBackend_common::beginQuery(bool isDraw) {
     if (isDraw) eventMap[curEvent] = curDrawEvent;
-    for (Counter_common* c : metrics) {
+    for (Metric_common* c : metrics) {
         if (c->perDraw && isDraw) c->beginQuery();
         else if (!c->perDraw) c->beginQuery();
     }
 }
 
-void Api_common::endQuery(bool isDraw) {
-    for (Counter_common* c : metrics) {
+void MetricBackend_common::endQuery(bool isDraw) {
+    for (Metric_common* c : metrics) {
         if (c->perDraw && isDraw) c->endQuery();
         else if (!c->perDraw) c->endQuery();
     }
@@ -160,8 +160,8 @@ void Api_common::endQuery(bool isDraw) {
     if (isDraw) curDrawEvent++;
 }
 
-void Api_common::enumDataQueryId(unsigned id, enumDataCallback callback) {
-    for (Counter_common* c : metrics) {
+void MetricBackend_common::enumDataQueryId(unsigned id, enumDataCallback callback) {
+    for (Metric_common* c : metrics) {
         if (c->perDraw) {
             if (eventMap.count(id) > 0) {
                 callback(c, id, c->getData(eventMap[id]));
@@ -174,20 +174,20 @@ void Api_common::enumDataQueryId(unsigned id, enumDataCallback callback) {
     }
 }
 
-void Api_common::enumData(enumDataCallback callback) {
+void MetricBackend_common::enumData(enumDataCallback callback) {
     for (unsigned i = 0; i < curEvent; i++) {
         enumDataQueryId(i, callback);
     }
 }
 
-unsigned Api_common::getNumPasses() {
+unsigned MetricBackend_common::getNumPasses() {
     return 1;
 }
 
-bool Api_common::isLastPass() {
+bool MetricBackend_common::isLastPass() {
     return true;
 }
 
-unsigned Api_common::getLastQueryId() {
+unsigned MetricBackend_common::getLastQueryId() {
     return (curEvent-1);
 }

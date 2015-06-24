@@ -20,10 +20,10 @@ private:
     static bool header;
     std::queue<ProfilerCall> queue;
     std::queue<ProfilerFrame> queueFrame;
-    std::vector<Api_Base*>* metricApis;
+    std::vector<MetricBackend*>* metricApis;
 
 public:
-    MetricWriter(std::vector<Api_Base*>* _metricApis) : perFrame(false), metricApis(_metricApis) {}
+    MetricWriter(std::vector<MetricBackend*>* _metricApis) : perFrame(false), metricApis(_metricApis) {}
 
     void addCall(int no,
                  const char* name,
@@ -40,16 +40,16 @@ public:
         queueFrame.push(tempFrame);
     }
 
-    static void writeApiData(Counter* counter, int event, void* data) {
+    static void writeApiData(Metric* metric, int event, void* data) {
         if (!header) {
-            std::cout << "\t" << counter->getName();
+            std::cout << "\t" << metric->getName();
             return;
         }
         if (!data) {
             std::cout << "\t" << "-";
             return;
         }
-        switch(counter->getNumType()) {
+        switch(metric->getNumType()) {
             case CNT_NUM_UINT: std::cout << "\t" << *(reinterpret_cast<unsigned*>(data)); break;
             case CNT_NUM_FLOAT: std::cout << "\t" << *(reinterpret_cast<float*>(data)); break;
             case CNT_NUM_UINT64: std::cout << "\t" << *(reinterpret_cast<uint64_t*>(data)); break;
@@ -62,7 +62,7 @@ public:
 
         if (!header) {
             std::cout << "#\tcall no\tprogram\tname";
-            for (Api_Base* a : *metricApis) {
+            for (MetricBackend* a : *metricApis) {
                 a->enumDataQueryId(tempCall.eventId, &writeApiData);
             }
             std::cout << std::endl;
@@ -81,7 +81,7 @@ public:
             << "\t" << tempCall.program
             << "\t" << tempCall.name;
 
-        for (Api_Base* a : *metricApis) {
+        for (MetricBackend* a : *metricApis) {
             a->enumDataQueryId(tempCall.eventId, &writeApiData);
         }
 
@@ -95,7 +95,7 @@ public:
 
         if (!header) {
             std::cout << "#";
-            for (Api_Base* a : *metricApis) {
+            for (MetricBackend* a : *metricApis) {
                 a->enumDataQueryId(tempFrame.eventId, &writeApiData);
             }
             std::cout << std::endl;
@@ -105,7 +105,7 @@ public:
 
         std::cout << "frame";
 
-        for (Api_Base* a : *metricApis) {
+        for (MetricBackend* a : *metricApis) {
             a->enumDataQueryId(tempFrame.eventId, &writeApiData);
         }
 

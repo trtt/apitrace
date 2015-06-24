@@ -37,8 +37,8 @@
 #include "os_time.hpp"
 #include "os_memory.hpp"
 #include "highlight.hpp"
-#include "api_gl_amd_performance_monitor.hpp" // AMD_perfmon
-#include "api_common.hpp" // Common backend (cpu/gpu times)
+#include "metric_backend_amd_perfmon.hpp" // AMD_perfmon
+#include "metric_backend_common.hpp" // Common backend (cpu/gpu times)
 #include "metric_writer.cpp" // placeholder
 
 
@@ -50,10 +50,10 @@
 
 namespace glretrace {
 
-Api_GL_AMD_performance_monitor apiPerfMon;
-Api_common apiCommon;
-std::vector<Api_Base*> metricApis { &apiCommon, &apiPerfMon  };
-std::vector<Api_Base*> curMetricApis;
+MetricBackend_AMD_perfmon apiPerfMon;
+MetricBackend_common apiCommon;
+std::vector<MetricBackend*> metricApis { &apiCommon, &apiPerfMon  };
+std::vector<MetricBackend*> curMetricApis;
 
 bool apiPerfMonSetup = 0;
 MetricWriter profiler(&metricApis);
@@ -234,7 +234,7 @@ void
 beginProfile(trace::Call &call, bool isDraw) {
     if (retrace::profilingMetricApis) {
         if (!retrace::profilePerFrame) {
-            for (Api_Base* a : glretrace::curMetricApis) {
+            for (MetricBackend* a : glretrace::curMetricApis) {
                 a->beginQuery(isDraw);
             }
         }
@@ -286,7 +286,7 @@ void
 endProfile(trace::Call &call, bool isDraw) {
     if (retrace::profilingMetricApis) {
         if (!retrace::profilePerFrame) {
-            for (Api_Base* a : glretrace::curMetricApis) {
+            for (MetricBackend* a : glretrace::curMetricApis) {
                 a->endQuery(isDraw);
             }
             if (retrace::isLastPass()) {
@@ -369,20 +369,20 @@ clientWaitSync(trace::Call &call, GLsync sync, GLbitfield flags, GLuint64 timeou
     return result;
 }
 
-void counterCallback(Counter* c) {
-    glretrace::apiPerfMon.enableCounter(c, false);
+void metricCallback(Metric* c) {
+    glretrace::apiPerfMon.enableMetric(c, false);
 }
 
 void groupCallback(unsigned g) {
-    glretrace::apiPerfMon.enumCounters(g, counterCallback);
+    glretrace::apiPerfMon.enumMetrics(g, metricCallback);
 }
 
-void counterCallbackCommon(Counter* c) {
-    glretrace::apiCommon.enableCounter(c, false);
+void metricCallbackCommon(Metric* c) {
+    glretrace::apiCommon.enableMetric(c, false);
 }
 
 void groupCallbackCommon(unsigned g) {
-    glretrace::apiCommon.enumCounters(g, counterCallbackCommon);
+    glretrace::apiCommon.enumMetrics(g, metricCallbackCommon);
 }
 
 /*
@@ -481,7 +481,7 @@ initContext() {
 
     if (retrace::profilingMetricApis) {
         glretrace::curMetricApis.clear();
-        for (Api_Base* a : glretrace::metricApis) {
+        for (MetricBackend* a : glretrace::metricApis) {
             if (retrace::curPass < a->getNumPasses()) {
                 glretrace::curMetricApis.push_back(a);
                 a->beginPass(retrace::profilePerFrame);
@@ -495,7 +495,7 @@ void
 frame_complete(trace::Call &call) {
     if (retrace::profilingMetricApis) {
         if (retrace::profilePerFrame) {
-            for (Api_Base* a : glretrace::curMetricApis) {
+            for (MetricBackend* a : glretrace::curMetricApis) {
                 a->beginQuery(false);
             }
         } else {
@@ -526,7 +526,7 @@ frame_complete(trace::Call &call) {
     }
 
     if (retrace::profilePerFrame) {
-        for (Api_Base* a : glretrace::curMetricApis) {
+        for (MetricBackend* a : glretrace::curMetricApis) {
             a->endQuery(false);
         }
         if (retrace::isLastPass()) {
@@ -756,7 +756,7 @@ retrace::finishRendering(void) {
     }
 
     if (retrace::profilingMetricApis) {
-        for (Api_Base* a : glretrace::curMetricApis) {
+        for (MetricBackend* a : glretrace::curMetricApis) {
             a->endPass();
         }
         if (isLastPass()) glretrace::profiler.writeAll();

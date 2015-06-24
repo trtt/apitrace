@@ -2,8 +2,8 @@
 
 #include <string>
 
-// Numeric counter formats
-enum CounterNumType {
+// Numeric metric formats
+enum MetricNumType {
     CNT_NUM_UINT = 0,
     CNT_NUM_FLOAT,
     CNT_NUM_UINT64,
@@ -12,8 +12,8 @@ enum CounterNumType {
     CNT_NUM_INT64
 };
 
-// Type of data counter represents
-enum CounterType {
+// Type of data metric represents
+enum MetricType {
     CNT_TYPE_GENERIC = 0,
     CNT_TYPE_NUM,
     CNT_TYPE_DURATION,
@@ -22,11 +22,11 @@ enum CounterType {
     CNT_TYPE_OTHER
 };
 
-// Base class for counter:
-class Counter
+// Base class for metric:
+class Metric
 {
 public:
-    virtual ~Counter() {}
+    virtual ~Metric() {}
 
     virtual unsigned getId() = 0;
 
@@ -34,30 +34,30 @@ public:
 
     virtual std::string getName() = 0;
 
-    virtual CounterNumType getNumType() = 0;
+    virtual MetricNumType getNumType() = 0;
 
-    virtual CounterType getType() = 0;
+    virtual MetricType getType() = 0;
 };
 
 typedef void (*enumGroupsCallback)(unsigned group);
-typedef void (*enumCountersCallback)(Counter* counter);
-typedef void (*enumDataCallback)(Counter* counter, int event, void* data);
+typedef void (*enumMetricsCallback)(Metric* metric);
+typedef void (*enumDataCallback)(Metric* metric, int event, void* data);
 
 // Base backend class:
-class Api_Base
+class MetricBackend
 {
 public:
-    virtual ~Api_Base() {}
+    virtual ~MetricBackend() {}
 
     virtual void enumGroups(enumGroupsCallback callback) = 0;
 
-    virtual void enumCounters(unsigned group, enumCountersCallback callback) = 0;
+    virtual void enumMetrics(unsigned group, enumMetricsCallback callback) = 0;
 
-    virtual void enableCounter(Counter* counter, bool perDraw = true) = 0;
+    virtual void enableMetric(Metric* metric, bool perDraw = true) = 0;
 
     virtual void beginPass(bool perFrame = false) = 0;
     /* Passes are generated in the first beginPass()
-     * based on counters enabled via enableCounter().
+     * based on metrics enabled via enableMetric().
      * This call must be used after context is initialized.
     */
     virtual void endPass() = 0;

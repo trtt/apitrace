@@ -5,20 +5,20 @@
 #include <map>
 
 #include "glproc.hpp"
-#include "api_base.hpp"
+#include "metric_backend.hpp"
 
-class Counter_common : public Counter
+class Metric_common : public Metric
 {
 private:
     unsigned group, id;
     std::string name;
-    CounterNumType nType;
-    CounterType type;
+    MetricNumType nType;
+    MetricType type;
 
 public:
     bool perDraw;
 
-    Counter_common(unsigned g, unsigned i, CounterNumType nT, CounterType t, std::string n) : group(g), id(i), name(n), nType(nT), type(t) {}
+    Metric_common(unsigned g, unsigned i, MetricNumType nT, MetricType t, std::string n) : group(g), id(i), name(n), nType(nT), type(t) {}
 
     unsigned getId();
 
@@ -26,9 +26,9 @@ public:
 
     std::string getName();
 
-    CounterNumType getNumType();
+    MetricNumType getNumType();
 
-    CounterType getType();
+    MetricType getType();
 
     virtual void setup()=0;
 
@@ -39,7 +39,7 @@ public:
     virtual void* getData(unsigned event)=0;
 };
 
-class Counter_cpu : public Counter_common
+class Metric_cpu : public Metric_common
 {
 private:
     bool start; // cpuStart or cpuEnd
@@ -49,7 +49,7 @@ private:
     int64_t getCurrentTime();
 
 public:
-    Counter_cpu(unsigned g, unsigned i, bool start_) : Counter_common(g, i, CNT_NUM_INT64, CNT_TYPE_TIMESTAMP, start_ ? "CPU Start":"CPU End"), start(start_) {}
+    Metric_cpu(unsigned g, unsigned i, bool start_) : Metric_common(g, i, CNT_NUM_INT64, CNT_TYPE_TIMESTAMP, start_ ? "CPU Start":"CPU End"), start(start_) {}
 
     void setup();
 
@@ -61,7 +61,7 @@ public:
 };
 
 
-class Counter_gpu : public Counter_common
+class Metric_gpu : public Metric_common
 {
 private:
     GLuint query;
@@ -72,7 +72,7 @@ private:
     int64_t getCurrentTime();
 
 public:
-    Counter_gpu(unsigned g, unsigned i, bool start_) : Counter_common(g, i, CNT_NUM_INT64, CNT_TYPE_TIMESTAMP, start_ ? "GPU Start":"GPU Duration"), start(start_) {}
+    Metric_gpu(unsigned g, unsigned i, bool start_) : Metric_common(g, i, CNT_NUM_INT64, CNT_TYPE_TIMESTAMP, start_ ? "GPU Start":"GPU Duration"), start(start_) {}
 
     void setup();
 
@@ -83,26 +83,26 @@ public:
     void* getData(unsigned event);
 };
 
-class Api_common : public Api_Base
+class MetricBackend_common : public MetricBackend
 {
 private:
     unsigned curEvent, curDrawEvent;
 
-    Counter_cpu cpuStart;
-    Counter_cpu cpuEnd;
-    Counter_gpu gpuStart;
-    Counter_gpu gpuDuration;
+    Metric_cpu cpuStart;
+    Metric_cpu cpuEnd;
+    Metric_gpu gpuStart;
+    Metric_gpu gpuDuration;
 
-    std::vector<Counter_common*> metrics; // store metrics selected for profiling
+    std::vector<Metric_common*> metrics; // store metrics selected for profiling
     std::map<unsigned, unsigned> eventMap;
 
 public:
-    Api_common();
+    MetricBackend_common();
     void enumGroups(enumGroupsCallback callback);
 
-    void enumCounters(unsigned group, enumCountersCallback callback);
+    void enumMetrics(unsigned group, enumMetricsCallback callback);
 
-    void enableCounter(Counter* counter, bool perDraw = true);
+    void enableMetric(Metric* metric, bool perDraw = true);
 
     void beginPass(bool perFrame = false);
 

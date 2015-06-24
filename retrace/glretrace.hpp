@@ -27,8 +27,8 @@
 
 #include "glws.hpp"
 #include "retrace.hpp"
-#include "api_gl_amd_performance_monitor.hpp"
-#include "api_common.hpp"
+#include "metric_backend_amd_perfmon.hpp"
+#include "metric_backend_common.hpp"
 
 namespace glretrace {
 
@@ -58,8 +58,8 @@ struct Context {
     }
 };
 
-extern Api_GL_AMD_performance_monitor apiPerfMon;
-extern Api_common apiCommon;
+extern MetricBackend_AMD_perfmon apiPerfMon;
+extern MetricBackend_common apiCommon;
 
 extern bool apiPerfMonSetup;
 
