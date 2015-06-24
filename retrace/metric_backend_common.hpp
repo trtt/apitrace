@@ -96,8 +96,13 @@ private:
     std::vector<Metric_common*> metrics; // store metrics selected for profiling
     std::map<unsigned, unsigned> eventMap;
 
-public:
     MetricBackend_common();
+
+    MetricBackend_common(MetricBackend_common const&) = delete;
+
+    void operator=(MetricBackend_common const&)       = delete;
+
+public:
     void enumGroups(enumGroupsCallback callback);
 
     void enumMetrics(unsigned group, enumMetricsCallback callback);
@@ -121,5 +126,7 @@ public:
     bool isLastPass();
 
     unsigned getLastQueryId();
+
+    static MetricBackend_common& getInstance();
 };
 

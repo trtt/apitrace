@@ -50,13 +50,7 @@
 
 namespace glretrace {
 
-MetricBackend_AMD_perfmon apiPerfMon;
-MetricBackend_common apiCommon;
-std::vector<MetricBackend*> metricApis { &apiCommon, &apiPerfMon  };
-std::vector<MetricBackend*> curMetricApis;
-
 bool apiPerfMonSetup = 0;
-MetricWriter profiler(&metricApis);
 
 glprofile::Profile defaultProfile(glprofile::API_GL, 1, 0);
 
@@ -92,6 +86,16 @@ static bool supportsOcclusion = true;
 static bool supportsDebugOutput = true;
 
 static std::list<CallQuery> callQueries;
+
+MetricBackend* getBackend(std::string backendName) {
+    if (backendName == "GL_AMD_performance_monitor") return &MetricBackend_AMD_perfmon::getInstance();
+    else if (backendName == "common") return &MetricBackend_common::getInstance();
+    else return nullptr;
+}
+
+std::vector<MetricBackend*> metricApis { getBackend("GL_AMD_performance_monitor"), getBackend("common")  };
+std::vector<MetricBackend*> curMetricApis;
+MetricWriter profiler(&metricApis);
 
 static void APIENTRY
 debugOutputCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
@@ -292,7 +296,7 @@ endProfile(trace::Call &call, bool isDraw) {
             if (retrace::isLastPass()) {
                 glretrace::Context *currentContext = glretrace::getCurrentContext();
                 GLuint program = currentContext ? currentContext->activeProgram : 0;
-                unsigned eventId = apiPerfMon.getLastQueryId();
+                unsigned eventId = getBackend("GL_AMD_performance_monitor")->getLastQueryId();
                 glretrace::profiler.addCall(call.no, call.sig->name, program, eventId);
             }
         }
@@ -370,19 +374,19 @@ clientWaitSync(trace::Call &call, GLsync sync, GLbitfield flags, GLuint64 timeou
 }
 
 void metricCallback(Metric* c) {
-    glretrace::apiPerfMon.enableMetric(c, false);
+    getBackend("GL_AMD_performance_monitor")->enableMetric(c, false);
 }
 
 void groupCallback(unsigned g) {
-    glretrace::apiPerfMon.enumMetrics(g, metricCallback);
+    getBackend("GL_AMD_performance_monitor")->enumMetrics(g, metricCallback);
 }
 
 void metricCallbackCommon(Metric* c) {
-    glretrace::apiCommon.enableMetric(c, false);
+    getBackend("common")->enableMetric(c, false);
 }
 
 void groupCallbackCommon(unsigned g) {
-    glretrace::apiCommon.enumMetrics(g, metricCallbackCommon);
+    getBackend("common")->enumMetrics(g, metricCallbackCommon);
 }
 
 /*
@@ -474,8 +478,8 @@ initContext() {
     }
 
     if (!apiPerfMonSetup) {
-        glretrace::apiPerfMon.enumGroups(groupCallback);
-        glretrace::apiCommon.enumGroups(groupCallbackCommon);
+        getBackend("GL_AMD_performance_monitor")->enumGroups(groupCallback);
+        getBackend("common")->enumGroups(groupCallbackCommon);
         apiPerfMonSetup = 1;
     }
 
@@ -530,7 +534,7 @@ frame_complete(trace::Call &call) {
             a->endQuery(false);
         }
         if (retrace::isLastPass()) {
-            unsigned eventId = apiPerfMon.getLastQueryId();
+            unsigned eventId = getBackend("GL_AMD_performance_monitor")->getLastQueryId();
             glretrace::profiler.addFrame(eventId);
         }
     }
@@ -765,14 +769,14 @@ retrace::finishRendering(void) {
 
 int
 retrace::getNumPasses(void) {
-    int numPasses = glretrace::apiPerfMon.getNumPasses();
+    int numPasses = glretrace::getBackend("GL_AMD_performance_monitor")->getNumPasses();
     if (numPasses == 0) return 1;
     else return numPasses;
 }
 
 bool
 retrace::isLastPass(void) {
-    return glretrace::apiPerfMon.isLastPass();
+    return glretrace::getBackend("GL_AMD_performance_monitor")->isLastPass();
 }
 
 void

@@ -191,3 +191,8 @@ bool MetricBackend_common::isLastPass() {
 unsigned MetricBackend_common::getLastQueryId() {
     return (curEvent-1);
 }
+
+MetricBackend_common& MetricBackend_common::getInstance() {
+    static MetricBackend_common backend;
+    return backend;
+}

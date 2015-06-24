@@ -70,6 +70,12 @@ private:
     DataCollector collector;
     std::vector<Metric_AMD_perfmon> metrics; // store metrics selected for profiling
 
+    MetricBackend_AMD_perfmon() : numPasses(1), curPass(0), curEvent(0) {}
+
+    MetricBackend_AMD_perfmon(MetricBackend_AMD_perfmon const&) = delete;
+
+    void operator=(MetricBackend_AMD_perfmon const&)            = delete;
+
     bool testMetrics(std::vector<Metric_AMD_perfmon>* metrics); // test if given set of metrics can be sampled in one pass
 
     unsigned generatePasses(); // called in first beginPass
@@ -77,8 +83,6 @@ private:
     void freeMonitor(unsigned monitor); // collect metrics data from the monitor
 
 public:
-    MetricBackend_AMD_perfmon() : numPasses(1), curPass(0), curEvent(0) {}
-
     void enumGroups(enumGroupsCallback callback);
 
     void enumMetrics(unsigned group, enumMetricsCallback callback);
@@ -102,5 +106,7 @@ public:
     bool isLastPass();
 
     unsigned getLastQueryId();
+
+    static MetricBackend_AMD_perfmon& getInstance();
 };
 

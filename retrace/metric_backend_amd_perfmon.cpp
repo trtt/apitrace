@@ -244,3 +244,8 @@ bool MetricBackend_AMD_perfmon::isLastPass() {
 unsigned MetricBackend_AMD_perfmon::getLastQueryId() {
     return (curEvent-1);
 }
+
+MetricBackend_AMD_perfmon& MetricBackend_AMD_perfmon::getInstance() {
+    static MetricBackend_AMD_perfmon backend;
+    return backend;
+}
