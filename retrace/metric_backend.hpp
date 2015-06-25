@@ -25,18 +25,23 @@ enum MetricType {
 // Base class for metric:
 class Metric
 {
+private:
+    unsigned group, id;
+
 public:
+    Metric(unsigned g, unsigned i) : group(g), id(i) {}
+
     virtual ~Metric() {}
 
-    virtual unsigned getId() = 0;
+    inline unsigned getId() {return id;}
 
-    virtual unsigned getGroupId() = 0;
+    inline unsigned getGroupId() {return group;}
 
-    virtual std::string getName() = 0;
+    inline virtual std::string getName() {return "";}
 
-    virtual MetricNumType getNumType() = 0;
+    inline virtual MetricNumType getNumType() {return CNT_NUM_UINT;}
 
-    virtual MetricType getType() = 0;
+    inline virtual MetricType getType() {return CNT_TYPE_GENERIC;}
 };
 
 typedef void (*enumGroupsCallback)(unsigned group);

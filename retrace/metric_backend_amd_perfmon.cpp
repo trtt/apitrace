@@ -1,25 +1,17 @@
 #include "metric_backend_amd_perfmon.hpp"
 
-unsigned Metric_AMD_perfmon::getId() {
-    return id;
-}
-
-unsigned Metric_AMD_perfmon::getGroupId() {
-    return group;
-}
-
 std::string Metric_AMD_perfmon::getName() {
     int length;
     std::string name;
-    glGetPerfMonitorCounterStringAMD(group, id, 0, &length, nullptr);
+    glGetPerfMonitorCounterStringAMD(getGroupId(), getId(), 0, &length, nullptr);
     name.resize(length);
-    glGetPerfMonitorCounterStringAMD(group, id, length, 0, &name[0]);
+    glGetPerfMonitorCounterStringAMD(getGroupId(), getId(), length, 0, &name[0]);
     return name;
 }
 
 GLenum Metric_AMD_perfmon::getSize() {
     GLenum type;
-    glGetPerfMonitorCounterInfoAMD(group, id, GL_COUNTER_TYPE_AMD, &type);
+    glGetPerfMonitorCounterInfoAMD(getGroupId(), getId(), GL_COUNTER_TYPE_AMD, &type);
     if (type == GL_UNSIGNED_INT) return sizeof(GLuint);
     else if (type == GL_FLOAT || type == GL_PERCENTAGE_AMD) return sizeof(GLfloat);
     else if (type == GL_UNSIGNED_INT64_AMD) return sizeof(uint64_t);
@@ -28,7 +20,7 @@ GLenum Metric_AMD_perfmon::getSize() {
 
 MetricNumType Metric_AMD_perfmon::getNumType() {
     GLenum type;
-    glGetPerfMonitorCounterInfoAMD(group, id, GL_COUNTER_TYPE_AMD, &type);
+    glGetPerfMonitorCounterInfoAMD(getGroupId(), getId(), GL_COUNTER_TYPE_AMD, &type);
     if (type == GL_UNSIGNED_INT) return CNT_NUM_UINT;
     else if (type == GL_FLOAT || type == GL_PERCENTAGE_AMD) return CNT_NUM_FLOAT;
     else if (type == GL_UNSIGNED_INT64_AMD) return CNT_NUM_UINT64;
@@ -37,7 +29,7 @@ MetricNumType Metric_AMD_perfmon::getNumType() {
 
 MetricType Metric_AMD_perfmon::getType() {
     GLenum type;
-    glGetPerfMonitorCounterInfoAMD(group, id, GL_COUNTER_TYPE_AMD, &type);
+    glGetPerfMonitorCounterInfoAMD(getGroupId(), getId(), GL_COUNTER_TYPE_AMD, &type);
     if (type == GL_UNSIGNED_INT || type == GL_UNSIGNED_INT64_AMD || type == GL_FLOAT) return CNT_TYPE_GENERIC;
     else if (type == GL_PERCENTAGE_AMD) return CNT_TYPE_PERCENT;
     else return CNT_TYPE_OTHER;

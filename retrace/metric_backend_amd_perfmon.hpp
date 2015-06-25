@@ -12,17 +12,12 @@
 class Metric_AMD_perfmon : public Metric
 {
 private:
-    unsigned group, id;
 
 public:
-    Metric_AMD_perfmon(unsigned g, unsigned i) : group(g), id(i) {}
+    Metric_AMD_perfmon(unsigned g, unsigned i) : Metric(g, i) {}
 
     GLenum getSize();
 
-
-    unsigned getId();
-
-    unsigned getGroupId();
 
     std::string getName();
 

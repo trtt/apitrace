@@ -1,14 +1,6 @@
 #include <iostream>
 #include "metric_backend_common.hpp"
 
-unsigned Metric_common::getId() {
-    return id;
-}
-
-unsigned Metric_common::getGroupId() {
-    return group;
-}
-
 std::string Metric_common::getName() {
     return name;
 }

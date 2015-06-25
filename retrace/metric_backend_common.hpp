@@ -10,7 +10,6 @@
 class Metric_common : public Metric
 {
 private:
-    unsigned group, id;
     std::string name;
     MetricNumType nType;
     MetricType type;
@@ -18,11 +17,7 @@ private:
 public:
     bool perDraw;
 
-    Metric_common(unsigned g, unsigned i, MetricNumType nT, MetricType t, std::string n) : group(g), id(i), name(n), nType(nT), type(t) {}
-
-    unsigned getId();
-
-    unsigned getGroupId();
+    Metric_common(unsigned g, unsigned i, MetricNumType nT, MetricType t, std::string n) : Metric(g, i), name(n), nType(nT), type(t) {}
 
     std::string getName();
 
