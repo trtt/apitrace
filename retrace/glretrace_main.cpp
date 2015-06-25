@@ -29,6 +29,7 @@
 #include <string.h>
 
 #include <map>
+#include <regex>
 
 #include "retrace.hpp"
 #include "glproc.hpp"
@@ -389,6 +390,32 @@ void groupCallbackCommon(unsigned g) {
     getBackend("common")->enumMetrics(g, metricCallbackCommon);
 }
 
+void enableMetricsFromCLI() {
+    const std::regex rOuter("\"([^\"]*)\"\\s*:\\s*\\[([^\"]*)");
+    const std::regex rInner("\\[\\s*(\\d+)\\s*,\\s*(\\d+)\\s*,\\s*(0|1)\\s*\\],?");
+    auto rOuter_it = std::cregex_token_iterator(retrace::profilingMetrics, retrace::profilingMetrics+std::strlen(retrace::profilingMetrics), rOuter, {1,2});
+    auto rOuter_end = std::cregex_token_iterator();
+    while (rOuter_it != rOuter_end) {
+        std::string backendName = (rOuter_it++)->str();
+        MetricBackend* backend = getBackend(backendName);
+        if (!backend) {
+            std::cerr << "Warning: No backend \"" << backendName << "\"." << std::endl;
+            rOuter_it++;
+            continue;
+        }
+        auto rInner_it = std::cregex_token_iterator(rOuter_it->first, rOuter_it->second, rInner, {1,2,3});
+        auto rInner_end = std::cregex_token_iterator();
+        while (rInner_it != rInner_end) {
+            unsigned groupId = std::stoi((rInner_it++)->str());
+            unsigned metricId = std::stoi((rInner_it++)->str());
+            bool perDraw = std::stoi((rInner_it++)->str());
+            Metric metric = Metric(groupId, metricId);
+            backend->enableMetric(&metric, perDraw);
+        }
+        rOuter_it++;
+    }
+}
+
 /*
  * Called the first time a context is made current.
  */
@@ -478,8 +505,12 @@ initContext() {
     }
 
     if (!apiPerfMonSetup) {
-        getBackend("GL_AMD_performance_monitor")->enumGroups(groupCallback);
-        getBackend("common")->enumGroups(groupCallbackCommon);
+        if (retrace::profilingMetrics) {
+            enableMetricsFromCLI();
+        } else {
+            getBackend("GL_AMD_performance_monitor")->enumGroups(groupCallback);
+            getBackend("common")->enumGroups(groupCallbackCommon);
+        }
         apiPerfMonSetup = 1;
     }
 

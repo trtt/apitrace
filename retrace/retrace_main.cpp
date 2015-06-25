@@ -89,6 +89,7 @@ bool profilingCpuTimes = false;
 bool profilingPixelsDrawn = false;
 bool profilingMemoryUsage = false;
 bool profilingMetricApis = false;
+char* profilingMetrics;
 bool profilePerFrame = false;
 bool useCallNos = true;
 bool singleThread = false;
@@ -658,6 +659,7 @@ enum {
     PPD_OPT,
     PMEM_OPT,
     PAMD_OPT,
+    PMETRICS_OPT,
     SB_OPT,
     SNAPSHOT_FORMAT_OPT,
     LOOP_OPT,
@@ -686,6 +688,7 @@ longOptions[] = {
     {"ppd", no_argument, 0, PPD_OPT},
     {"pmem", no_argument, 0, PMEM_OPT},
     {"pamd", optional_argument, 0, PAMD_OPT},
+    {"with-metrics", required_argument, 0, PMETRICS_OPT},
     {"sb", no_argument, 0, SB_OPT},
     {"snapshot-prefix", required_argument, 0, 's'},
     {"snapshot-format", required_argument, 0, SNAPSHOT_FORMAT_OPT},
@@ -861,6 +864,9 @@ int main(int argc, char **argv)
 
             retrace::profilingMetricApis = true;
             retrace::profilePerFrame = trace::boolOption(optarg);
+            break;
+        case PMETRICS_OPT:
+            profilingMetrics = optarg;
             break;
         default:
             std::cerr << "error: unknown option " << opt << "\n";

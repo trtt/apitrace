@@ -122,6 +122,7 @@ extern bool profilingGpuTimes;
 extern bool profilingPixelsDrawn;
 extern bool profilingMemoryUsage;
 extern bool profilingMetricApis;
+extern char* profilingMetrics;
 extern bool profilePerFrame;
 
 extern int curPass;
