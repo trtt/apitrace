@@ -195,9 +195,8 @@ void MetricBackend_AMD_perfmon::freeMonitor(unsigned monitor_) {
     }
     GLuint size;
     glGetPerfMonitorCounterDataAMD(monitor, GL_PERFMON_RESULT_SIZE_AMD, sizeof(GLuint), &size, nullptr);
-    size /= sizeof(unsigned);
     // collect data
-    glGetPerfMonitorCounterDataAMD(monitor, GL_PERFMON_RESULT_AMD, size, collector.newDataBuffer(monitorEvent[monitor_], size), nullptr);
+    glGetPerfMonitorCounterDataAMD(monitor, GL_PERFMON_RESULT_AMD, size, collector.newDataBuffer(monitorEvent[monitor_], size/sizeof(unsigned)), nullptr);
 }
 
 void MetricBackend_AMD_perfmon::enumDataQueryId(unsigned id, enumDataCallback callback) {
