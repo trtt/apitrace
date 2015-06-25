@@ -520,6 +520,11 @@ initContext() {
                 break; // Currently only one backend at a time
             }
         }
+        if (retrace::profilePerFrame) {
+            for (MetricBackend* a : glretrace::curMetricBackends) {
+                a->beginQuery(false);
+            }
+        }
     }
 
 }
@@ -529,7 +534,7 @@ frame_complete(trace::Call &call) {
     if (retrace::profilingMetricApis) {
         if (retrace::profilePerFrame) {
             for (MetricBackend* a : glretrace::curMetricBackends) {
-                a->beginQuery(false);
+                a->endQuery(false);
             }
         } else if (retrace::isLastPass()) {
             glretrace::profiler.addCall(-1, "", 0, 0);
@@ -560,7 +565,7 @@ frame_complete(trace::Call &call) {
 
     if (retrace::profilePerFrame) {
         for (MetricBackend* a : glretrace::curMetricBackends) {
-            a->endQuery(false);
+            a->beginQuery(false);
         }
         if (retrace::isLastPass()) {
             unsigned eventId = getBackend("GL_AMD_performance_monitor")->getLastQueryId();
@@ -783,6 +788,12 @@ retrace::flushRendering(void) {
 
 void
 retrace::finishRendering(void) {
+    if (retrace::profilingMetricApis && retrace::profilePerFrame) {
+        for (MetricBackend* a : glretrace::curMetricBackends) {
+            a->endQuery(false);
+        }
+    }
+
     glretrace::Context *currentContext = glretrace::getCurrentContext();
     if (currentContext) {
         glFinish();
