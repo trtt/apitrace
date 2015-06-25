@@ -78,9 +78,9 @@ private:
     void freeMonitor(unsigned monitor); // collect metrics data from the monitor
 
 public:
-    void enumGroups(enumGroupsCallback callback);
+    void enumGroups(enumGroupsCallback callback, void* userData = nullptr);
 
-    void enumMetrics(unsigned group, enumMetricsCallback callback);
+    void enumMetrics(unsigned group, enumMetricsCallback callback, void* userData = nullptr);
 
     void enableMetric(Metric* metric, bool perDraw = true);
 
@@ -92,9 +92,9 @@ public:
 
     void endQuery(bool isDraw = false);
 
-    void enumDataQueryId(unsigned id, enumDataCallback callback);
+    void enumDataQueryId(unsigned id, enumDataCallback callback, void* userData = nullptr);
 
-    void enumData(enumDataCallback callback);
+    void enumData(enumDataCallback callback, void* userData = nullptr);
 
     unsigned getNumPasses();
 

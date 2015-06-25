@@ -44,9 +44,9 @@ public:
     inline virtual MetricType getType() {return CNT_TYPE_GENERIC;}
 };
 
-typedef void (*enumGroupsCallback)(unsigned group);
-typedef void (*enumMetricsCallback)(Metric* metric);
-typedef void (*enumDataCallback)(Metric* metric, int event, void* data);
+typedef void (*enumGroupsCallback)(unsigned group, void* userData);
+typedef void (*enumMetricsCallback)(Metric* metric, void* userData);
+typedef void (*enumDataCallback)(Metric* metric, int event, void* data, void* userData);
 
 // Base backend class:
 class MetricBackend
@@ -54,9 +54,9 @@ class MetricBackend
 public:
     virtual ~MetricBackend() {}
 
-    virtual void enumGroups(enumGroupsCallback callback) = 0;
+    virtual void enumGroups(enumGroupsCallback callback, void* userData = nullptr) = 0;
 
-    virtual void enumMetrics(unsigned group, enumMetricsCallback callback) = 0;
+    virtual void enumMetrics(unsigned group, enumMetricsCallback callback, void* userData = nullptr) = 0;
 
     virtual void enableMetric(Metric* metric, bool perDraw = true) = 0;
 
@@ -71,9 +71,9 @@ public:
 
     virtual void endQuery(bool isDraw = false) = 0;
 
-    virtual void enumDataQueryId(unsigned id, enumDataCallback callback) = 0;
+    virtual void enumDataQueryId(unsigned id, enumDataCallback callback, void* userData = nullptr) = 0;
 
-    virtual void enumData(enumDataCallback callback) = 0;
+    virtual void enumData(enumDataCallback callback, void* userData = nullptr) = 0;
 
     virtual unsigned getNumPasses() = 0;
 

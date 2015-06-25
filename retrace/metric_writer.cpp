@@ -40,7 +40,7 @@ public:
         queueFrame.push(tempFrame);
     }
 
-    static void writeApiData(Metric* metric, int event, void* data) {
+    static void writeApiData(Metric* metric, int event, void* data, void* userData) {
         if (!header) {
             std::cout << "\t" << metric->getName();
             return;

@@ -81,20 +81,20 @@ gpuStart(2, 1, true),
 gpuDuration(2, 2, false)
 {}
 
-void MetricBackend_common::enumGroups(enumGroupsCallback callback) {
-    callback(1);
-    callback(2);
+void MetricBackend_common::enumGroups(enumGroupsCallback callback, void* userData) {
+    callback(1, userData);
+    callback(2, userData);
 }
 
-void MetricBackend_common::enumMetrics(unsigned group, enumMetricsCallback callback) {
+void MetricBackend_common::enumMetrics(unsigned group, enumMetricsCallback callback, void* userData) {
     switch(group) {
     case 1:
-        callback(&cpuStart);
-        callback(&cpuEnd);
+        callback(&cpuStart, userData);
+        callback(&cpuEnd, userData);
         break;
     case 2:
-        callback(&gpuStart);
-        callback(&gpuDuration);
+        callback(&gpuStart, userData);
+        callback(&gpuDuration, userData);
         break;
     }
 }
@@ -154,23 +154,23 @@ void MetricBackend_common::endQuery(bool isDraw) {
     if (isDraw) curDrawEvent++;
 }
 
-void MetricBackend_common::enumDataQueryId(unsigned id, enumDataCallback callback) {
+void MetricBackend_common::enumDataQueryId(unsigned id, enumDataCallback callback, void* userData) {
     for (Metric_common* c : metrics) {
         if (c->perDraw) {
             if (eventMap.count(id) > 0) {
-                callback(c, id, c->getData(eventMap[id]));
+                callback(c, id, c->getData(eventMap[id]), userData);
             } else {
-                callback(c, id, nullptr);
+                callback(c, id, nullptr, userData);
             }
         } else {
-            callback(c, id, c->getData(id));
+            callback(c, id, c->getData(id), userData);
         }
     }
 }
 
-void MetricBackend_common::enumData(enumDataCallback callback) {
+void MetricBackend_common::enumData(enumDataCallback callback, void* userData) {
     for (unsigned i = 0; i < curEvent; i++) {
-        enumDataQueryId(i, callback);
+        enumDataQueryId(i, callback, userData);
     }
 }
 

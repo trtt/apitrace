@@ -374,19 +374,19 @@ clientWaitSync(trace::Call &call, GLsync sync, GLbitfield flags, GLuint64 timeou
     return result;
 }
 
-void metricCallback(Metric* c) {
+void metricCallback(Metric* c, void* userData) {
     getBackend("GL_AMD_performance_monitor")->enableMetric(c, false);
 }
 
-void groupCallback(unsigned g) {
+void groupCallback(unsigned g, void* userData) {
     getBackend("GL_AMD_performance_monitor")->enumMetrics(g, metricCallback);
 }
 
-void metricCallbackCommon(Metric* c) {
+void metricCallbackCommon(Metric* c, void* userData) {
     getBackend("common")->enableMetric(c, false);
 }
 
-void groupCallbackCommon(unsigned g) {
+void groupCallbackCommon(unsigned g, void* userData) {
     getBackend("common")->enumMetrics(g, metricCallbackCommon);
 }
 

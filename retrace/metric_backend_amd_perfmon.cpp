@@ -75,18 +75,18 @@ unsigned DataCollector::getLastEvent() {
 }
 
 
-void MetricBackend_AMD_perfmon::enumGroups(enumGroupsCallback callback) {
+void MetricBackend_AMD_perfmon::enumGroups(enumGroupsCallback callback, void* userData) {
     std::vector<unsigned> groups;
     int num_groups;
     glGetPerfMonitorGroupsAMD(&num_groups, 0, nullptr);
     groups.resize(num_groups);
     glGetPerfMonitorGroupsAMD(nullptr, num_groups, &groups[0]);
     for(unsigned g : groups) {
-        callback(g);
+        callback(g, userData);
     }
 }
 
-void MetricBackend_AMD_perfmon::enumMetrics(unsigned group, enumMetricsCallback callback) {
+void MetricBackend_AMD_perfmon::enumMetrics(unsigned group, enumMetricsCallback callback, void* userData) {
     std::vector<unsigned> metrics;
     int num_metrics;
     Metric_AMD_perfmon metric(0,0);
@@ -95,7 +95,7 @@ void MetricBackend_AMD_perfmon::enumMetrics(unsigned group, enumMetricsCallback 
     glGetPerfMonitorCountersAMD(group, nullptr, nullptr, num_metrics, &metrics[0]);
     for(unsigned c : metrics) {
         metric = Metric_AMD_perfmon(group, c);
-        callback(&metric);
+        callback(&metric, userData);
     }
 }
 
@@ -199,7 +199,7 @@ void MetricBackend_AMD_perfmon::freeMonitor(unsigned monitor_) {
     glGetPerfMonitorCounterDataAMD(monitor, GL_PERFMON_RESULT_AMD, size, collector.newDataBuffer(monitorEvent[monitor_], size/sizeof(unsigned)), nullptr);
 }
 
-void MetricBackend_AMD_perfmon::enumDataQueryId(unsigned id, enumDataCallback callback) {
+void MetricBackend_AMD_perfmon::enumDataQueryId(unsigned id, enumDataCallback callback, void* userData) {
     for (unsigned j = 0; j < numPasses; j++) {
         unsigned* buf = collector.getDataBuffer(j, id);
         unsigned offset = 0;
@@ -207,20 +207,20 @@ void MetricBackend_AMD_perfmon::enumDataQueryId(unsigned id, enumDataCallback ca
             if (buf) {
                 Metric_AMD_perfmon metric(buf[offset], buf[offset+1]);
                 offset += 2;
-                callback(&metric, id, &buf[offset]);
+                callback(&metric, id, &buf[offset], userData);
                 offset += metric.getSize() / sizeof(unsigned);
             } else { // No data buffer (in case event #id is not a draw call)
                 offset += 2;
-                callback(&passes[j][k], id, nullptr);
+                callback(&passes[j][k], id, nullptr, userData);
                 offset += passes[j][k].getSize() / sizeof(unsigned);
             }
         }
     }
 }
 
-void MetricBackend_AMD_perfmon::enumData(enumDataCallback callback) {
+void MetricBackend_AMD_perfmon::enumData(enumDataCallback callback, void* userData) {
     for (unsigned i = 0; i < curEvent; i++) {
-        enumDataQueryId(i, callback);
+        enumDataQueryId(i, callback, userData);
     }
 }
 
