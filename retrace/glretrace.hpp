@@ -58,10 +58,9 @@ struct Context {
     }
 };
 
-extern MetricBackend_AMD_perfmon apiPerfMon;
-extern MetricBackend_common apiCommon;
-
-extern bool apiPerfMonSetup;
+extern bool metricBackendsSetup;
+extern std::vector<MetricBackend*> metricBackends;
+extern std::vector<MetricBackend*> curMetricBackends;
 
 extern glprofile::Profile defaultProfile;
 

@@ -51,7 +51,7 @@
 
 namespace glretrace {
 
-bool apiPerfMonSetup = 0;
+bool metricBackendsSetup = 0;
 
 glprofile::Profile defaultProfile(glprofile::API_GL, 1, 0);
 
@@ -94,9 +94,9 @@ MetricBackend* getBackend(std::string backendName) {
     else return nullptr;
 }
 
-std::vector<MetricBackend*> metricApis { getBackend("GL_AMD_performance_monitor"), getBackend("common")  };
-std::vector<MetricBackend*> curMetricApis;
-MetricWriter profiler(&metricApis);
+std::vector<MetricBackend*> metricBackends;
+std::vector<MetricBackend*> curMetricBackends;
+MetricWriter profiler(&metricBackends);
 
 static void APIENTRY
 debugOutputCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
@@ -239,7 +239,7 @@ void
 beginProfile(trace::Call &call, bool isDraw) {
     if (retrace::profilingMetricApis) {
         if (!retrace::profilePerFrame) {
-            for (MetricBackend* a : glretrace::curMetricApis) {
+            for (MetricBackend* a : glretrace::curMetricBackends) {
                 a->beginQuery(isDraw);
             }
         }
@@ -291,13 +291,13 @@ void
 endProfile(trace::Call &call, bool isDraw) {
     if (retrace::profilingMetricApis) {
         if (!retrace::profilePerFrame) {
-            for (MetricBackend* a : glretrace::curMetricApis) {
+            for (MetricBackend* a : glretrace::curMetricBackends) {
                 a->endQuery(isDraw);
             }
             if (retrace::isLastPass()) {
                 glretrace::Context *currentContext = glretrace::getCurrentContext();
                 GLuint program = currentContext ? currentContext->activeProgram : 0;
-                unsigned eventId = getBackend("GL_AMD_performance_monitor")->getLastQueryId();
+                unsigned eventId = curMetricBackends[0]->getLastQueryId();
                 glretrace::profiler.addCall(call.no, call.sig->name, program, eventId);
             }
         }
@@ -375,19 +375,11 @@ clientWaitSync(trace::Call &call, GLsync sync, GLbitfield flags, GLuint64 timeou
 }
 
 void metricCallback(Metric* c, void* userData) {
-    getBackend("GL_AMD_performance_monitor")->enableMetric(c, false);
+    reinterpret_cast<MetricBackend*>(userData)->enableMetric(c, false);
 }
 
 void groupCallback(unsigned g, void* userData) {
-    getBackend("GL_AMD_performance_monitor")->enumMetrics(g, metricCallback);
-}
-
-void metricCallbackCommon(Metric* c, void* userData) {
-    getBackend("common")->enableMetric(c, false);
-}
-
-void groupCallbackCommon(unsigned g, void* userData) {
-    getBackend("common")->enumMetrics(g, metricCallbackCommon);
+    reinterpret_cast<MetricBackend*>(userData)->enumMetrics(g, metricCallback, userData);
 }
 
 void enableMetricsFromCLI() {
@@ -403,6 +395,7 @@ void enableMetricsFromCLI() {
             rOuter_it++;
             continue;
         }
+        metricBackends.push_back(backend);
         auto rInner_it = std::cregex_token_iterator(rOuter_it->first, rOuter_it->second, rInner, {1,2,3});
         auto rInner_end = std::cregex_token_iterator();
         while (rInner_it != rInner_end) {
@@ -504,22 +497,27 @@ initContext() {
         retrace::profiler.setBaseRssUsage(currentRss);
     }
 
-    if (!apiPerfMonSetup) {
+    if (!metricBackendsSetup) {
         if (retrace::profilingMetrics) {
             enableMetricsFromCLI();
         } else {
-            getBackend("GL_AMD_performance_monitor")->enumGroups(groupCallback);
-            getBackend("common")->enumGroups(groupCallbackCommon);
+            metricBackends = { getBackend("common"), getBackend("GL_AMD_performance_monitor") };
+            for (MetricBackend* m : metricBackends) {
+                m->enumGroups(groupCallback, m);
+            }
         }
-        apiPerfMonSetup = 1;
+        metricBackendsSetup = 1;
     }
 
     if (retrace::profilingMetricApis) {
-        glretrace::curMetricApis.clear();
-        for (MetricBackend* a : glretrace::metricApis) {
-            if (retrace::curPass < a->getNumPasses()) {
-                glretrace::curMetricApis.push_back(a);
+        curMetricBackends.clear();
+        unsigned numPasses = 0;
+        for (MetricBackend* a : metricBackends) {
+            numPasses += a->getNumPasses();
+            if (retrace::curPass < numPasses) {
+                curMetricBackends.push_back(a);
                 a->beginPass(retrace::profilePerFrame);
+                break; // Currently only one backend at a time
             }
         }
     }
@@ -530,10 +528,10 @@ void
 frame_complete(trace::Call &call) {
     if (retrace::profilingMetricApis) {
         if (retrace::profilePerFrame) {
-            for (MetricBackend* a : glretrace::curMetricApis) {
+            for (MetricBackend* a : glretrace::curMetricBackends) {
                 a->beginQuery(false);
             }
-        } else {
+        } else if (retrace::isLastPass()) {
             glretrace::profiler.addCall(-1, "", 0, 0);
         }
     }
@@ -561,7 +559,7 @@ frame_complete(trace::Call &call) {
     }
 
     if (retrace::profilePerFrame) {
-        for (MetricBackend* a : glretrace::curMetricApis) {
+        for (MetricBackend* a : glretrace::curMetricBackends) {
             a->endQuery(false);
         }
         if (retrace::isLastPass()) {
@@ -791,7 +789,7 @@ retrace::finishRendering(void) {
     }
 
     if (retrace::profilingMetricApis) {
-        for (MetricBackend* a : glretrace::curMetricApis) {
+        for (MetricBackend* a : glretrace::curMetricBackends) {
             a->endPass();
         }
         if (isLastPass()) glretrace::profiler.writeAll();
@@ -800,14 +798,17 @@ retrace::finishRendering(void) {
 
 int
 retrace::getNumPasses(void) {
-    int numPasses = glretrace::getBackend("GL_AMD_performance_monitor")->getNumPasses();
-    if (numPasses == 0) return 1;
-    else return numPasses;
+    int numPasses = 0;
+    for (MetricBackend* b : glretrace::metricBackends) {
+        numPasses += b->getNumPasses();
+    }
+    if (numPasses == 0) numPasses++;
+    return numPasses;
 }
 
 bool
 retrace::isLastPass(void) {
-    return glretrace::getBackend("GL_AMD_performance_monitor")->isLastPass();
+    return (getNumPasses()-1 <= curPass);
 }
 
 void
