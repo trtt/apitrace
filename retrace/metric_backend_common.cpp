@@ -26,11 +26,13 @@ void Metric_cpu::setup() {
 }
 
 void Metric_cpu::beginQuery() {
-    if (start) data.push_back(getCurrentTime() - baseTime);
+    double cpuTimeScale = 1.0E9 / 1000000000;
+    if (start) data.push_back(getCurrentTime() * cpuTimeScale - baseTime);
 }
 
 void Metric_cpu::endQuery() {
-    if (!start) data.push_back(getCurrentTime() - baseTime);
+    double cpuTimeScale = 1.0E9 / 1000000000;
+    if (!start) data.push_back(getCurrentTime() * cpuTimeScale - baseTime);
 }
 
 void* Metric_cpu::getData(unsigned event) {
