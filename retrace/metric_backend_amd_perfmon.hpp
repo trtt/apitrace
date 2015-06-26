@@ -27,32 +27,29 @@ public:
 };
 
 
-class DataCollector
-{
-private:
-    std::vector<std::vector<unsigned*>> data;
-    std::map<unsigned, unsigned> eventMap; // drawCallId <-> callId
-    unsigned curPass;
-    unsigned curEvent;
-
-public:
-    DataCollector() : curPass(0), curEvent(0) {}
-
-    ~DataCollector();
-
-    unsigned* newDataBuffer(unsigned event, size_t size);
-
-    void endPass();
-
-    unsigned* getDataBuffer(unsigned pass, unsigned event);
-
-    unsigned getNumEvents();
-
-    unsigned getLastEvent();
-};
-
 class MetricBackend_AMD_perfmon : public MetricBackend
 {
+private:
+    class DataCollector
+    {
+        private:
+            std::vector<std::vector<unsigned*>> data;
+            std::map<unsigned, unsigned> eventMap; // drawCallId <-> callId
+            unsigned curPass;
+            unsigned curEvent;
+
+        public:
+            DataCollector() : curPass(0), curEvent(0) {}
+
+            ~DataCollector();
+
+            unsigned* newDataBuffer(unsigned event, size_t size);
+
+            void endPass();
+
+            unsigned* getDataBuffer(unsigned pass, unsigned event);
+    };
+
 private:
     unsigned monitors[NUM_MONITORS]; // For cycling, using 2 in current implementation
     unsigned curMonitor;

@@ -35,7 +35,7 @@ MetricType Metric_AMD_perfmon::getType() {
     else return CNT_TYPE_OTHER;
 }
 
-DataCollector::~DataCollector() {
+MetricBackend_AMD_perfmon::DataCollector::~DataCollector() {
     for (std::vector<unsigned*> t1 : data) {
         for (unsigned* t2 : t1) {
             delete[] t2;
@@ -43,7 +43,7 @@ DataCollector::~DataCollector() {
     }
 }
 
-unsigned* DataCollector::newDataBuffer(unsigned event, size_t size) {
+unsigned* MetricBackend_AMD_perfmon::DataCollector::newDataBuffer(unsigned event, size_t size) {
     if (curEvent == 0) {
         std::vector<unsigned*> vec(1, new unsigned[size]);
         data.push_back(vec);
@@ -54,24 +54,16 @@ unsigned* DataCollector::newDataBuffer(unsigned event, size_t size) {
     return data[curPass][curEvent++];
 }
 
-void DataCollector::endPass() {
+void MetricBackend_AMD_perfmon::DataCollector::endPass() {
     curPass++;
     curEvent = 0;
 }
 
-unsigned* DataCollector::getDataBuffer(unsigned pass, unsigned event_) {
+unsigned* MetricBackend_AMD_perfmon::DataCollector::getDataBuffer(unsigned pass, unsigned event_) {
     if (eventMap.count(event_) > 0) {
         unsigned event = eventMap[event_];
         return data[pass][event];
     } else return nullptr;
-}
-
-unsigned DataCollector::getNumEvents() {
-    return data[0].size();
-}
-
-unsigned DataCollector::getLastEvent() {
-    return (curEvent - 1);
 }
 
 
