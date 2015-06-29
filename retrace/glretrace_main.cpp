@@ -444,9 +444,7 @@ initContext() {
 
     if (retrace::profilingCalls || retrace::profilingFrames) {
         if (!metricBackendsSetup) {
-            /* here backend & metrics selection should be
-             * called only once
-             */
+            if (retrace::profilingWithMetricsString) enableMetricsFromCLI();
             unsigned numPasses = 0;
             for (MetricBackend* &b : metricBackends) {
                 b->generatePasses(retrace::profilingFrames);

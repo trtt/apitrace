@@ -127,6 +127,8 @@ MetricBackend* getBackend(std::string backendName);
 
 bool isLastPass();
 
+void enableMetricsFromCLI();
+
 GLenum
 blockOnFence(trace::Call &call, GLsync sync, GLbitfield flags);
 
