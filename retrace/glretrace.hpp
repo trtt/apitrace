@@ -62,6 +62,10 @@ struct Context {
     }
 };
 
+extern bool metricBackendsSetup;
+extern std::vector<MetricBackend*> metricBackends;
+extern MetricBackend* curMetricBackend;
+
 extern glprofile::Profile defaultProfile;
 
 extern bool insideList;
