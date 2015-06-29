@@ -444,9 +444,7 @@ initContext() {
 
     if (retrace::profilingCalls || retrace::profilingFrames) {
         if (!metricBackendsSetup) {
-            /* here backend & metrics selection should be
-             * called only once
-             */
+            if (retrace::profilingWithMetricsString) enableMetricsFromCLI();
             metricBackendsSetup = 1;
         }
 
