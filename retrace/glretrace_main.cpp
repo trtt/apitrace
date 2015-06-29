@@ -220,6 +220,13 @@ flushQueries() {
 
 void
 beginProfile(trace::Call &call, bool isDraw) {
+    if (retrace::profilingCalls) {
+        if (curMetricBackend) {
+            curMetricBackend->beginQuery(isDraw);
+        }
+        return;
+    }
+
     glretrace::Context *currentContext = glretrace::getCurrentContext();
 
     /* Create call query */
@@ -263,6 +270,12 @@ beginProfile(trace::Call &call, bool isDraw) {
 
 void
 endProfile(trace::Call &call, bool isDraw) {
+    if (retrace::profilingCalls) {
+        if (curMetricBackend) {
+            curMetricBackend->endQuery(isDraw);
+        }
+        return;
+    }
 
     /* CPU profiling for all calls */
     if (retrace::profilingCpuTimes) {
@@ -420,11 +433,40 @@ initContext() {
         getCurrentRss(currentRss);
         retrace::profiler.setBaseRssUsage(currentRss);
     }
+
+    if (retrace::profilingCalls) {
+        if (!metricBackendsSetup) {
+            /* here backend & metrics selection should be
+             * called only once
+             */
+            metricBackendsSetup = 1;
+        }
+
+        unsigned numPasses = 0;
+        for (MetricBackend* b : metricBackends) {
+            numPasses += b->getNumPasses();
+            if (retrace::curPass < numPasses) {
+                curMetricBackend = b;
+                b->beginPass(false); // begin pass
+                break;
+            }
+        }
+
+        numPasses = 0;
+        for (MetricBackend* b : metricBackends) {
+            numPasses += b->getNumPasses();
+        }
+        // numPasses should be updated every pass (changes for some backends)
+        retrace::numPasses = numPasses > 0 ? numPasses : 1;
+    }
 }
 
 void
 frame_complete(trace::Call &call) {
-    if (retrace::profiling) {
+    if (retrace::profilingCalls) {
+
+    }
+    else if (retrace::profiling) {
         /* Complete any remaining queries */
         flushQueries();
 
@@ -665,6 +707,12 @@ retrace::finishRendering(void) {
     glretrace::Context *currentContext = glretrace::getCurrentContext();
     if (currentContext) {
         glFinish();
+    }
+
+    if (retrace::profilingCalls) {
+        if (glretrace::curMetricBackend) {
+            (glretrace::curMetricBackend)->endPass();
+        }
     }
 }
 
