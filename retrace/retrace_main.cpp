@@ -87,6 +87,7 @@ unsigned curPass = 0;
 unsigned numPasses = 1;
 bool profilingCalls = false;
 bool profilingFrames = false;
+char* profilingWithMetricsString;
 
 bool profiling = false;
 bool profilingGpuTimes = false;
@@ -633,6 +634,7 @@ usage(const char *argv0) {
         "      --pmem              memory usage profiling (vsize rss per call)\n"
         "      --pcalls            calls profiling (based on metrics selected)\n"
         "      --pframes           frames profiling (based on metrics selected)\n"
+        "      --with-metrics      metrics selection\n"
         "      --call-nos[=BOOL]   use call numbers in snapshot filenames\n"
         "      --core              use core profile\n"
         "      --db                use a double buffer visual (default)\n"
@@ -665,6 +667,7 @@ enum {
     PMEM_OPT,
     PCALLS_OPT,
     PFRAMES_OPT,
+    PWMETRICS_OPT,
     SB_OPT,
     SNAPSHOT_FORMAT_OPT,
     LOOP_OPT,
@@ -695,6 +698,7 @@ longOptions[] = {
     {"pmem", no_argument, 0, PMEM_OPT},
     {"pcalls", no_argument, 0, PCALLS_OPT},
     {"pframes", no_argument, 0, PFRAMES_OPT},
+    {"with-metrics", required_argument, 0, PWMETRICS_OPT},
     {"sb", no_argument, 0, SB_OPT},
     {"snapshot-prefix", required_argument, 0, 's'},
     {"snapshot-format", required_argument, 0, SNAPSHOT_FORMAT_OPT},
@@ -877,6 +881,9 @@ int main(int argc, char **argv)
             retrace::profiling = true;
             retrace::verbosity = -1;
             retrace::profilingFrames = true;
+            break;
+        case PWMETRICS_OPT:
+            profilingWithMetricsString = optarg;
             break;
         default:
             std::cerr << "error: unknown option " << opt << "\n";
