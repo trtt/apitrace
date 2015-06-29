@@ -119,6 +119,7 @@ extern bool forceWindowed;
 extern unsigned curPass;
 extern unsigned numPasses;
 extern bool profilingCalls;
+extern bool profilingFrames;
 
 extern bool profiling;
 extern bool profilingCpuTimes;
