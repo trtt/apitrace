@@ -28,6 +28,7 @@
 #include "glws.hpp"
 #include "retrace.hpp"
 #include "metric_backend.hpp"
+#include "metric_writer.hpp"
 
 
 namespace glretrace {
@@ -65,6 +66,7 @@ struct Context {
 extern bool metricBackendsSetup;
 extern std::vector<MetricBackend*> metricBackends;
 extern MetricBackend* curMetricBackend;
+extern MetricWriter profiler;
 
 extern glprofile::Profile defaultProfile;
 
@@ -122,6 +124,8 @@ void beginProfile(trace::Call &call, bool isDraw);
 void endProfile(trace::Call &call, bool isDraw);
 
 MetricBackend* getBackend(std::string backendName);
+
+bool isLastPass();
 
 GLenum
 blockOnFence(trace::Call &call, GLsync sync, GLbitfield flags);

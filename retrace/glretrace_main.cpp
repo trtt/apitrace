@@ -275,6 +275,12 @@ endProfile(trace::Call &call, bool isDraw) {
         if (curMetricBackend) {
             curMetricBackend->endQuery(isDraw);
         }
+        if (isLastPass() && curMetricBackend) {
+            Context *currentContext = getCurrentContext();
+            GLuint program = currentContext ? currentContext->activeProgram : 0;
+            unsigned eventId = curMetricBackend->getLastQueryId();
+            profiler.addCall(call.no, call.sig->name, program, eventId);
+        }
         return;
     }
     else if (retrace::profilingFrames) return;
@@ -471,7 +477,9 @@ initContext() {
 void
 frame_complete(trace::Call &call) {
     if (retrace::profilingCalls) {
-
+        if (isLastPass() && curMetricBackend) {
+            profiler.addCall(-1, "", 0, 0);
+        }
     }
     else if (retrace::profilingFrames) {
         if (curMetricBackend) {
@@ -504,6 +512,10 @@ frame_complete(trace::Call &call) {
     if (retrace::profilingFrames) {
         if (curMetricBackend) {
             curMetricBackend->beginQuery(false);
+        }
+        if (isLastPass() && curMetricBackend) {
+            unsigned eventId = curMetricBackend->getLastQueryId();
+            profiler.addFrame(eventId);
         }
     }
 }
@@ -737,6 +749,8 @@ retrace::finishRendering(void) {
         if (glretrace::curMetricBackend) {
             (glretrace::curMetricBackend)->endPass();
         }
+
+        if (glretrace::isLastPass()) glretrace::profiler.writeAll();
     }
 }
 
