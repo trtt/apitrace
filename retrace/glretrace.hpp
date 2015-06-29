@@ -27,6 +27,7 @@
 
 #include "glws.hpp"
 #include "retrace.hpp"
+#include "metric_backend.hpp"
 
 
 namespace glretrace {
@@ -115,6 +116,8 @@ void updateDrawable(int width, int height);
 void flushQueries();
 void beginProfile(trace::Call &call, bool isDraw);
 void endProfile(trace::Call &call, bool isDraw);
+
+MetricBackend* getBackend(std::string backendName);
 
 GLenum
 blockOnFence(trace::Call &call, GLsync sync, GLbitfield flags);
