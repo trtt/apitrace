@@ -1,17 +1,25 @@
 #include "metric_backend_amd_perfmon.hpp"
 
+unsigned Metric_AMD_perfmon::getId() {
+    return id;
+}
+
+unsigned Metric_AMD_perfmon::getGroupId() {
+    return group;
+}
+
 std::string Metric_AMD_perfmon::getName() {
     int length;
     std::string name;
-    glGetPerfMonitorCounterStringAMD(getGroupId(), getId(), 0, &length, nullptr);
+    glGetPerfMonitorCounterStringAMD(group, id, 0, &length, nullptr);
     name.resize(length);
-    glGetPerfMonitorCounterStringAMD(getGroupId(), getId(), length, 0, &name[0]);
+    glGetPerfMonitorCounterStringAMD(group, id, length, 0, &name[0]);
     return name;
 }
 
 GLenum Metric_AMD_perfmon::getSize() {
     GLenum type;
-    glGetPerfMonitorCounterInfoAMD(getGroupId(), getId(), GL_COUNTER_TYPE_AMD, &type);
+    glGetPerfMonitorCounterInfoAMD(group, id, GL_COUNTER_TYPE_AMD, &type);
     if (type == GL_UNSIGNED_INT) return sizeof(GLuint);
     else if (type == GL_FLOAT || type == GL_PERCENTAGE_AMD) return sizeof(GLfloat);
     else if (type == GL_UNSIGNED_INT64_AMD) return sizeof(uint64_t);
@@ -20,7 +28,7 @@ GLenum Metric_AMD_perfmon::getSize() {
 
 MetricNumType Metric_AMD_perfmon::getNumType() {
     GLenum type;
-    glGetPerfMonitorCounterInfoAMD(getGroupId(), getId(), GL_COUNTER_TYPE_AMD, &type);
+    glGetPerfMonitorCounterInfoAMD(group, id, GL_COUNTER_TYPE_AMD, &type);
     if (type == GL_UNSIGNED_INT) return CNT_NUM_UINT;
     else if (type == GL_FLOAT || type == GL_PERCENTAGE_AMD) return CNT_NUM_FLOAT;
     else if (type == GL_UNSIGNED_INT64_AMD) return CNT_NUM_UINT64;
@@ -29,7 +37,7 @@ MetricNumType Metric_AMD_perfmon::getNumType() {
 
 MetricType Metric_AMD_perfmon::getType() {
     GLenum type;
-    glGetPerfMonitorCounterInfoAMD(getGroupId(), getId(), GL_COUNTER_TYPE_AMD, &type);
+    glGetPerfMonitorCounterInfoAMD(group, id, GL_COUNTER_TYPE_AMD, &type);
     if (type == GL_UNSIGNED_INT || type == GL_UNSIGNED_INT64_AMD || type == GL_FLOAT) return CNT_TYPE_GENERIC;
     else if (type == GL_PERCENTAGE_AMD) return CNT_TYPE_PERCENT;
     else return CNT_TYPE_OTHER;
@@ -102,6 +110,42 @@ void MetricBackend_AMD_perfmon::enumMetrics(unsigned group, enumMetricsCallback 
     }
 }
 
+std::unique_ptr<Metric>
+MetricBackend_AMD_perfmon::getMetricById(unsigned groupId, unsigned metricId)
+{
+    std::unique_ptr<Metric> p(new Metric_AMD_perfmon(groupId, metricId));
+    return p;
+}
+
+void MetricBackend_AMD_perfmon::populateLookupGroups(unsigned group,
+                                                     int error,
+                                                     void* userData)
+{
+    reinterpret_cast<MetricBackend_AMD_perfmon*>(userData)->enumMetrics(group, populateLookupMetrics);
+}
+
+void MetricBackend_AMD_perfmon::populateLookupMetrics(Metric* metric,
+                                                      int error,
+                                                      void* userData)
+{
+    nameLookup[metric->getName()] = std::make_pair(metric->getGroupId(),
+                                                   metric->getId());
+}
+
+std::unique_ptr<Metric>
+MetricBackend_AMD_perfmon::getMetricByName(std::string metricName)
+{
+    if (nameLookup.empty()) {
+        enumGroups(populateLookupGroups, this);
+    }
+    if (nameLookup.count(metricName) > 0) {
+        std::unique_ptr<Metric> p(new Metric_AMD_perfmon(nameLookup[metricName].first,
+                                                         nameLookup[metricName].second));
+        return p;
+    }
+    else return nullptr;
+}
+
 std::string MetricBackend_AMD_perfmon::getGroupName(unsigned group) {
     int length;
     std::string name;
@@ -152,6 +196,7 @@ bool MetricBackend_AMD_perfmon::testMetrics(std::vector<Metric_AMD_perfmon>* met
 unsigned MetricBackend_AMD_perfmon::generatePasses() {
     std::vector<Metric_AMD_perfmon> copyMetrics(metrics);
     std::vector<Metric_AMD_perfmon> newPass;
+    nameLookup.clear(); // no need in it after all metrics are set up
     while (!copyMetrics.empty()) {
         std::vector<Metric_AMD_perfmon>::iterator it = copyMetrics.begin();
         while (it != copyMetrics.end()) {
@@ -270,3 +315,6 @@ MetricBackend_AMD_perfmon& MetricBackend_AMD_perfmon::getInstance(glretrace::Con
     static MetricBackend_AMD_perfmon backend(context);
     return backend;
 }
+
+
+std::map<std::string, std::pair<unsigned, unsigned>> MetricBackend_AMD_perfmon::nameLookup;

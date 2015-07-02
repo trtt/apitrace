@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <vector>
 #include <map>
 #include <string>
@@ -13,12 +14,17 @@
 class Metric_AMD_perfmon : public Metric
 {
 private:
+    unsigned group, id;
 
 public:
-    Metric_AMD_perfmon(unsigned g, unsigned i) : Metric(g, i) {}
+    Metric_AMD_perfmon(unsigned g, unsigned i) : group(g), id(i) {}
 
     GLenum getSize();
 
+
+    unsigned getId();
+
+    unsigned getGroupId();
 
     std::string getName();
 
@@ -63,6 +69,7 @@ private:
     unsigned monitorEvent[NUM_MONITORS]; // Event saved in monitor
     DataCollector collector;
     std::vector<Metric_AMD_perfmon> metrics; // store metrics selected for profiling
+    static std::map<std::string, std::pair<unsigned, unsigned>> nameLookup;
 
     MetricBackend_AMD_perfmon(glretrace::Context* context);
 
@@ -76,12 +83,20 @@ private:
 
     void freeMonitor(unsigned monitor); // collect metrics data from the monitor
 
+    static void populateLookupGroups(unsigned group, int error, void* userData);
+
+    static void populateLookupMetrics(Metric* metric, int error, void* userData);
+
 public:
     bool isSupported();
 
     void enumGroups(enumGroupsCallback callback, void* userData = nullptr);
 
     void enumMetrics(unsigned group, enumMetricsCallback callback, void* userData = nullptr);
+
+    std::unique_ptr<Metric> getMetricById(unsigned groupId, unsigned metricId);
+
+    std::unique_ptr<Metric> getMetricByName(std::string metricName);
 
     std::string getGroupName(unsigned group);
 
