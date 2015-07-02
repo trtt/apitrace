@@ -116,8 +116,6 @@ public:
 
     unsigned getNumPasses();
 
-    bool isLastPass();
-
     unsigned getLastQueryId();
 
     static MetricBackend_AMD_perfmon& getInstance(glretrace::Context* context);

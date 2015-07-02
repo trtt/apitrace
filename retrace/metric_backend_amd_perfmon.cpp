@@ -303,12 +303,8 @@ unsigned MetricBackend_AMD_perfmon::getNumPasses() {
     return numPasses;
 }
 
-bool MetricBackend_AMD_perfmon::isLastPass() {
-    return (numPasses-1 <= curPass);
-}
-
 unsigned MetricBackend_AMD_perfmon::getLastQueryId() {
-    return (curEvent-1);
+    return (curEvent > 0) ? curEvent-1 : 0;
 }
 
 MetricBackend_AMD_perfmon& MetricBackend_AMD_perfmon::getInstance(glretrace::Context* context) {
