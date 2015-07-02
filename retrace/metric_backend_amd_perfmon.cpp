@@ -214,9 +214,9 @@ unsigned MetricBackend_AMD_perfmon::generatePasses() {
     return numPasses;
 }
 
-void MetricBackend_AMD_perfmon::beginPass(bool perFrame_) {
+void MetricBackend_AMD_perfmon::beginPass(bool perFrame) {
     if (curPass == 0) {
-        perFrame = perFrame_;
+        this->perFrame = perFrame;
         generatePasses();
     }
     if (!numPasses) return;
@@ -261,8 +261,8 @@ void MetricBackend_AMD_perfmon::endQuery(bool isDraw) {
     curMonitor %= NUM_MONITORS;
 }
 
-void MetricBackend_AMD_perfmon::freeMonitor(unsigned monitor_) {
-    unsigned monitor = monitors[monitor_];
+void MetricBackend_AMD_perfmon::freeMonitor(unsigned monitorId) {
+    unsigned monitor = monitors[monitorId];
     glFlush();
     GLuint dataAvail = 0;
     while (!dataAvail) {
@@ -271,7 +271,7 @@ void MetricBackend_AMD_perfmon::freeMonitor(unsigned monitor_) {
     GLuint size;
     glGetPerfMonitorCounterDataAMD(monitor, GL_PERFMON_RESULT_SIZE_AMD, sizeof(GLuint), &size, nullptr);
     // collect data
-    glGetPerfMonitorCounterDataAMD(monitor, GL_PERFMON_RESULT_AMD, size, collector.newDataBuffer(monitorEvent[monitor_], size/sizeof(unsigned)), nullptr);
+    glGetPerfMonitorCounterDataAMD(monitor, GL_PERFMON_RESULT_AMD, size, collector.newDataBuffer(monitorEvent[monitorId], size/sizeof(unsigned)), nullptr);
 }
 
 void MetricBackend_AMD_perfmon::enumDataQueryId(unsigned id, enumDataCallback callback, void* userData) {
