@@ -22,8 +22,8 @@ class MetricWriter
 private:
     bool perFrame;
     static bool header;
-    std::queue<ProfilerCall> queue;
-    std::queue<ProfilerFrame> queueFrame;
+    std::queue<ProfilerCall> callQueue;
+    std::queue<ProfilerFrame> frameQueue;
     std::vector<MetricBackend*>* metricApis;
 
 public:

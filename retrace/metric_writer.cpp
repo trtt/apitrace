@@ -7,14 +7,14 @@ void MetricWriter::addCall(int no,
         unsigned program, unsigned eventId)
 {
     ProfilerCall tempCall = {no, program, name, eventId};
-    queue.push(tempCall);
+    callQueue.push(tempCall);
 }
 
 void MetricWriter::addFrame(unsigned eventId)
 {
     if (!perFrame) perFrame = true;
     ProfilerFrame tempFrame = {eventId};
-    queueFrame.push(tempFrame);
+    frameQueue.push(tempFrame);
 }
 
 void MetricWriter::writeApiData(Metric* metric, int event, void* data, int error, void* userData) {
@@ -39,7 +39,7 @@ void MetricWriter::writeApiData(Metric* metric, int event, void* data, int error
 }
 
 void MetricWriter::writeCall() {
-    ProfilerCall tempCall = queue.front();
+    ProfilerCall tempCall = callQueue.front();
 
     if (!header) {
         std::cout << "#\tcall no\tprogram\tname";
@@ -53,7 +53,7 @@ void MetricWriter::writeCall() {
 
     if (tempCall.no == -1) {
         std::cout << "frame_end" << std::endl;
-        queue.pop();
+        callQueue.pop();
         return;
     }
 
@@ -68,11 +68,11 @@ void MetricWriter::writeCall() {
 
     std::cout << std::endl;
 
-    queue.pop();
+    callQueue.pop();
 }
 
 void MetricWriter::writeFrame() {
-    ProfilerFrame tempFrame = queueFrame.front();
+    ProfilerFrame tempFrame = frameQueue.front();
 
     if (!header) {
         std::cout << "#";
@@ -92,16 +92,16 @@ void MetricWriter::writeFrame() {
 
     std::cout << std::endl;
 
-    queueFrame.pop();
+    frameQueue.pop();
 }
 
 void MetricWriter::writeAll() {
     if (!perFrame) {
-        while (!queue.empty()) {
+        while (!callQueue.empty()) {
             writeCall();
         }
     } else {
-        while (!queueFrame.empty()) {
+        while (!frameQueue.empty()) {
             writeFrame();
         }
     }
