@@ -24,7 +24,7 @@ MetricBackend* getBackend(std::string backendName) {
 
 bool
 isLastPass() {
-    return ((retrace::numPasses - 1) <= retrace::curPass);
+    return ( retrace::curPass + 1 >= retrace::numPasses );
 }
 
 void enableMetricsFromCLI() {
