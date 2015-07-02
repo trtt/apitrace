@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <string>
 
 // Numeric metric formats
@@ -25,23 +26,18 @@ enum MetricType {
 // Base class for metric:
 class Metric
 {
-private:
-    unsigned group, id;
-
 public:
-    Metric(unsigned g, unsigned i) : group(g), id(i) {}
-
     virtual ~Metric() {}
 
-    inline unsigned getId() {return id;}
+    virtual unsigned getId() = 0;
 
-    inline unsigned getGroupId() {return group;}
+    virtual unsigned getGroupId() = 0;
 
-    inline virtual std::string getName() {return "";}
+    virtual std::string getName() = 0;
 
-    inline virtual MetricNumType getNumType() {return CNT_NUM_UINT;}
+    virtual MetricNumType getNumType() = 0;
 
-    inline virtual MetricType getType() {return CNT_TYPE_GENERIC;}
+    virtual MetricType getType() = 0;
 };
 
 typedef void (*enumGroupsCallback)(unsigned group, int error, void* userData);
@@ -66,6 +62,10 @@ public:
 
     virtual std::string getGroupName(unsigned group) = 0;
 
+    virtual std::unique_ptr<Metric> getMetricById(unsigned groupId, unsigned metricId);
+
+    virtual std::unique_ptr<Metric> getMetricByName(std::string metricName);
+
     virtual int enableMetric(Metric* metric, bool perDraw = true) = 0;
     /*
      * returns integer - error code
@@ -88,8 +88,6 @@ public:
     virtual void enumData(enumDataCallback callback, void* userData = nullptr) = 0;
 
     virtual unsigned getNumPasses() = 0;
-
-    virtual bool isLastPass() = 0;
 
     virtual unsigned getLastQueryId() = 0;
 };
