@@ -462,8 +462,8 @@ initContext() {
         for (MetricBackend* b : metricBackends) {
             numPasses += b->getNumPasses();
         }
-        if (numPasses == 0) retrace::numPasses = 1;
-        else retrace::numPasses = numPasses; // should be updated every pass (changes for some backends)
+        // numPasses should be updated every pass (changes for some backends)
+        retrace::numPasses = numPasses > 0 ? numPasses : 1;
 
         if (retrace::profilingFrames) {
             if (curMetricBackend) {
