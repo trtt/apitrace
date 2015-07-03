@@ -44,7 +44,7 @@ MetricType Metric_INTEL_perfquery::getType() {
     else if (type == GL_PERFQUERY_COUNTER_EVENT_INTEL) return CNT_TYPE_NUM;
     else if (type == GL_PERFQUERY_COUNTER_DURATION_NORM_INTEL ||
              type == GL_PERFQUERY_COUNTER_DURATION_RAW_INTEL) return CNT_TYPE_DURATION;
-    else if (type == GL_PERFQUERY_COUNTER_RAW_INTEL) return CNT_TYPE_NUM;
+    else if (type == GL_PERFQUERY_COUNTER_RAW_INTEL) return CNT_TYPE_GENERIC;
     else if (type == GL_PERFQUERY_COUNTER_THROUGHPUT_INTEL) return CNT_TYPE_GENERIC;
     else return CNT_TYPE_OTHER;
 }
