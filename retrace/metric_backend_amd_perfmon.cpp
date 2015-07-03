@@ -44,8 +44,8 @@ MetricType Metric_AMD_perfmon::getType() {
 }
 
 MetricBackend_AMD_perfmon::DataCollector::~DataCollector() {
-    for (std::vector<unsigned*> t1 : data) {
-        for (unsigned* t2 : t1) {
+    for (std::vector<unsigned*> &t1 : data) {
+        for (unsigned* &t2 : t1) {
             delete[] t2;
         }
     }
@@ -178,7 +178,7 @@ bool MetricBackend_AMD_perfmon::testMetrics(std::vector<Metric_AMD_perfmon>* met
     unsigned monitor;
     unsigned id;
     glGenPerfMonitorsAMD(1, &monitor);
-    for (Metric_AMD_perfmon c : *metrics) {
+    for (Metric_AMD_perfmon &c : *metrics) {
         id = c.getId();
         glSelectPerfMonitorCountersAMD(monitor, 1, c.getGroupId(), 1, &id);
     }
@@ -222,7 +222,7 @@ void MetricBackend_AMD_perfmon::beginPass(bool perFrame) {
     if (!numPasses) return;
     glGenPerfMonitorsAMD(NUM_MONITORS, monitors);
     unsigned id;
-    for (Metric_AMD_perfmon c : passes[curPass]) {
+    for (Metric_AMD_perfmon &c : passes[curPass]) {
         id = c.getId();
         for (int k = 0; k < NUM_MONITORS; k++) {
             glSelectPerfMonitorCountersAMD(monitors[k], 1, c.getGroupId(), 1, &id);
@@ -271,24 +271,38 @@ void MetricBackend_AMD_perfmon::freeMonitor(unsigned monitorId) {
     GLuint size;
     glGetPerfMonitorCounterDataAMD(monitor, GL_PERFMON_RESULT_SIZE_AMD, sizeof(GLuint), &size, nullptr);
     // collect data
-    glGetPerfMonitorCounterDataAMD(monitor, GL_PERFMON_RESULT_AMD, size, collector.newDataBuffer(monitorEvent[monitorId], size/sizeof(unsigned)), nullptr);
+    unsigned* buf = collector.newDataBuffer(monitorEvent[monitorId], size/sizeof(unsigned));
+    glGetPerfMonitorCounterDataAMD(monitor, GL_PERFMON_RESULT_AMD, size, buf, nullptr);
+
+    /* populate metricOffsets */
+    if (metricOffsets.size() < curPass + 1) {
+        std::map<std::pair<unsigned, unsigned>, unsigned> pairOffsets;
+        unsigned offset = 0;
+        unsigned id, gid;
+        for (int k = 0; k < passes[curPass].size(); k++) {
+            gid = buf[offset++];
+            id = buf[offset++];
+            pairOffsets[std::make_pair(gid, id)] = offset;
+            Metric_AMD_perfmon metric(gid, id);
+            offset += metric.getSize() / sizeof(unsigned);
+        }
+        // translate to existing metrics in passes variable
+        std::map<Metric_AMD_perfmon*, unsigned> temp;
+        for (auto &m : passes[curPass]) {
+            id = m.getId();
+            gid = m.getGroupId();
+            temp[&m] = pairOffsets[std::make_pair(gid, id)];
+        }
+        metricOffsets.push_back(std::move(temp));
+    }
 }
 
 void MetricBackend_AMD_perfmon::enumDataQueryId(unsigned id, enumDataCallback callback, void* userData) {
     for (unsigned j = 0; j < numPasses; j++) {
         unsigned* buf = collector.getDataBuffer(j, id);
-        unsigned offset = 0;
-        for (int k = 0; k < passes[j].size(); k++) {
-            if (buf) {
-                Metric_AMD_perfmon metric(buf[offset], buf[offset+1]);
-                offset += 2;
-                callback(&metric, id, &buf[offset], 0, userData);
-                offset += metric.getSize() / sizeof(unsigned);
-            } else { // No data buffer (in case event #id is not a draw call)
-                offset += 2;
-                callback(&passes[j][k], id, nullptr, 0, userData);
-                offset += passes[j][k].getSize() / sizeof(unsigned);
-            }
+        for (auto &m : passes[j]) {
+            void* data = (buf) ? &buf[metricOffsets[j][&m]] : nullptr;
+            callback(&m, id, data, 0, userData);
         }
     }
 }

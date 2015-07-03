@@ -63,6 +63,8 @@ private:
     unsigned curMonitor;
     bool firstRound, perFrame;
     std::vector<std::vector<Metric_AMD_perfmon>> passes; // metric sets for each pass
+    /* metricOffsets[pass][Metric*] -- metric offset in data returned after profiling */
+    std::vector<std::map<Metric_AMD_perfmon*, unsigned>> metricOffsets;
     int numPasses;
     int curPass;
     unsigned curEvent; // Currently evaluated event
