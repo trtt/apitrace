@@ -10,6 +10,7 @@
 #include "glretrace.hpp"
 
 #define INTEL_NAME_LENGTH 256 // metric name with max 256 chars
+#define INTEL_DESC_LENGTH 1024 // description max 1024 chars
 
 class Metric_INTEL_perfquery : public Metric
 {
@@ -19,8 +20,6 @@ private:
 public:
     Metric_INTEL_perfquery(unsigned g, unsigned i) : group(g), id(i) {}
 
-    GLenum getSize();
-
     unsigned getOffset();
 
 
@@ -29,6 +28,8 @@ public:
     unsigned getGroupId();
 
     std::string getName();
+
+    std::string getDescription();
 
     MetricNumType getNumType();
 

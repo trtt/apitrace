@@ -14,16 +14,16 @@ std::string Metric_INTEL_perfquery::getName() {
     return std::string(name);
 }
 
+std::string Metric_INTEL_perfquery::getDescription() {
+    char desc[INTEL_DESC_LENGTH];
+    glGetPerfCounterInfoINTEL(group, id, 0, nullptr, INTEL_DESC_LENGTH, desc, nullptr, nullptr, nullptr, nullptr, nullptr);
+    return std::string(desc);
+}
+
 unsigned Metric_INTEL_perfquery::getOffset() {
     unsigned offset;
     glGetPerfCounterInfoINTEL(group, id, 0, nullptr, 0, nullptr, &offset, nullptr, nullptr, nullptr, nullptr);
     return offset;
-}
-
-GLenum Metric_INTEL_perfquery::getSize() {
-    unsigned size;
-    glGetPerfCounterInfoINTEL(group, id, 0, nullptr, 0, nullptr, nullptr, &size, nullptr, nullptr, nullptr);
-    return size;
 }
 
 MetricNumType Metric_INTEL_perfquery::getNumType() {
