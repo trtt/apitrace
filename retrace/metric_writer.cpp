@@ -33,6 +33,8 @@ void MetricWriter::writeApiData(Metric* metric, int event, void* data, int error
     switch(metric->getNumType()) {
         case CNT_NUM_UINT: std::cout << "\t" << *(reinterpret_cast<unsigned*>(data)); break;
         case CNT_NUM_FLOAT: std::cout << "\t" << *(reinterpret_cast<float*>(data)); break;
+        case CNT_NUM_DOUBLE: std::cout << "\t" << *(reinterpret_cast<double*>(data)); break;
+        case CNT_NUM_BOOL: std::cout << "\t" << *(reinterpret_cast<bool*>(data)); break;
         case CNT_NUM_UINT64: std::cout << "\t" << *(reinterpret_cast<uint64_t*>(data)); break;
         case CNT_NUM_INT64: std::cout << "\t" << *(reinterpret_cast<int64_t*>(data)); break;
     }
