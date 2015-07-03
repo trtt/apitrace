@@ -7,6 +7,7 @@
 #include "metric_backend.hpp"
 #include "metric_writer.hpp"
 #include "metric_backend_amd_perfmon.hpp"
+#include "metric_backend_intel_perfquery.hpp"
 
 namespace glretrace {
 
@@ -19,6 +20,7 @@ MetricBackend* getBackend(std::string backendName) {
     // to be populated with backends
     Context *currentContext = getCurrentContext();
     if (backendName == "GL_AMD_performance_monitor") return &MetricBackend_AMD_perfmon::getInstance(currentContext);
+    else if (backendName == "GL_INTEL_performance_query") return &MetricBackend_INTEL_perfquery::getInstance(currentContext);
     else return nullptr;
 }
 
@@ -50,7 +52,8 @@ void listMetrics_groupCallback(unsigned g, int error, void* userData) {
 
 void listMetricsCLI() {
     // backends is to be populated with backend names
-    std::string backends[] = {"GL_AMD_performance_monitor"};
+    std::string backends[] = {"GL_AMD_performance_monitor",
+                              "GL_INTEL_performance_query"};
     std::cout << "Available metrics: \n";
     for (auto s : backends) {
         auto b = getBackend(s);
