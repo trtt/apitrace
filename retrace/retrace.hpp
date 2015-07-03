@@ -121,6 +121,7 @@ extern unsigned numPasses;
 extern bool profilingCalls;
 extern bool profilingFrames;
 extern char* profilingWithMetricsString;
+extern bool profilingListMetrics;
 
 extern bool profiling;
 extern bool profilingCpuTimes;
