@@ -86,6 +86,7 @@ unsigned samples = 1;
 unsigned curPass = 0;
 unsigned numPasses = 1;
 bool profilingCalls = false;
+bool profilingFrames = false;
 
 bool profiling = false;
 bool profilingGpuTimes = false;
@@ -631,6 +632,7 @@ usage(const char *argv0) {
         "      --ppd               pixels drawn profiling (pixels drawn per draw call)\n"
         "      --pmem              memory usage profiling (vsize rss per call)\n"
         "      --pcalls            calls profiling (based on metrics selected)\n"
+        "      --pframes           frames profiling (based on metrics selected)\n"
         "      --call-nos[=BOOL]   use call numbers in snapshot filenames\n"
         "      --core              use core profile\n"
         "      --db                use a double buffer visual (default)\n"
@@ -662,6 +664,7 @@ enum {
     PPD_OPT,
     PMEM_OPT,
     PCALLS_OPT,
+    PFRAMES_OPT,
     SB_OPT,
     SNAPSHOT_FORMAT_OPT,
     LOOP_OPT,
@@ -691,6 +694,7 @@ longOptions[] = {
     {"ppd", no_argument, 0, PPD_OPT},
     {"pmem", no_argument, 0, PMEM_OPT},
     {"pcalls", no_argument, 0, PCALLS_OPT},
+    {"pframes", no_argument, 0, PFRAMES_OPT},
     {"sb", no_argument, 0, SB_OPT},
     {"snapshot-prefix", required_argument, 0, 's'},
     {"snapshot-format", required_argument, 0, SNAPSHOT_FORMAT_OPT},
@@ -868,6 +872,12 @@ int main(int argc, char **argv)
             retrace::verbosity = -1;
             retrace::profilingCalls = true;
             break;
+        case PFRAMES_OPT:
+            retrace::debug = 0;
+            retrace::profiling = true;
+            retrace::verbosity = -1;
+            retrace::profilingFrames = true;
+            break;
         default:
             std::cerr << "error: unknown option " << opt << "\n";
             usage(argv[0]);
@@ -892,7 +902,7 @@ int main(int argc, char **argv)
 #endif
 
     retrace::setUp();
-    if (retrace::profiling && !retrace::profilingCalls) {
+    if (retrace::profiling && !retrace::profilingCalls && !retrace::profilingFrames) {
         retrace::profiler.setup(retrace::profilingCpuTimes, retrace::profilingGpuTimes, retrace::profilingPixelsDrawn, retrace::profilingMemoryUsage);
     }
 
