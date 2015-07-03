@@ -35,6 +35,8 @@ public:
 
     virtual std::string getName() = 0;
 
+    virtual std::string getDescription() = 0;
+
     virtual MetricNumType getNumType() = 0;
 
     virtual MetricType getType() = 0;
