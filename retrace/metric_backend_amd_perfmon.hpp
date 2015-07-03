@@ -28,6 +28,8 @@ public:
 
     std::string getName();
 
+    std::string getDescription();
+
     MetricNumType getNumType();
 
     MetricType getType();

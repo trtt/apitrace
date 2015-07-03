@@ -17,6 +17,10 @@ std::string Metric_AMD_perfmon::getName() {
     return name;
 }
 
+std::string Metric_AMD_perfmon::getDescription() {
+    return ""; // no description available
+}
+
 GLenum Metric_AMD_perfmon::getSize() {
     GLenum type;
     glGetPerfMonitorCounterInfoAMD(group, id, GL_COUNTER_TYPE_AMD, &type);
