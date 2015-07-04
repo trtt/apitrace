@@ -15,6 +15,10 @@ class Metric_AMD_perfmon : public Metric
 {
 private:
     unsigned group, id;
+    MetricNumType nType;
+    bool precached;
+
+    void precache();
 
 public:
     Metric_AMD_perfmon(unsigned g, unsigned i) : group(g), id(i) {}

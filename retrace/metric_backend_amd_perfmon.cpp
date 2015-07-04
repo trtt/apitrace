@@ -1,5 +1,15 @@
 #include "metric_backend_amd_perfmon.hpp"
 
+void Metric_AMD_perfmon::precache() {
+    GLenum type;
+    glGetPerfMonitorCounterInfoAMD(group, id, GL_COUNTER_TYPE_AMD, &type);
+    if (type == GL_UNSIGNED_INT) nType = CNT_NUM_UINT;
+    else if (type == GL_FLOAT || type == GL_PERCENTAGE_AMD) nType = CNT_NUM_FLOAT;
+    else if (type == GL_UNSIGNED_INT64_AMD) nType = CNT_NUM_UINT64;
+    else nType = CNT_NUM_UINT;
+    precached = true;
+}
+
 unsigned Metric_AMD_perfmon::getId() {
     return id;
 }
@@ -31,12 +41,8 @@ GLenum Metric_AMD_perfmon::getSize() {
 }
 
 MetricNumType Metric_AMD_perfmon::getNumType() {
-    GLenum type;
-    glGetPerfMonitorCounterInfoAMD(group, id, GL_COUNTER_TYPE_AMD, &type);
-    if (type == GL_UNSIGNED_INT) return CNT_NUM_UINT;
-    else if (type == GL_FLOAT || type == GL_PERCENTAGE_AMD) return CNT_NUM_FLOAT;
-    else if (type == GL_UNSIGNED_INT64_AMD) return CNT_NUM_UINT64;
-    else return CNT_NUM_UINT;
+    if (!precached) precache();
+    return nType;
 }
 
 MetricType Metric_AMD_perfmon::getType() {
