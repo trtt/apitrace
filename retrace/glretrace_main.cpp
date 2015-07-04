@@ -450,6 +450,12 @@ initContext() {
     if (retrace::profilingCalls || retrace::profilingFrames) {
         if (!metricBackendsSetup) {
             if (retrace::profilingWithMetricsString) enableMetricsFromCLI();
+            unsigned numPasses = 0;
+            for (MetricBackend* &b : metricBackends) {
+                b->generatePasses(retrace::profilingFrames);
+                numPasses += b->getNumPasses();
+            }
+            retrace::numPasses = numPasses > 0 ? numPasses : 1;
             metricBackendsSetup = 1;
         }
 
@@ -458,17 +464,10 @@ initContext() {
             numPasses += b->getNumPasses();
             if (retrace::curPass < numPasses) {
                 curMetricBackend = b;
-                b->beginPass(retrace::profilingFrames); // begin pass
+                b->beginPass(); // begin pass
                 break;
             }
         }
-
-        numPasses = 0;
-        for (MetricBackend* b : metricBackends) {
-            numPasses += b->getNumPasses();
-        }
-        // numPasses should be updated every pass (changes for some backends)
-        retrace::numPasses = numPasses > 0 ? numPasses : 1;
 
         if (retrace::profilingFrames) {
             if (curMetricBackend) {
