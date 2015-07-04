@@ -101,7 +101,9 @@ public:
 
     int enableMetric(Metric* metric, bool perDraw = true);
 
-    void beginPass(bool perFrame = false);
+    unsigned generatePasses(bool perFrame = false) = 0;
+
+    void beginPass();
 
     void endPass();
 

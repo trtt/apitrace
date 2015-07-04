@@ -169,13 +169,14 @@ int MetricBackend_INTEL_perfquery::enableMetric(Metric* metric_, bool perDraw) {
     return 0;
 }
 
-void MetricBackend_INTEL_perfquery::beginPass(bool perFrame) {
-    if (curPass == 0) {
-        this->perFrame = perFrame;
-        curQueryMetrics = passes.begin();
-        numPasses = passes.size();
-        nameLookup.clear(); // no need in it after all metrics are set up
-    }
+unsigned generatePasses(bool perFrame) {
+    this->perFrame = perFrame;
+    curQueryMetrics = passes.begin();
+    numPasses = passes.size();
+    nameLookup.clear(); // no need in it after all metrics are set up
+}
+
+void MetricBackend_INTEL_perfquery::beginPass() {
     if (!numPasses || curQueryMetrics == passes.end()) return;
     glCreatePerfQueryINTEL(curQueryMetrics->first, &curQuery);
     curEvent = 0;
