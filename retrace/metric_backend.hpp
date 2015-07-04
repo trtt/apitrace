@@ -74,7 +74,9 @@ public:
      * 0 - no error
     */
 
-    virtual void beginPass(bool perFrame = false) = 0;
+    virtual unsigned generatePasses(bool perFrame = false) = 0;
+
+    virtual void beginPass() = 0;
     /* Passes are generated in the first beginPass()
      * based on metrics enabled via enableMetric().
      * This call must be used after context is initialized.
