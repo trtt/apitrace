@@ -169,11 +169,12 @@ int MetricBackend_INTEL_perfquery::enableMetric(Metric* metric_, bool perDraw) {
     return 0;
 }
 
-unsigned generatePasses(bool perFrame) {
+unsigned MetricBackend_INTEL_perfquery::generatePasses(bool perFrame) {
     this->perFrame = perFrame;
     curQueryMetrics = passes.begin();
     numPasses = passes.size();
     nameLookup.clear(); // no need in it after all metrics are set up
+    return numPasses;
 }
 
 void MetricBackend_INTEL_perfquery::beginPass() {
@@ -228,6 +229,7 @@ void MetricBackend_INTEL_perfquery::enumDataQueryId(unsigned id, enumDataCallbac
                 callback(&k, id, nullptr, 0, userData);
             }
         }
+        queryIt++;
     }
 }
 
