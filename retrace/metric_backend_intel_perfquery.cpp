@@ -14,6 +14,7 @@ void Metric_INTEL_perfquery::precache() {
     else if (type == GL_PERFQUERY_COUNTER_DATA_UINT64_INTEL) nType = CNT_NUM_UINT64;
     else nType = CNT_NUM_UINT;
 
+    precached = true;
 }
 
 unsigned Metric_INTEL_perfquery::getId() {
