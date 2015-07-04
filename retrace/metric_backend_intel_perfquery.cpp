@@ -1,5 +1,21 @@
 #include "metric_backend_intel_perfquery.hpp"
 
+void Metric_INTEL_perfquery::precache() {
+    unsigned offset;
+    glGetPerfCounterInfoINTEL(group, id, 0, nullptr, 0, nullptr, &offset, nullptr, nullptr, nullptr, nullptr);
+    this->offset = offset;
+
+    GLenum type;
+    glGetPerfCounterInfoINTEL(group, id, 0, nullptr, 0, nullptr, nullptr, nullptr, nullptr, &type, nullptr);
+    if (type == GL_PERFQUERY_COUNTER_DATA_UINT32_INTEL) nType = CNT_NUM_UINT;
+    else if (type == GL_PERFQUERY_COUNTER_DATA_FLOAT_INTEL) nType = CNT_NUM_FLOAT;
+    else if (type == GL_PERFQUERY_COUNTER_DATA_DOUBLE_INTEL) nType = CNT_NUM_DOUBLE;
+    else if (type == GL_PERFQUERY_COUNTER_DATA_BOOL32_INTEL) nType = CNT_NUM_BOOL;
+    else if (type == GL_PERFQUERY_COUNTER_DATA_UINT64_INTEL) nType = CNT_NUM_UINT64;
+    else nType = CNT_NUM_UINT;
+
+}
+
 unsigned Metric_INTEL_perfquery::getId() {
     return id;
 }
@@ -21,20 +37,13 @@ std::string Metric_INTEL_perfquery::getDescription() {
 }
 
 unsigned Metric_INTEL_perfquery::getOffset() {
-    unsigned offset;
-    glGetPerfCounterInfoINTEL(group, id, 0, nullptr, 0, nullptr, &offset, nullptr, nullptr, nullptr, nullptr);
+    if (!precached) precache();
     return offset;
 }
 
 MetricNumType Metric_INTEL_perfquery::getNumType() {
-    GLenum type;
-    glGetPerfCounterInfoINTEL(group, id, 0, nullptr, 0, nullptr, nullptr, nullptr, nullptr, &type, nullptr);
-    if (type == GL_PERFQUERY_COUNTER_DATA_UINT32_INTEL) return CNT_NUM_UINT;
-    else if (type == GL_PERFQUERY_COUNTER_DATA_FLOAT_INTEL) return CNT_NUM_FLOAT;
-    else if (type == GL_PERFQUERY_COUNTER_DATA_DOUBLE_INTEL) return CNT_NUM_DOUBLE;
-    else if (type == GL_PERFQUERY_COUNTER_DATA_BOOL32_INTEL) return CNT_NUM_BOOL;
-    else if (type == GL_PERFQUERY_COUNTER_DATA_UINT64_INTEL) return CNT_NUM_UINT64;
-    else return CNT_NUM_UINT;
+    if (!precached) precache();
+    return nType;
 }
 
 MetricType Metric_INTEL_perfquery::getType() {

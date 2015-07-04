@@ -16,9 +16,17 @@ class Metric_INTEL_perfquery : public Metric
 {
 private:
     unsigned group, id;
+    unsigned offset;
+    MetricNumType nType;
+    bool precached;
+
+    void precache();
 
 public:
-    Metric_INTEL_perfquery(unsigned g, unsigned i) : group(g), id(i) {}
+    Metric_INTEL_perfquery(unsigned g, unsigned i) : group(g), id(i),
+                                                     offset(0),
+                                                     nType(CNT_NUM_UINT),
+                                                     precached(false) {}
 
     unsigned getOffset();
 
