@@ -83,8 +83,6 @@ private:
 
     bool testMetrics(std::vector<Metric_AMD_perfmon>* metrics); // test if given set of metrics can be sampled in one pass
 
-    unsigned generatePasses(); // called in first beginPass
-
     void freeMonitor(unsigned monitor); // collect metrics data from the monitor
 
     static void populateLookupGroups(unsigned group, int error, void* userData);
@@ -106,7 +104,9 @@ public:
 
     int enableMetric(Metric* metric, bool perDraw = true);
 
-    void beginPass(bool perFrame = false);
+    unsigned generatePasses(bool perFrame = false);
+
+    void beginPass();
 
     void endPass();
 

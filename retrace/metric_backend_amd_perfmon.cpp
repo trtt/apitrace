@@ -197,9 +197,10 @@ bool MetricBackend_AMD_perfmon::testMetrics(std::vector<Metric_AMD_perfmon>* met
     return 1;
 }
 
-unsigned MetricBackend_AMD_perfmon::generatePasses() {
+unsigned MetricBackend_AMD_perfmon::generatePasses(bool perFrame) {
     std::vector<Metric_AMD_perfmon> copyMetrics(metrics);
     std::vector<Metric_AMD_perfmon> newPass;
+    this->perFrame = perFrame;
     nameLookup.clear(); // no need in it after all metrics are set up
     while (!copyMetrics.empty()) {
         std::vector<Metric_AMD_perfmon>::iterator it = copyMetrics.begin();
@@ -218,11 +219,7 @@ unsigned MetricBackend_AMD_perfmon::generatePasses() {
     return numPasses;
 }
 
-void MetricBackend_AMD_perfmon::beginPass(bool perFrame) {
-    if (curPass == 0) {
-        this->perFrame = perFrame;
-        generatePasses();
-    }
+void MetricBackend_AMD_perfmon::beginPass() {
     if (!numPasses) return;
     glGenPerfMonitorsAMD(NUM_MONITORS, monitors);
     unsigned id;
