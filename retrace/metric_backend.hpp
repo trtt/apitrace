@@ -29,6 +29,15 @@
 #include <string>
 
 /**
+ * Profiling boundary.
+ */
+enum QueryBoundary {
+    QUERY_BOUNDARY_DRAWCALL = 0, /**< draw call boundary */
+    QUERY_BOUNDARY_FRAME,        /**< frame boundary */
+    QUERY_BOUNDARY_CALL          /**< any call boundary */
+};
+
+/**
  * Numeric type of the metric.
  */
 enum MetricNumType {
@@ -42,22 +51,14 @@ enum MetricNumType {
 
 /**
  * Type of data metric represents.
- *
- * CNT_TYPE_GENERIC   : generally a number, comparable type
- * CNT_TYPE_NUM       : number, not necessarily represents comparable metric
- *                      (e.g. event number)
- * CNT_TYPE_DURATION  : duration
- * CNT_TYPE_PERCENT   : percentage
- * CNT_TYPE_TIMESTAMP : timestamp (e.g. GL_TIMESTAMP in OpenGL)
- * CNT_TYPE_OTHER     : not listed above
  */
 enum MetricType {
-    CNT_TYPE_GENERIC = 0,
-    CNT_TYPE_NUM,
-    CNT_TYPE_DURATION,
-    CNT_TYPE_PERCENT,
-    CNT_TYPE_TIMESTAMP,
-    CNT_TYPE_OTHER
+    CNT_TYPE_GENERIC = 0, /**< generally a number, comparable type */
+    CNT_TYPE_NUM,         /**< number, not necessarily comparable (e.g. event number) */
+    CNT_TYPE_DURATION,    /**< duration */
+    CNT_TYPE_PERCENT,     /**< percentage */
+    CNT_TYPE_TIMESTAMP,   /**< timestamp (e.g. GL_TIMESTAMP in OpenGL) */
+    CNT_TYPE_OTHER        /**< not listed above */
 };
 
 
@@ -129,7 +130,7 @@ typedef void (*enumDataCallback)(Metric* metric, int event, void* data,
  *
  * Unfortunately, not all collection systems allow to collect all metrics
  * at the same time. Therefore multiple passes are needed, this interface provides
- * means to implement such behaviour.
+ * the mean to implement such behaviour.
  *
  *
  * Typical workflow example:
@@ -137,18 +138,28 @@ typedef void (*enumDataCallback)(Metric* metric, int event, void* data,
  * backend->enableMetric(...);
  * ...
  * backend->enableMetric(...);
- * for (i=0; i < backend->generatePasses(..); i++) {
- *     backend->beginPass(...);
- *     backend->beginQuery(...);
- *     //profiled unit code
- *     backend->endQuery(...);
+ * for (i=0; i < backend->generatePasses(); i++) {
+ *     backend->beginPass();
+ *
+ *     backend->beginQuery(QUERY_BOUNDARY_FRAME);
+ *
+ *     backend->beginQuery(QUERY_BOUNDARY_CALL or QUERY_BOUNDARY_DRAWCALL);
+ *     ... profiled call ...
+ *     backend->endQuery(QUERY_BOUNDARY_CALL or QUERY_BOUNDARY_DRAWCALL);
+ *
  *     ...
- *     backend->beginQuery(...);
- *     ... profiled unit code ...
- *     backend->endQuery(...);
- *     backend->endPass(...);
+ *
+ *     backend->beginQuery(QUERY_BOUNDARY_CALL or QUERY_BOUNDARY_DRAWCALL);
+ *     ... profiled call ...
+ *     backend->endQuery(QUERY_BOUNDARY_CALL or QUERY_BOUNDARY_DRAWCALL);
+ *
+ *     backend->endQuery(QUERY_BOUNDARY_FRAME);
+ *
+ *     ... following frames ...
+ *
+ *     backend->endPass();
  * }
- * backend->enumData(...); // collect data
+ * // collect data
  *
  *
  * It is generally a good idea to implement MetricBackend as a singleton.
@@ -197,23 +208,20 @@ public:
     /**
      * Adds given metric object to the internal list of metrics
      * to be profiled.
-     * perDraw should be set false if metric is to be collected for all
-     * calls (not only draw calls).
+     * pollingRule sets the boundary for collecting metric
      * Returns error code (0 - no error).
      */
-    virtual int enableMetric(Metric* metric, bool perDraw = true) = 0;
+    virtual int enableMetric(Metric* metric, QueryBoundary pollingRule = QUERY_BOUNDARY_DRAWCALL) = 0;
 
     /**
      * Generates passes based on enabled metrics.
-     * perFrame option controls which units are to be profiled:
-     *   true  - frames
-     *   false - calls
      * Returns number of generated passes.
      */
-    virtual unsigned generatePasses(bool perFrame = false) = 0;
+    virtual unsigned generatePasses() = 0;
 
     /**
      * Begins pass. Subsequent calls begin next passes.
+     * A pass needs to be ended before starting a new one.
      */
     virtual void beginPass() = 0;
 
@@ -225,18 +233,22 @@ public:
     /**
      * Begins query (profiles unit, i.e. frames or calls). Subsequent calls
      * begin next queries.
-     * isDraw should be set true if profiled unit is a draw call.
+     * Parameter boundary should be set to the type of boundary beginQuery/endQuery
+     * constructions enclose.
+     * A query needs to be ended before starting a new one.
      */
-    virtual void beginQuery(bool isDraw = false) = 0;
+    virtual void beginQuery(QueryBoundary boundary = QUERY_BOUNDARY_DRAWCALL) = 0;
 
     /**
      * Ends query.
-     * isDraw should be set true if profiled unit is a draw call.
+     * Parameter boundary should be set to the type of boundary beginQuery/endQuery
+     * constructions enclose.
      */
-    virtual void endQuery(bool isDraw = false) = 0;
+    virtual void endQuery(QueryBoundary boundary = QUERY_BOUNDARY_DRAWCALL) = 0;
 
     /**
-     * Enumerates collected metrics data for a given query id.
+     * Enumerates collected metrics data for a given query id and given
+     * type of boundary.
      * Query ids begin with 0 for first query.
      * Metric data is passed to callback.
      *
@@ -245,13 +257,16 @@ public:
      * guaranteed that order is the same for every query.
      */
     virtual void enumDataQueryId(unsigned id, enumDataCallback callback,
+                                 QueryBoundary boundary,
                                  void* userData = nullptr) = 0;
 
     /**
+     * THIS FUNCTION IS NOT USED, BETTER TO REMOVE IT
      * Enumerates collected metrics data for all queries.
      * Metric data is passed to callback.
      */
-    virtual void enumData(enumDataCallback callback, void* userData = nullptr) = 0;
+    virtual void enumData(enumDataCallback callback, QueryBoundary boundary,
+                          void* userData = nullptr) = 0;
 
     /**
      * Returns number of passes generated by generatePasses(...).
