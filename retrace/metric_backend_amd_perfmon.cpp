@@ -179,10 +179,13 @@ std::string MetricBackend_AMD_perfmon::getGroupName(unsigned group) {
     return name;
 }
 
-int MetricBackend_AMD_perfmon::enableMetric(Metric* metric_, bool perDraw) {
+int MetricBackend_AMD_perfmon::enableMetric(Metric* metric_, QueryBoundary pollingRule) {
     unsigned id = metric_->getId();
     unsigned gid = metric_->getGroupId();
     unsigned monitor;
+
+    // profiling only draw calls
+    if (pollingRule == QUERY_BOUNDARY_CALL) return 1;
 
     // check that Metric is valid metric
     glGenPerfMonitorsAMD(1, &monitor);
@@ -195,7 +198,7 @@ int MetricBackend_AMD_perfmon::enableMetric(Metric* metric_, bool perDraw) {
     }
 
     Metric_AMD_perfmon metric(gid, id);
-    metrics.push_back(metric);
+    metrics[pollingRule].push_back(metric);
     return 0;
 }
 
@@ -219,11 +222,9 @@ MetricBackend_AMD_perfmon::testMetrics(std::vector<Metric_AMD_perfmon>* metrics)
     return 1;
 }
 
-unsigned MetricBackend_AMD_perfmon::generatePasses(bool perFrame) {
-    std::vector<Metric_AMD_perfmon> copyMetrics(metrics);
+void MetricBackend_AMD_perfmon::generatePassesBoundary(QueryBoundary boundary) {
+    std::vector<Metric_AMD_perfmon> copyMetrics(metrics[boundary]);
     std::vector<Metric_AMD_perfmon> newPass;
-    this->perFrame = perFrame;
-    nameLookup.clear(); // no need in it after all metrics are set up
     while (!copyMetrics.empty()) {
         std::vector<Metric_AMD_perfmon>::iterator it = copyMetrics.begin();
         while (it != copyMetrics.end()) {
@@ -237,12 +238,26 @@ unsigned MetricBackend_AMD_perfmon::generatePasses(bool perFrame) {
         passes.push_back(newPass);
         newPass.clear();
     }
+}
+
+unsigned MetricBackend_AMD_perfmon::generatePasses() {
+    generatePassesBoundary(QUERY_BOUNDARY_FRAME);
+    numFramePasses = passes.size();
+    generatePassesBoundary(QUERY_BOUNDARY_DRAWCALL);
+    nameLookup.clear(); // no need in it after all metrics are set up
     numPasses = passes.size();
-    return numPasses;
+    return passes.size();
 }
 
 void MetricBackend_AMD_perfmon::beginPass() {
     if (!numPasses) return;
+    /* First process per-frame passes, then per-call passes */
+    if (curPass < numFramePasses) {
+        perFrame = true;
+    } else {
+        perFrame = false;
+    }
+    /* Generate monitor */
     glGenPerfMonitorsAMD(NUM_MONITORS, monitors);
     unsigned id;
     for (Metric_AMD_perfmon &c : passes[curPass]) {
@@ -266,18 +281,22 @@ void MetricBackend_AMD_perfmon::endPass() {
     collector.endPass();
 }
 
-void MetricBackend_AMD_perfmon::beginQuery(bool isDraw) {
+void MetricBackend_AMD_perfmon::beginQuery(QueryBoundary boundary) {
     if (!numPasses) return;
-    if (!isDraw && !perFrame) return;
+    if (boundary == QUERY_BOUNDARY_CALL) return;
+    if ((boundary == QUERY_BOUNDARY_FRAME) && !perFrame) return;
+    if ((boundary == QUERY_BOUNDARY_DRAWCALL) && perFrame) return;
     if (!firstRound) freeMonitor(curMonitor);
     monitorEvent[curMonitor] = curEvent;
     glBeginPerfMonitorAMD(monitors[curMonitor]);
 }
 
-void MetricBackend_AMD_perfmon::endQuery(bool isDraw) {
+void MetricBackend_AMD_perfmon::endQuery(QueryBoundary boundary) {
     if (!numPasses) return;
+    if (boundary == QUERY_BOUNDARY_CALL) return;
+    if ((boundary == QUERY_BOUNDARY_FRAME) && !perFrame) return;
+    if ((boundary == QUERY_BOUNDARY_DRAWCALL) && perFrame) return;
     curEvent++;
-    if (!isDraw && !perFrame) return;
     glEndPerfMonitorAMD(monitors[curMonitor]);
     curMonitor++;
     if (curMonitor == NUM_MONITORS) firstRound = 0;
@@ -326,9 +345,19 @@ void MetricBackend_AMD_perfmon::freeMonitor(unsigned monitorId) {
 void
 MetricBackend_AMD_perfmon::enumDataQueryId(unsigned id,
                                            enumDataCallback callback,
+                                           QueryBoundary boundary,
                                            void* userData)
 {
-    for (unsigned j = 0; j < numPasses; j++) {
+    /* Determine passes to return depending on the boundary */
+    if (boundary == QUERY_BOUNDARY_CALL) return;
+    unsigned j = 0;
+    unsigned nPasses = numFramePasses;
+    if (boundary == QUERY_BOUNDARY_DRAWCALL) {
+        j = numFramePasses;
+        nPasses = numPasses;
+    }
+    /* enum passes */
+    for (; j < nPasses; j++) {
         unsigned* buf = collector.getDataBuffer(j, id);
         for (auto &m : passes[j]) {
             void* data = (buf) ? &buf[metricOffsets[j][&m]] : nullptr;
@@ -337,9 +366,10 @@ MetricBackend_AMD_perfmon::enumDataQueryId(unsigned id,
     }
 }
 
-void MetricBackend_AMD_perfmon::enumData(enumDataCallback callback, void* userData) {
+void MetricBackend_AMD_perfmon::enumData(enumDataCallback callback,
+                                         QueryBoundary boundary, void* userData) {
     for (unsigned i = 0; i < curEvent; i++) {
-        enumDataQueryId(i, callback, userData);
+        enumDataQueryId(i, callback, boundary, userData);
     }
 }
 

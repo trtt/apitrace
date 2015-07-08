@@ -21,7 +21,9 @@ private:
     void precache();
 
 public:
-    Metric_AMD_perfmon(unsigned g, unsigned i) : group(g), id(i) {}
+    Metric_AMD_perfmon(unsigned g, unsigned i) : group(g), id(i),
+                                                 nType(CNT_NUM_UINT),
+                                                 precached(false) {}
 
     GLenum getSize();
 
@@ -72,11 +74,12 @@ private:
     /* metricOffsets[pass][Metric*] -- metric offset in data returned after profiling */
     std::vector<std::map<Metric_AMD_perfmon*, unsigned>> metricOffsets;
     int numPasses;
+    int numFramePasses;
     int curPass;
     unsigned curEvent; // Currently evaluated event
     unsigned monitorEvent[NUM_MONITORS]; // Event saved in monitor
     DataCollector collector;
-    std::vector<Metric_AMD_perfmon> metrics; // store metrics selected for profiling
+    std::vector<Metric_AMD_perfmon> metrics[2]; // store metrics selected for profiling
     static std::map<std::string, std::pair<unsigned, unsigned>> nameLookup;
 
     MetricBackend_AMD_perfmon(glretrace::Context* context);
@@ -94,6 +97,8 @@ private:
 
     static void populateLookupMetrics(Metric* metric, int error, void* userData);
 
+    void generatePassesBoundary(QueryBoundary boundary);
+
 public:
     bool isSupported();
 
@@ -108,22 +113,24 @@ public:
 
     std::string getGroupName(unsigned group);
 
-    int enableMetric(Metric* metric, bool perDraw = true);
+    int enableMetric(Metric* metric, QueryBoundary pollingRule = QUERY_BOUNDARY_DRAWCALL);
 
-    unsigned generatePasses(bool perFrame = false);
+    unsigned generatePasses();
 
     void beginPass();
 
     void endPass();
 
-    void beginQuery(bool isDraw = false);
+    void beginQuery(QueryBoundary boundary = QUERY_BOUNDARY_DRAWCALL);
 
-    void endQuery(bool isDraw = false);
+    void endQuery(QueryBoundary boundary = QUERY_BOUNDARY_DRAWCALL);
 
     void enumDataQueryId(unsigned id, enumDataCallback callback,
+                         QueryBoundary boundary,
                          void* userData = nullptr);
 
-    void enumData(enumDataCallback callback, void* userData = nullptr);
+    void enumData(enumDataCallback callback, QueryBoundary boundary,
+                  void* userData = nullptr);
 
     unsigned getNumPasses();
 
