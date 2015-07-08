@@ -1,5 +1,6 @@
 #include <string>
 #include <vector>
+#include <set>
 #include <regex>
 #include <iostream>
 
@@ -12,6 +13,8 @@
 namespace glretrace {
 
 bool metricBackendsSetup = false;
+bool profilingBoundaries[3] = {false, false, false};
+unsigned profilingBoundariesIndex[3] = {0,0,0};
 std::vector<MetricBackend*> metricBackends; // to be populated in initContext()
 MetricBackend* curMetricBackend = nullptr; // backend active in the current pass
 MetricWriter profiler(&metricBackends);
@@ -66,19 +69,19 @@ void listMetricsCLI() {
     }
 }
 
-void enableMetricsFromCLI() {
+void enableMetricsFromCLI(const char* metrics, QueryBoundary pollingRule) {
     const std::regex rOuter("\\s*([^:]+):\\s*([^;]*);?"); // backend: (...)
-    const std::regex rInner("\\s*\\[\\s*(\\d+)\\s*,\\s*(\\d+)\\s*\\](\\*)?\\s*,?"
-                            "|\\s*([^;\\*,]+)(\\*)?,?"); // [g, i]*? | metric*?
-    bool perDraw;
+    const std::regex rInner("\\s*\\[\\s*(\\d+)\\s*,\\s*(\\d+)\\s*\\]\\s*,?"
+                            "|\\s*([^;\\*,]+),?"); // [g, i] | metricName
     std::unique_ptr<Metric> p;
     std::string metricName;
 
-    auto rOuter_it = std::cregex_token_iterator(retrace::profilingWithMetricsString,
-        retrace::profilingWithMetricsString+std::strlen(retrace::profilingWithMetricsString),
-        rOuter, {1,2});
+    auto rOuter_it = std::cregex_token_iterator(metrics,
+                                                metrics+std::strlen(metrics),
+                                                rOuter, {1,2});
     auto rOuter_end = std::cregex_token_iterator();
     while (rOuter_it != rOuter_end) {
+        static std::set<MetricBackend*> backendsHash; // for not allowing duplicates
         std::string backendName = (rOuter_it++)->str();
         MetricBackend* backend = getBackend(backendName);
         if (!backend) {
@@ -93,27 +96,30 @@ void enableMetricsFromCLI() {
             rOuter_it++;
             continue;
         }
-        metricBackends.push_back(backend);
+        /**
+         * order in metricBackends is important for output
+         * also there should be no duplicates
+         */
+        if (backendsHash.find(backend) == backendsHash.end()) {
+            metricBackends.push_back(backend);
+            backendsHash.insert(backend);
+        }
 
         auto rInner_it = std::cregex_token_iterator(rOuter_it->first, rOuter_it->second,
-                                                    rInner, {1,2,3,4,5});
+                                                    rInner, {1,2,3});
         auto rInner_end = std::cregex_token_iterator();
         while (rInner_it != rInner_end) {
             if (rInner_it->matched) {
                 std::string groupId = (rInner_it++)->str();
                 std::string metricId = (rInner_it++)->str();
-                perDraw = ((rInner_it++)->matched) ? false : true;
-                rInner_it++; // +/+= operators not supported
                 rInner_it++;
                 p = backend->getMetricById(std::stoi(groupId), std::stoi(metricId));
                 metricName = "[" + groupId + ", " + metricId + "]";
             } else {
                 rInner_it++;
                 rInner_it++;
-                rInner_it++;
                 metricName = (rInner_it++)->str();
                 p = backend->getMetricByName(metricName);
-                perDraw = ((rInner_it++)->matched) ? false : true;
             }
 
             if (!p) {
@@ -121,10 +127,12 @@ void enableMetricsFromCLI() {
                     << "\"." << std::endl;
                 continue;
             }
-            int error = backend->enableMetric(p.get(), perDraw);
+            int error = backend->enableMetric(p.get(), pollingRule);
             if (error) {
                 std::cerr << "Warning: Metric " << metricName << " not enabled"
                              " (error " << error << ")." << std::endl;
+            } else {
+                profilingBoundaries[pollingRule] = true;
             }
         }
         rOuter_it++;
