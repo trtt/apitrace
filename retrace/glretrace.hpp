@@ -64,6 +64,8 @@ struct Context {
 };
 
 extern bool metricBackendsSetup;
+extern bool profilingBoundaries[3];
+extern unsigned profilingBoundariesIndex[3];
 extern std::vector<MetricBackend*> metricBackends;
 extern MetricBackend* curMetricBackend;
 extern MetricWriter profiler;
@@ -129,7 +131,7 @@ bool isLastPass();
 
 void listMetricsCLI();
 
-void enableMetricsFromCLI();
+void enableMetricsFromCLI(const char* metrics, QueryBoundary pollingRule);
 
 GLenum
 blockOnFence(trace::Call &call, GLsync sync, GLbitfield flags);

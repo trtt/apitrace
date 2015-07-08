@@ -85,9 +85,10 @@ unsigned samples = 1;
 
 unsigned curPass = 0;
 unsigned numPasses = 1;
-bool profilingCalls = false;
-bool profilingFrames = false;
-char* profilingWithMetricsString;
+bool profilingWithBackends = false;
+char* profilingCallsMetricsString;
+char* profilingFramesMetricsString;
+char* profilingDrawCallsMetricsString;
 bool profilingListMetrics = false;
 
 bool profiling = false;
@@ -633,9 +634,9 @@ usage(const char *argv0) {
         "      --pgpu              gpu profiling (gpu times per draw call)\n"
         "      --ppd               pixels drawn profiling (pixels drawn per draw call)\n"
         "      --pmem              memory usage profiling (vsize rss per call)\n"
-        "      --pcalls            calls profiling (based on metrics selected)\n"
-        "      --pframes           frames profiling (based on metrics selected)\n"
-        "      --with-metrics      metrics selection\n"
+        "      --pcalls            call profiling metrics selection\n"
+        "      --pframes           frame profiling metrics selection\n"
+        "      --pdrawcalls        draw call profiling metrics selection\n"
         "      --list-metrics      list all available metrics for TRACE\n"
         "      --call-nos[=BOOL]   use call numbers in snapshot filenames\n"
         "      --core              use core profile\n"
@@ -669,7 +670,7 @@ enum {
     PMEM_OPT,
     PCALLS_OPT,
     PFRAMES_OPT,
-    PWMETRICS_OPT,
+    PDRAWCALLS_OPT,
     PLMETRICS_OPT,
     SB_OPT,
     SNAPSHOT_FORMAT_OPT,
@@ -699,9 +700,9 @@ longOptions[] = {
     {"pgpu", no_argument, 0, PGPU_OPT},
     {"ppd", no_argument, 0, PPD_OPT},
     {"pmem", no_argument, 0, PMEM_OPT},
-    {"pcalls", no_argument, 0, PCALLS_OPT},
-    {"pframes", no_argument, 0, PFRAMES_OPT},
-    {"with-metrics", required_argument, 0, PWMETRICS_OPT},
+    {"pcalls", required_argument, 0, PCALLS_OPT},
+    {"pframes", required_argument, 0, PFRAMES_OPT},
+    {"pdrawcalls", required_argument, 0, PDRAWCALLS_OPT},
     {"list-metrics", no_argument, 0, PLMETRICS_OPT},
     {"sb", no_argument, 0, SB_OPT},
     {"snapshot-prefix", required_argument, 0, 's'},
@@ -878,22 +879,28 @@ int main(int argc, char **argv)
             retrace::debug = 0;
             retrace::profiling = true;
             retrace::verbosity = -1;
-            retrace::profilingCalls = true;
+            retrace::profilingWithBackends = true;
+            retrace::profilingCallsMetricsString = optarg;
             break;
         case PFRAMES_OPT:
             retrace::debug = 0;
             retrace::profiling = true;
             retrace::verbosity = -1;
-            retrace::profilingFrames = true;
+            retrace::profilingWithBackends = true;
+            retrace::profilingFramesMetricsString = optarg;
             break;
-        case PWMETRICS_OPT:
-            profilingWithMetricsString = optarg;
+        case PDRAWCALLS_OPT:
+            retrace::debug = 0;
+            retrace::profiling = true;
+            retrace::verbosity = -1;
+            retrace::profilingWithBackends = true;
+            retrace::profilingDrawCallsMetricsString = optarg;
             break;
         case PLMETRICS_OPT:
             retrace::debug = 0;
             retrace::profiling = true;
             retrace::verbosity = -1;
-            retrace::profilingCalls = true;
+            retrace::profilingWithBackends = true;
             retrace::profilingListMetrics = true;
             break;
         default:
@@ -920,7 +927,7 @@ int main(int argc, char **argv)
 #endif
 
     retrace::setUp();
-    if (retrace::profiling && !retrace::profilingCalls && !retrace::profilingFrames) {
+    if (retrace::profiling && !retrace::profilingWithBackends) {
         retrace::profiler.setup(retrace::profilingCpuTimes, retrace::profilingGpuTimes, retrace::profilingPixelsDrawn, retrace::profilingMemoryUsage);
     }
 

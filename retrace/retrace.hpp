@@ -118,9 +118,10 @@ extern bool forceWindowed;
  */
 extern unsigned curPass;
 extern unsigned numPasses;
-extern bool profilingCalls;
-extern bool profilingFrames;
-extern char* profilingWithMetricsString;
+extern bool profilingWithBackends;
+extern char* profilingCallsMetricsString;
+extern char* profilingFramesMetricsString;
+extern char* profilingDrawCallsMetricsString;
 extern bool profilingListMetrics;
 
 extern bool profiling;
