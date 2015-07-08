@@ -70,13 +70,14 @@ private:
 
 private:
     // map from query id to its Metric list
-    std::map<unsigned, std::vector<Metric_INTEL_perfquery>> passes;
+    std::map<unsigned, std::vector<Metric_INTEL_perfquery>> passes[2];
     /* curQueryMetrics -- iterator through passes */
     std::map<unsigned, std::vector<Metric_INTEL_perfquery>>::iterator curQueryMetrics;
     unsigned curQuery;
     bool supported;
     bool perFrame;
     int numPasses;
+    int numFramePasses;
     int curPass;
     unsigned curEvent; // Currently evaluated event
     DataCollector collector;
@@ -109,22 +110,24 @@ public:
 
     std::string getGroupName(unsigned group);
 
-    int enableMetric(Metric* metric, bool perDraw = true);
+    int enableMetric(Metric* metric, QueryBoundary pollingRule = QUERY_BOUNDARY_DRAWCALL);
 
-    unsigned generatePasses(bool perFrame = false);
+    unsigned generatePasses();
 
     void beginPass();
 
     void endPass();
 
-    void beginQuery(bool isDraw = false);
+    void beginQuery(QueryBoundary boundary = QUERY_BOUNDARY_DRAWCALL);
 
-    void endQuery(bool isDraw = false);
+    void endQuery(QueryBoundary boundary = QUERY_BOUNDARY_DRAWCALL);
 
     void enumDataQueryId(unsigned id, enumDataCallback callback,
+                         QueryBoundary boundary,
                          void* userData = nullptr);
 
-    void enumData(enumDataCallback callback, void* userData = nullptr);
+    void enumData(enumDataCallback callback, QueryBoundary boundary,
+                  void* userData = nullptr);
 
     unsigned getNumPasses();
 

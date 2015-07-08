@@ -181,7 +181,8 @@ std::string MetricBackend_INTEL_perfquery::getGroupName(unsigned group) {
     return std::string(name);
 }
 
-int MetricBackend_INTEL_perfquery::enableMetric(Metric* metric_, bool perDraw) {
+int MetricBackend_INTEL_perfquery::enableMetric(Metric* metric_, QueryBoundary pollingRule) {
+    if (pollingRule == QUERY_BOUNDARY_CALL) return 1;
     unsigned id = metric_->getId();
     unsigned gid = metric_->getGroupId();
     unsigned numCounters;
@@ -193,21 +194,29 @@ int MetricBackend_INTEL_perfquery::enableMetric(Metric* metric_, bool perDraw) {
     if (gid >= numCounters || err == GL_INVALID_VALUE) {
         return 1;
     }
+
     Metric_INTEL_perfquery metric(gid, id);
-    passes[gid].push_back(metric);
+    passes[pollingRule][gid].push_back(metric);
     return 0;
 }
 
-unsigned MetricBackend_INTEL_perfquery::generatePasses(bool perFrame) {
-    this->perFrame = perFrame;
-    curQueryMetrics = passes.begin();
-    numPasses = passes.size();
+unsigned MetricBackend_INTEL_perfquery::generatePasses() {
+    /* begin with passes that profile frames */
+    perFrame = true;
+    curQueryMetrics = passes[QUERY_BOUNDARY_FRAME].begin();
+    numFramePasses = passes[QUERY_BOUNDARY_FRAME].size();
+    numPasses = numFramePasses + passes[QUERY_BOUNDARY_DRAWCALL].size();
     nameLookup.clear(); // no need in it after all metrics are set up
     return numPasses;
 }
 
 void MetricBackend_INTEL_perfquery::beginPass() {
-    if (!numPasses || curQueryMetrics == passes.end()) return;
+    if (!numPasses || curQueryMetrics == passes[QUERY_BOUNDARY_DRAWCALL].end()) return;
+    /* advance to draw calls after frames */
+    if (curQueryMetrics == passes[QUERY_BOUNDARY_FRAME].end()) {
+        perFrame = false;
+        curQueryMetrics = passes[QUERY_BOUNDARY_DRAWCALL].begin();
+    }
     glCreatePerfQueryINTEL(curQueryMetrics->first, &curQuery);
     curEvent = 0;
 }
@@ -220,16 +229,20 @@ void MetricBackend_INTEL_perfquery::endPass() {
     collector.endPass();
 }
 
-void MetricBackend_INTEL_perfquery::beginQuery(bool isDraw) {
+void MetricBackend_INTEL_perfquery::beginQuery(QueryBoundary boundary) {
     if (!numPasses) return;
-    if (!isDraw && !perFrame) return;
+    if (boundary == QUERY_BOUNDARY_CALL) return;
+    if ((boundary == QUERY_BOUNDARY_FRAME) && !perFrame) return;
+    if ((boundary == QUERY_BOUNDARY_DRAWCALL) && perFrame) return;
     glBeginPerfQueryINTEL(curQuery);
 }
 
-void MetricBackend_INTEL_perfquery::endQuery(bool isDraw) {
+void MetricBackend_INTEL_perfquery::endQuery(QueryBoundary boundary) {
     if (!numPasses) return;
+    if (boundary == QUERY_BOUNDARY_CALL) return;
+    if ((boundary == QUERY_BOUNDARY_FRAME) && !perFrame) return;
+    if ((boundary == QUERY_BOUNDARY_DRAWCALL) && perFrame) return;
     curEvent++;
-    if (!isDraw && !perFrame) return;
     glEndPerfQueryINTEL(curQuery);
     freeQuery(curEvent-1);
 }
@@ -248,10 +261,20 @@ void MetricBackend_INTEL_perfquery::freeQuery(unsigned event) {
 
 void MetricBackend_INTEL_perfquery::enumDataQueryId(unsigned id,
                                                     enumDataCallback callback,
+                                                    QueryBoundary boundary,
                                                     void* userData)
 {
-    auto queryIt = passes.begin();
-    for (unsigned j = 0; j < numPasses; j++) {
+    /* Determine passes to return depending on the boundary */
+    if (boundary == QUERY_BOUNDARY_CALL) return;
+    auto queryIt = passes[QUERY_BOUNDARY_FRAME].begin();
+    unsigned j = 0;
+    unsigned nPasses = numFramePasses;
+    if (boundary == QUERY_BOUNDARY_DRAWCALL) {
+        queryIt = passes[QUERY_BOUNDARY_DRAWCALL].begin();
+        j = numFramePasses;
+        nPasses = numPasses;
+    }
+    for (; j < nPasses; j++) {
         unsigned char* buf = collector.getDataBuffer(j, id);
         for (auto &k : queryIt->second) {
             if (buf) {
@@ -265,10 +288,11 @@ void MetricBackend_INTEL_perfquery::enumDataQueryId(unsigned id,
 }
 
 void MetricBackend_INTEL_perfquery::enumData(enumDataCallback callback,
+                                             QueryBoundary boundary,
                                              void* userData)
 {
     for (unsigned i = 0; i < curEvent; i++) {
-        enumDataQueryId(i, callback, userData);
+        enumDataQueryId(i, callback, boundary, userData);
     }
 }
 
