@@ -4,15 +4,15 @@
 
 void MetricWriter::addCall(int no,
         const char* name,
-        unsigned program, unsigned eventId)
+        unsigned program, unsigned eventId, bool isDraw)
 {
     ProfilerCall tempCall = {no, program, name, eventId};
+    if (isDraw) drawCallQueue.push(tempCall);
     callQueue.push(tempCall);
 }
 
 void MetricWriter::addFrame(unsigned eventId)
 {
-    if (!perFrame) perFrame = true;
     ProfilerFrame tempFrame = {eventId};
     frameQueue.push(tempFrame);
 }
@@ -41,22 +41,32 @@ void MetricWriter::writeApiData(Metric* metric, int event, void* data, int error
     }
 }
 
-void MetricWriter::writeCall() {
-    ProfilerCall tempCall = callQueue.front();
+void MetricWriter::writeCall(bool isDraw) {
+    ProfilerCall tempCall;
+    QueryBoundary qb;
+    if (!isDraw) {
+        tempCall = callQueue.front();
+        qb = QUERY_BOUNDARY_CALL;
+    } else {
+        tempCall = drawCallQueue.front();
+        qb = QUERY_BOUNDARY_DRAWCALL;
+    }
 
     if (!header) {
         std::cout << "#\tcall no\tprogram\tname";
-        for (MetricBackend* &a : *metricApis) {
-            a->enumDataQueryId(tempCall.eventId, &writeApiData);
+        for (auto &a : *metricApis) {
+            a->enumDataQueryId(tempCall.eventId, &writeApiData, qb);
         }
         std::cout << std::endl;
         header = true;
         return;
     }
 
+    if (!isDraw) callQueue.pop();
+    else drawCallQueue.pop();
+
     if (tempCall.no == -1) {
         std::cout << "frame_end" << std::endl;
-        callQueue.pop();
         return;
     }
 
@@ -65,13 +75,11 @@ void MetricWriter::writeCall() {
         << "\t" << tempCall.program
         << "\t" << tempCall.name;
 
-    for (MetricBackend* &a : *metricApis) {
-        a->enumDataQueryId(tempCall.eventId, &writeApiData);
+    for (auto &a : *metricApis) {
+        a->enumDataQueryId(tempCall.eventId, &writeApiData, qb);
     }
 
     std::cout << std::endl;
-
-    callQueue.pop();
 }
 
 void MetricWriter::writeFrame() {
@@ -79,8 +87,8 @@ void MetricWriter::writeFrame() {
 
     if (!header) {
         std::cout << "#";
-        for (MetricBackend* &a : *metricApis) {
-            a->enumDataQueryId(tempFrame.eventId, &writeApiData);
+        for (auto &a : *metricApis) {
+            a->enumDataQueryId(tempFrame.eventId, &writeApiData, QUERY_BOUNDARY_FRAME);
         }
         std::cout << std::endl;
         header = true;
@@ -89,8 +97,8 @@ void MetricWriter::writeFrame() {
 
     std::cout << "frame";
 
-    for (MetricBackend* &a : *metricApis) {
-        a->enumDataQueryId(tempFrame.eventId, &writeApiData);
+    for (auto &a : *metricApis) {
+        a->enumDataQueryId(tempFrame.eventId, &writeApiData, QUERY_BOUNDARY_FRAME);
     }
 
     std::cout << std::endl;
@@ -98,16 +106,28 @@ void MetricWriter::writeFrame() {
     frameQueue.pop();
 }
 
-void MetricWriter::writeAll() {
-    if (!perFrame) {
-        while (!callQueue.empty()) {
-            writeCall();
-        }
-    } else {
+void MetricWriter::writeAll(QueryBoundary boundary) {
+    switch(boundary) {
+        case QUERY_BOUNDARY_FRAME:
         while (!frameQueue.empty()) {
             writeFrame();
         }
+        break;
+
+        case QUERY_BOUNDARY_DRAWCALL:
+        while (!drawCallQueue.empty()) {
+            writeCall(true);
+        }
+        break;
+
+        case QUERY_BOUNDARY_CALL:
+        while (!callQueue.empty()) {
+            writeCall(false);
+        }
+        break;
     }
+    std::cout << std::endl;
+    header = false;
 }
 
 bool MetricWriter::header = false;

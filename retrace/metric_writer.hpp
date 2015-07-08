@@ -1,7 +1,7 @@
 #pragma once
 
 #include <queue>
-#include <vector>
+#include <set>
 #include <string>
 
 #include "metric_backend.hpp"
@@ -20,9 +20,12 @@ struct ProfilerFrame {
 class MetricWriter
 {
 private:
+    bool perCall;
+    bool perDrawCall;
     bool perFrame;
     static bool header;
     std::queue<ProfilerCall> callQueue;
+    std::queue<ProfilerCall> drawCallQueue;
     std::queue<ProfilerFrame> frameQueue;
     std::vector<MetricBackend*>* metricApis;
 
@@ -32,16 +35,16 @@ public:
 
     void addCall(int no,
                  const char* name,
-                 unsigned program, unsigned eventId);
+                 unsigned program, unsigned eventId, bool isDraw);
 
     void addFrame(unsigned eventId);
 
     static void writeApiData(Metric* metric, int event, void* data, int error,
                              void* userData);
 
-    void writeCall();
+    void writeCall(bool isDraw);
 
     void writeFrame();
 
-    void writeAll();
+    void writeAll(QueryBoundary boundary);
 };
