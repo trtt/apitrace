@@ -1,0 +1,10 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+
+<qresource prefix="/">
+    <file>TreeViewCustom.qml</file>
+    <file>metric_selection.qml</file>
+    <file>test.txt</file>
+</qresource>
+
+</RCC>

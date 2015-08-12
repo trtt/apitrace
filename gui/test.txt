@@ -1,0 +1,163 @@
+Available metrics: 
+
+Backend GL_AMD_performance_monitor:
+
+  Group #0: Observability Architecture Counters.
+    Metric #0: Aggregated Core Array Active (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: 
+    Metric #1: Aggregated Core Array Stalled (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: 
+    Metric #2: Vertex Shader Active Time (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: 
+    Metric #3: Vertex Shader Stall Time - Core Stall (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: 
+    Metric #4: # VS threads loaded (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: 
+    Metric #5: Vertex Shader Ready but not running Time (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: 
+    Metric #6: Geometry Shader Active Time (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: 
+    Metric #7: Geometry Shader Stall Time - Core Stall (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: 
+    Metric #8: # GS threads loaded (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: 
+    Metric #9: Geometry Shader Ready but not running Time (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: 
+    Metric #10: Pixel Shader Active Time (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: 
+    Metric #11: Pixel Shader Stall Time - Core Stall (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: 
+    Metric #12: # PS threads loaded (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: 
+    Metric #13: Pixel Shader Ready but not running Time (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: 
+    Metric #14: Early Z Test Pixels Passing (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: 
+    Metric #15: Early Z Test Pixels Failing (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: 
+    Metric #16: Early Stencil Test Pixels Passing (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: 
+    Metric #17: Early Stencil Test Pixels Failing (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: 
+    Metric #18: Pixel Kill Count (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: 
+    Metric #19: Alpha Test Pixels Failed (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: 
+    Metric #20: Post PS Stencil Pixels Failed (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: 
+    Metric #21: Post PS Z buffer Pixels Failed (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: 
+    Metric #22: Pixels/samples Written in the frame buffer (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: 
+    Metric #23: GPU Busy (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: 
+    Metric #24: CL active and not stalled (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: 
+    Metric #25: SF active and stalled (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: 
+
+  Group #1: Pipeline Statistics Registers.
+    Metric #0: IA_VERTICES_COUNT (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT64).
+           Description: 
+    Metric #1: IA_PRIMITIVES_COUNT (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT64).
+           Description: 
+    Metric #2: VS_INVOCATION_COUNT (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT64).
+           Description: 
+    Metric #3: GS_INVOCATION_COUNT (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT64).
+           Description: 
+    Metric #4: GS_PRIMITIVES_COUNT (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT64).
+           Description: 
+    Metric #5: CL_INVOCATION_COUNT (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT64).
+           Description: 
+    Metric #6: CL_PRIMITIVES_COUNT (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT64).
+           Description: 
+    Metric #7: PS_INVOCATION_COUNT (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT64).
+           Description: 
+    Metric #8: PS_DEPTH_COUNT (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT64).
+           Description: 
+    Metric #9: SO_NUM_PRIMS_WRITTEN (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT64).
+           Description: 
+    Metric #10: SO_PRIM_STORAGE_NEEDED (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT64).
+           Description: 
+
+
+Backend GL_INTEL_performance_query:
+
+  Group #1: Observability Architecture Counters.
+    Metric #1: Aggregated Core Array Active (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: Aggregated Core Array Active
+    Metric #2: Aggregated Core Array Stalled (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: Aggregated Core Array Stalled
+    Metric #3: Vertex Shader Active Time (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: Vertex Shader Active Time
+    Metric #4: Vertex Shader Stall Time - Core Stall (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: Vertex Shader Stall Time - Core Stall
+    Metric #5: # VS threads loaded (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: # VS threads loaded
+    Metric #6: Vertex Shader Ready but not running Time (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: Vertex Shader Ready but not running Time
+    Metric #7: Geometry Shader Active Time (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: Geometry Shader Active Time
+    Metric #8: Geometry Shader Stall Time - Core Stall (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: Geometry Shader Stall Time - Core Stall
+    Metric #9: # GS threads loaded (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: # GS threads loaded
+    Metric #10: Geometry Shader Ready but not running Time (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: Geometry Shader Ready but not running Time
+    Metric #11: Pixel Shader Active Time (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: Pixel Shader Active Time
+    Metric #12: Pixel Shader Stall Time - Core Stall (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: Pixel Shader Stall Time - Core Stall
+    Metric #13: # PS threads loaded (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: # PS threads loaded
+    Metric #14: Pixel Shader Ready but not running Time (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: Pixel Shader Ready but not running Time
+    Metric #15: Early Z Test Pixels Passing (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: Early Z Test Pixels Passing
+    Metric #16: Early Z Test Pixels Failing (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: Early Z Test Pixels Failing
+    Metric #17: Early Stencil Test Pixels Passing (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: Early Stencil Test Pixels Passing
+    Metric #18: Early Stencil Test Pixels Failing (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: Early Stencil Test Pixels Failing
+    Metric #19: Pixel Kill Count (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: Pixel Kill Count
+    Metric #20: Alpha Test Pixels Failed (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: Alpha Test Pixels Failed
+    Metric #21: Post PS Stencil Pixels Failed (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: Post PS Stencil Pixels Failed
+    Metric #22: Post PS Z buffer Pixels Failed (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: Post PS Z buffer Pixels Failed
+    Metric #23: Pixels/samples Written in the frame buffer (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: Pixels/samples Written in the frame buffer
+    Metric #24: GPU Busy (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: GPU Busy
+    Metric #25: CL active and not stalled (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: CL active and not stalled
+    Metric #26: SF active and stalled (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT).
+           Description: SF active and stalled
+
+  Group #2: Pipeline Statistics Registers.
+    Metric #1: IA_VERTICES_COUNT (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT64).
+           Description: IA_VERTICES_COUNT
+    Metric #2: IA_PRIMITIVES_COUNT (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT64).
+           Description: IA_PRIMITIVES_COUNT
+    Metric #3: VS_INVOCATION_COUNT (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT64).
+           Description: VS_INVOCATION_COUNT
+    Metric #4: GS_INVOCATION_COUNT (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT64).
+           Description: GS_INVOCATION_COUNT
+    Metric #5: GS_PRIMITIVES_COUNT (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT64).
+           Description: GS_PRIMITIVES_COUNT
+    Metric #6: CL_INVOCATION_COUNT (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT64).
+           Description: CL_INVOCATION_COUNT
+    Metric #7: CL_PRIMITIVES_COUNT (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT64).
+           Description: CL_PRIMITIVES_COUNT
+    Metric #8: PS_INVOCATION_COUNT (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT64).
+           Description: PS_INVOCATION_COUNT
+    Metric #9: PS_DEPTH_COUNT (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT64).
+           Description: PS_DEPTH_COUNT
+    Metric #10: SO_NUM_PRIMS_WRITTEN (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT64).
+           Description: SO_NUM_PRIMS_WRITTEN
+    Metric #11: SO_PRIM_STORAGE_NEEDED (type: CNT_TYPE_GENERIC, num. type: CNT_NUM_UINT64).
+           Description: SO_PRIM_STORAGE_NEEDED
+
