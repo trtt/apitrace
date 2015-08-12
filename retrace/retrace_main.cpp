@@ -933,9 +933,9 @@ int main(int argc, char **argv)
 
     os::setExceptionCallback(exceptionCallback);
 
-    for (unsigned j = 0; j < retrace::numPasses; j++) {
-        retrace::curPass = j;
-
+    for (retrace::curPass = 0; retrace::curPass < retrace::numPasses;
+         retrace::curPass++)
+    {
         for (i = optind; i < argc; ++i) {
             if (!retrace::parser.open(argv[i])) {
                 return 1;
