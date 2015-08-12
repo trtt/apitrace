@@ -62,6 +62,12 @@ set(qapitrace_SRCS
    graphing/timeaxiswidget.cpp
  )
 
+set(qqapitrace_SRCS
+   qqmain.cpp
+   metric_selection_model.cpp
+   metric_data_model.cpp
+)
+
 qt5_add_resources(qapitrace_SRCS qapitrace.qrc)
 
 set(qapitrace_UIS
@@ -80,11 +86,18 @@ set(qapitrace_UIS
    ui/shaderssourcewidget.ui
    )
 
+set(qqapitrace_UIS
+   ui/metric_selection.ui
+   ui/qqmain.ui
+   )
+
+
 set (CMAKE_AUTOMOC ON)
 # Silence `Note: No relevant classes found. No output generated.`
 set (CMAKE_AUTOMOC_MOC_OPTIONS "-nn")
 
 QT5_WRAP_UI(qapitrace_UIS_H ${qapitrace_UIS})
+QT5_WRAP_UI(qqapitrace_UIS_H ${qqapitrace_UIS})
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 #add_app_icon(qapitrace_SRCS ../icons/hi*-qapitrace.png)
@@ -94,6 +107,7 @@ include_directories (
 )
 
 add_executable (qapitrace ${qapitrace_SRCS} ${qapitrace_UIS_H})
+add_executable (qqapitrace ${qqapitrace_SRCS} ${qqapitrace_UIS_H})
 
 # Avoid qt5_use_modules. See also:
 # - https://bugreports.qt.io/browse/QTBUG-39457
@@ -107,6 +121,7 @@ else ()
     target_link_libraries (qubjson Qt5::Widgets)
     target_link_libraries (qubjson_test Qt5::Widgets)
     target_link_libraries (qapitrace Qt5::Widgets Qt5::Network)
+    target_link_libraries (qqapitrace Qt5::Widgets)
 endif ()
 
 target_link_libraries (qapitrace
