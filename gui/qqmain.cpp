@@ -23,7 +23,13 @@ int main(int argc, char *argv[])
     ui.treeView->setModel(&model);
     ui.treeView->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
     if (widget->exec()) {
-        model.generateMetricList();
+        QString cliOption;
+        QHash<QString, QList<MetricItem*>> mFrame;
+        QHash<QString, QList<MetricItem*>> mCall;
+        model.generateMetricList(cliOption, mFrame, mCall);
+        qDebug() << cliOption;
+        qDebug() << mFrame;
+        qDebug() << mCall;
     };
     return app.exec();
 
