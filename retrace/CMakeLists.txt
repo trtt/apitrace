@@ -76,6 +76,7 @@ add_library (glretrace_common STATIC
     metric_writer.cpp
     metric_backend_amd_perfmon.cpp
     metric_backend_intel_perfquery.cpp
+    metric_backend_common.cpp
 )
 add_dependencies (glretrace_common glproc)
 target_link_libraries (glretrace_common
