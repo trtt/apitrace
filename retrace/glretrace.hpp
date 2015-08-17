@@ -64,8 +64,8 @@ struct Context {
 };
 
 extern bool metricBackendsSetup;
-extern bool profilingBoundaries[3];
-extern unsigned profilingBoundariesIndex[3];
+extern bool profilingBoundaries[QUERY_BOUNDARY_LIST_END];
+extern unsigned profilingBoundariesIndex[QUERY_BOUNDARY_LIST_END];
 extern std::vector<MetricBackend*> metricBackends;
 extern MetricBackend* curMetricBackend;
 extern MetricWriter profiler;
