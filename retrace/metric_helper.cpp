@@ -13,8 +13,8 @@
 namespace glretrace {
 
 bool metricBackendsSetup = false;
-bool profilingBoundaries[3] = {false, false, false};
-unsigned profilingBoundariesIndex[3] = {0,0,0};
+bool profilingBoundaries[QUERY_BOUNDARY_LIST_END] = {false};
+unsigned profilingBoundariesIndex[QUERY_BOUNDARY_LIST_END] = {0};
 std::vector<MetricBackend*> metricBackends; // to be populated in initContext()
 MetricBackend* curMetricBackend = nullptr; // backend active in the current pass
 MetricWriter profiler(&metricBackends);
