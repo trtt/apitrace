@@ -283,10 +283,11 @@ endProfile(trace::Call &call, bool isDraw) {
                 Context *currentContext = getCurrentContext();
                 GLuint program = currentContext ? currentContext->activeProgram : 0;
                 unsigned eventId = profilingBoundariesIndex[QUERY_BOUNDARY_CALL]++;
+                profiler.addCall(call.no, call.sig->name, program, eventId, false);
                 if (isDraw) {
                     eventId = profilingBoundariesIndex[QUERY_BOUNDARY_DRAWCALL]++;
+                    profiler.addCall(call.no, call.sig->name, program, eventId, isDraw);
                 }
-                profiler.addCall(call.no, call.sig->name, program, eventId, isDraw);
             }
         }
         return;
@@ -502,12 +503,13 @@ frame_complete(trace::Call &call) {
             profilingBoundaries[QUERY_BOUNDARY_DRAWCALL]) {
             if (isLastPass() && curMetricBackend) {
                 profiler.addCall(-1, "", 0, 0, true);
+                profiler.addCall(-1, "", 0, 0, false);
             }
         }
+        if (curMetricBackend) {
+            curMetricBackend->endQuery(QUERY_BOUNDARY_FRAME);
+        }
         if (profilingBoundaries[QUERY_BOUNDARY_FRAME]) {
-            if (curMetricBackend) {
-                curMetricBackend->endQuery(QUERY_BOUNDARY_FRAME);
-            }
             if (isLastPass() && curMetricBackend) {
                 profiler.addFrame(profilingBoundariesIndex[QUERY_BOUNDARY_FRAME]++);
             }
@@ -536,10 +538,8 @@ frame_complete(trace::Call &call) {
         retrace::warning(call) << "could not infer drawable size (glViewport never called)\n";
     }
 
-    if (profilingBoundaries[QUERY_BOUNDARY_FRAME]) {
-        if (curMetricBackend) {
-            curMetricBackend->beginQuery(QUERY_BOUNDARY_FRAME);
-        }
+    if (curMetricBackend) {
+        curMetricBackend->beginQuery(QUERY_BOUNDARY_FRAME);
     }
 }
 
@@ -757,10 +757,10 @@ retrace::flushRendering(void) {
 
 void
 retrace::finishRendering(void) {
-    if (glretrace::profilingBoundaries[QUERY_BOUNDARY_FRAME]) {
-        if (glretrace::curMetricBackend) {
+    if (profilingWithBackends && glretrace::curMetricBackend) {
             (glretrace::curMetricBackend)->endQuery(QUERY_BOUNDARY_FRAME);
-        }
+    }
+    if (glretrace::profilingBoundaries[QUERY_BOUNDARY_FRAME]) {
         if (glretrace::isLastPass() && glretrace::curMetricBackend) {
             glretrace::profiler.addFrame(glretrace::profilingBoundariesIndex[QUERY_BOUNDARY_FRAME]++);
         }
