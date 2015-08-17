@@ -90,6 +90,7 @@ char* profilingCallsMetricsString;
 char* profilingFramesMetricsString;
 char* profilingDrawCallsMetricsString;
 bool profilingListMetrics = false;
+bool profilingNumPasses = false;
 
 bool profiling = false;
 bool profilingGpuTimes = false;
@@ -638,6 +639,7 @@ usage(const char *argv0) {
         "      --pframes           frame profiling metrics selection\n"
         "      --pdrawcalls        draw call profiling metrics selection\n"
         "      --list-metrics      list all available metrics for TRACE\n"
+        "      --gen-passes        generate profiling passes and output passes number\n"
         "      --call-nos[=BOOL]   use call numbers in snapshot filenames\n"
         "      --core              use core profile\n"
         "      --db                use a double buffer visual (default)\n"
@@ -672,6 +674,7 @@ enum {
     PFRAMES_OPT,
     PDRAWCALLS_OPT,
     PLMETRICS_OPT,
+    GENPASS_OPT,
     SB_OPT,
     SNAPSHOT_FORMAT_OPT,
     LOOP_OPT,
@@ -704,6 +707,7 @@ longOptions[] = {
     {"pframes", required_argument, 0, PFRAMES_OPT},
     {"pdrawcalls", required_argument, 0, PDRAWCALLS_OPT},
     {"list-metrics", no_argument, 0, PLMETRICS_OPT},
+    {"gen-passes", no_argument, 0, GENPASS_OPT},
     {"sb", no_argument, 0, SB_OPT},
     {"snapshot-prefix", required_argument, 0, 's'},
     {"snapshot-format", required_argument, 0, SNAPSHOT_FORMAT_OPT},
@@ -902,6 +906,13 @@ int main(int argc, char **argv)
             retrace::verbosity = -1;
             retrace::profilingWithBackends = true;
             retrace::profilingListMetrics = true;
+            break;
+        case GENPASS_OPT:
+            retrace::debug = 0;
+            retrace::profiling = true;
+            retrace::verbosity = -1;
+            retrace::profilingWithBackends = true;
+            retrace::profilingNumPasses = true;
             break;
         default:
             std::cerr << "error: unknown option " << opt << "\n";
