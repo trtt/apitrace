@@ -8,7 +8,7 @@ void MetricWriter::addCall(int no,
 {
     ProfilerCall tempCall = {no, program, name, eventId};
     if (isDraw) drawCallQueue.push(tempCall);
-    callQueue.push(tempCall);
+    else callQueue.push(tempCall);
 }
 
 void MetricWriter::addFrame(unsigned eventId)
