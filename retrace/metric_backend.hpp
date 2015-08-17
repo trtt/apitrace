@@ -34,7 +34,8 @@
 enum QueryBoundary {
     QUERY_BOUNDARY_DRAWCALL = 0, /**< draw call boundary */
     QUERY_BOUNDARY_FRAME,        /**< frame boundary */
-    QUERY_BOUNDARY_CALL          /**< any call boundary */
+    QUERY_BOUNDARY_CALL,         /**< any call boundary */
+    QUERY_BOUNDARY_LIST_END
 };
 
 /**
@@ -197,13 +198,13 @@ public:
      * Returns pointer to the metric object with given group id, metric id.
      * Metric object is an object of class derived from Metric.
      */
-    virtual std::unique_ptr<Metric> getMetricById(unsigned groupId, unsigned metricId);
+    virtual std::unique_ptr<Metric> getMetricById(unsigned groupId, unsigned metricId) = 0;
 
     /**
      * Returns pointer to the metric object with given metric name string.
      * Metric object is an object of class derived from Metric.
      */
-    virtual std::unique_ptr<Metric> getMetricByName(std::string metricName);
+    virtual std::unique_ptr<Metric> getMetricByName(std::string metricName) = 0;
 
     /**
      * Adds given metric object to the internal list of metrics
