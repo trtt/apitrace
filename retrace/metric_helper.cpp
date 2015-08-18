@@ -18,7 +18,7 @@ bool profilingBoundaries[QUERY_BOUNDARY_LIST_END] = {false};
 unsigned profilingBoundariesIndex[QUERY_BOUNDARY_LIST_END] = {0};
 std::vector<MetricBackend*> metricBackends; // to be populated in initContext()
 MetricBackend* curMetricBackend = nullptr; // backend active in the current pass
-MetricWriter profiler(&metricBackends);
+MetricWriter profiler(metricBackends);
 
 MetricBackend* getBackend(std::string backendName) {
     // to be populated with backends
