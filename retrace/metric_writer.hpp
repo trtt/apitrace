@@ -1,50 +1,77 @@
 #pragma once
 
 #include <queue>
-#include <set>
 #include <string>
 
 #include "metric_backend.hpp"
 
-struct ProfilerCall {
-    int no;
-    unsigned program;
-    std::string name;
+struct ProfilerQuery
+{
+private:
     unsigned eventId;
+    static void writeMetricHeader(Metric* metric, int event, void* data, int error,
+                                  void* userData);
+    static void writeMetricEntry(Metric* metric, int event, void* data, int error,
+                                 void* userData);
+
+protected:
+    QueryBoundary qb;
+
+public:
+    static std::vector<MetricBackend*>* metricBackends;
+
+    ProfilerQuery(QueryBoundary qb, unsigned eventId)
+        : eventId(eventId), qb(qb) {};
+    virtual void writeHeader() const;
+    virtual void writeEntry() const;
 };
 
-struct ProfilerFrame {
-    unsigned eventId;
+struct ProfilerCall : public ProfilerQuery
+{
+public:
+    struct data {
+        int no;
+        unsigned program;
+        std::string name;
+    };
+
+private:
+    data queryData;
+
+public:
+    ProfilerCall(unsigned eventId, const data* queryData = nullptr)
+        : ProfilerQuery(QUERY_BOUNDARY_CALL, eventId), queryData(*queryData) {};
+    void writeHeader() const;
+    void writeEntry() const;
+};
+
+struct ProfilerDrawcall : public ProfilerCall
+{
+    ProfilerDrawcall(unsigned eventId, const data* queryData);
+};
+
+struct ProfilerFrame : public ProfilerQuery
+{
+public:
+    ProfilerFrame(unsigned eventId)
+        : ProfilerQuery(QUERY_BOUNDARY_FRAME, eventId) {};
+    void writeHeader() const;
+    void writeEntry() const;
 };
 
 class MetricWriter
 {
 private:
-    bool perCall;
-    bool perDrawCall;
-    bool perFrame;
     static bool header;
-    std::queue<ProfilerCall> callQueue;
-    std::queue<ProfilerCall> drawCallQueue;
-    std::queue<ProfilerFrame> frameQueue;
-    std::vector<MetricBackend*>* metricApis;
+    std::queue<std::unique_ptr<ProfilerQuery>> queryQueue[QUERY_BOUNDARY_LIST_END];
 
 public:
-    MetricWriter(std::vector<MetricBackend*>* _metricApis) : perFrame(false),
-                                                             metricApis(_metricApis) {}
+    MetricWriter(std::vector<MetricBackend*> &metricBackends);
 
-    void addCall(int no,
-                 const char* name,
-                 unsigned program, unsigned eventId, bool isDraw);
+    void addQuery(QueryBoundary boundary, unsigned eventId,
+                  const void* queryData = nullptr);
 
-    void addFrame(unsigned eventId);
-
-    static void writeApiData(Metric* metric, int event, void* data, int error,
-                             void* userData);
-
-    void writeCall(bool isDraw);
-
-    void writeFrame();
+    void writeQuery(QueryBoundary boundary);
 
     void writeAll(QueryBoundary boundary);
 };
