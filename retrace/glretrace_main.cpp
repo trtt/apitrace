@@ -228,7 +228,8 @@ beginProfile(trace::Call &call, bool isDraw) {
                 Context *currentContext = getCurrentContext();
                 GLuint program = currentContext ? currentContext->activeProgram : 0;
                 unsigned eventId = profilingBoundariesIndex[QUERY_BOUNDARY_CALL]++;
-                ProfilerCall::data callData = {static_cast<int>(call.no),
+                ProfilerCall::data callData = {false,
+                                               call.no,
                                                program,
                                                call.sig->name};
                 if (profilingBoundaries[QUERY_BOUNDARY_CALL]) {
@@ -511,7 +512,7 @@ frame_complete(trace::Call &call) {
         {
             if (isLastPass() && curMetricBackend) {
                 // frame end indicator
-                ProfilerCall::data callData = {-1, 0, ""};
+                ProfilerCall::data callData = {true, 0, 0, ""};
                 if (profilingBoundaries[QUERY_BOUNDARY_CALL]) {
                     profiler.addQuery(QUERY_BOUNDARY_CALL, 0, &callData);
                 }
