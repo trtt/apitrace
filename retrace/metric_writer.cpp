@@ -41,19 +41,51 @@ void ProfilerQuery::writeEntry() const {
     std::cout << std::endl;
 }
 
+template<typename T>
+T ProfilerCall::StringTable<T>::getId(const std::string &str) {
+    auto res = stringLookupTable.find(str);
+    T index;
+    if (res == stringLookupTable.end()) {
+        index = static_cast<T>(strings.size());
+        strings.push_back(str);
+        stringLookupTable[str] = index;
+    } else {
+        index = res->second;
+    }
+    return index;
+}
+
+template<typename T>
+std::string ProfilerCall::StringTable<T>::getString(T id) {
+    return strings[static_cast<typename decltype(stringLookupTable)::size_type>(id)];
+}
+
+
+ProfilerCall::ProfilerCall(unsigned eventId, const data* queryData)
+    : ProfilerQuery(QUERY_BOUNDARY_CALL, eventId)
+{
+    if (queryData) {
+        isFrameEnd = queryData->isFrameEnd;
+        no = queryData->no;
+        program = queryData->program;
+        nameTableEntry = nameTable.getId(queryData->name);
+    }
+}
+
+
 void ProfilerCall::writeHeader() const {
     std::cout << "#\tcall no\tprogram\tname";
     ProfilerQuery::writeHeader();
 }
 
 void ProfilerCall::writeEntry() const {
-    if (queryData.no == -1) {
+    if (isFrameEnd) {
         std::cout << "frame_end" << std::endl;
     } else {
         std::cout << "call"
-            << "\t" << queryData.no
-            << "\t" << queryData.program
-            << "\t" << queryData.name;
+            << "\t" << no
+            << "\t" << program
+            << "\t" << nameTable.getString(nameTableEntry);
         ProfilerQuery::writeEntry();
     }
 }
@@ -113,3 +145,5 @@ void MetricWriter::writeAll(QueryBoundary boundary) {
 }
 
 std::vector<MetricBackend*>* ProfilerQuery::metricBackends = nullptr;
+
+ProfilerCall::StringTable<int16_t> ProfilerCall::nameTable;

@@ -2,10 +2,11 @@
 
 #include <queue>
 #include <string>
+#include <unordered_map>
 
 #include "metric_backend.hpp"
 
-struct ProfilerQuery
+class ProfilerQuery
 {
 private:
     unsigned eventId;
@@ -26,31 +27,48 @@ public:
     virtual void writeEntry() const;
 };
 
-struct ProfilerCall : public ProfilerQuery
+class ProfilerCall : public ProfilerQuery
 {
 public:
     struct data {
-        int no;
+        bool isFrameEnd;
+        unsigned no;
         unsigned program;
-        std::string name;
+        const char* name;
     };
 
 private:
-    data queryData;
+    template<typename T>
+    class StringTable
+    {
+    private:
+        std::deque<std::string> strings;
+        std::unordered_map<std::string, T> stringLookupTable;
+
+    public:
+        T getId(const std::string &str);
+        std::string getString(T id);
+    };
+
+    static StringTable<int16_t> nameTable;
+
+    bool isFrameEnd;
+    unsigned no;
+    unsigned program;
+    int16_t nameTableEntry;
 
 public:
-    ProfilerCall(unsigned eventId, const data* queryData = nullptr)
-        : ProfilerQuery(QUERY_BOUNDARY_CALL, eventId), queryData(*queryData) {};
+    ProfilerCall(unsigned eventId, const data* queryData = nullptr);
     void writeHeader() const;
     void writeEntry() const;
 };
 
-struct ProfilerDrawcall : public ProfilerCall
+class ProfilerDrawcall : public ProfilerCall
 {
     ProfilerDrawcall(unsigned eventId, const data* queryData);
 };
 
-struct ProfilerFrame : public ProfilerQuery
+class ProfilerFrame : public ProfilerQuery
 {
 public:
     ProfilerFrame(unsigned eventId)
