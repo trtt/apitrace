@@ -2,12 +2,12 @@
 
 #include "metric_writer.hpp"
 
-void ProfilerQuery::writeMetricHeader(Metric* metric, int event, void* data, int error,
+void ProfilerQuery::writeMetricHeaderCallback(Metric* metric, int event, void* data, int error,
                                       void* userData) {
     std::cout << "\t" << metric->name();
 }
 
-void ProfilerQuery::writeMetricEntry(Metric* metric, int event, void* data, int error,
+void ProfilerQuery::writeMetricEntryCallback(Metric* metric, int event, void* data, int error,
                                      void* userData) {
     if (error) {
         std::cout << "\t" << "#ERR" << error;
@@ -27,16 +27,16 @@ void ProfilerQuery::writeMetricEntry(Metric* metric, int event, void* data, int 
     }
 }
 
-void ProfilerQuery::writeHeader() const {
+void ProfilerQuery::writeMetricHeader(QueryBoundary qb) const {
     for (auto &a : *metricBackends) {
-        a->enumDataQueryId(eventId, &writeMetricHeader, qb);
+        a->enumDataQueryId(eventId, &writeMetricHeaderCallback, qb);
     }
     std::cout << std::endl;
 }
 
-void ProfilerQuery::writeEntry() const {
+void ProfilerQuery::writeMetricEntry(QueryBoundary qb) const {
     for (auto &a : *metricBackends) {
-        a->enumDataQueryId(eventId, &writeMetricEntry, qb);
+        a->enumDataQueryId(eventId, &writeMetricEntryCallback, qb);
     }
     std::cout << std::endl;
 }
@@ -75,7 +75,7 @@ ProfilerCall::ProfilerCall(unsigned eventId, const data* queryData)
 
 void ProfilerCall::writeHeader() const {
     std::cout << "#\tcall no\tprogram\tname";
-    ProfilerQuery::writeHeader();
+    ProfilerQuery::writeMetricHeader(QUERY_BOUNDARY_CALL);
 }
 
 void ProfilerCall::writeEntry() const {
@@ -86,25 +86,39 @@ void ProfilerCall::writeEntry() const {
             << "\t" << no
             << "\t" << program
             << "\t" << nameTable.getString(nameTableEntry);
-        ProfilerQuery::writeEntry();
+        ProfilerQuery::writeMetricEntry(QUERY_BOUNDARY_CALL);
     }
 }
 
+
+void ProfilerDrawcall::writeHeader() const {
+    std::cout << "#\tcall no\tprogram\tname";
+    ProfilerQuery::writeMetricHeader(QUERY_BOUNDARY_DRAWCALL);
+}
+
+void ProfilerDrawcall::writeEntry() const {
+    if (isFrameEnd) {
+        std::cout << "frame_end" << std::endl;
+    } else {
+        std::cout << "call"
+            << "\t" << no
+            << "\t" << program
+            << "\t" << nameTable.getString(nameTableEntry);
+        ProfilerQuery::writeMetricEntry(QUERY_BOUNDARY_DRAWCALL);
+    }
+}
+
+
 void ProfilerFrame::writeHeader() const {
     std::cout << "#";
-    ProfilerQuery::writeHeader();
+    ProfilerQuery::writeMetricHeader(QUERY_BOUNDARY_FRAME);
 }
 
 void ProfilerFrame::writeEntry() const {
     std::cout << "frame";
-    ProfilerQuery::writeEntry();
+    ProfilerQuery::writeMetricEntry(QUERY_BOUNDARY_FRAME);
 }
 
-ProfilerDrawcall::ProfilerDrawcall(unsigned eventId, const data* queryData)
-        : ProfilerCall( eventId, queryData)
-{
-    qb = QUERY_BOUNDARY_DRAWCALL;
-}
 
 MetricWriter::MetricWriter(std::vector<MetricBackend*> &metricBackends)
 {
@@ -116,15 +130,15 @@ void MetricWriter::addQuery(QueryBoundary boundary, unsigned eventId,
 {
     switch (boundary) {
         case QUERY_BOUNDARY_FRAME:
-            queryQueue[boundary].push(std::unique_ptr<ProfilerQuery>(new ProfilerFrame(eventId)));
+            frameQueue.emplace(eventId);
             break;
         case QUERY_BOUNDARY_CALL:
-            queryQueue[boundary].push(std::unique_ptr<ProfilerQuery>(new ProfilerCall(eventId,
-                        reinterpret_cast<const ProfilerCall::data*>(queryData))));
+            callQueue.emplace(eventId,
+                    reinterpret_cast<const ProfilerCall::data*>(queryData));
             break;
         case QUERY_BOUNDARY_DRAWCALL:
-            queryQueue[boundary].push(std::unique_ptr<ProfilerQuery>(new ProfilerDrawcall(eventId,
-                        reinterpret_cast<const ProfilerCall::data*>(queryData))));
+            drawcallQueue.emplace(eventId,
+                    reinterpret_cast<const ProfilerCall::data*>(queryData));
             break;
         default:
             break;
@@ -132,14 +146,46 @@ void MetricWriter::addQuery(QueryBoundary boundary, unsigned eventId,
 }
 
 void MetricWriter::writeQuery(QueryBoundary boundary) {
-    (queryQueue[boundary].front())->writeEntry();
-    queryQueue[boundary].pop();
+    switch (boundary) {
+        case QUERY_BOUNDARY_FRAME:
+            frameQueue.front().writeEntry();
+            frameQueue.pop();
+            break;
+        case QUERY_BOUNDARY_CALL:
+            callQueue.front().writeEntry();
+            callQueue.pop();
+            break;
+        case QUERY_BOUNDARY_DRAWCALL:
+            drawcallQueue.front().writeEntry();
+            drawcallQueue.pop();
+            break;
+        default:
+            break;
+    }
 }
 
 void MetricWriter::writeAll(QueryBoundary boundary) {
-    (queryQueue[boundary].front())->writeHeader();
-    while (!queryQueue[boundary].empty()) {
-        writeQuery(boundary);
+    switch (boundary) {
+        case QUERY_BOUNDARY_FRAME:
+            frameQueue.front().writeHeader();
+            while (!frameQueue.empty()) {
+                writeQuery(boundary);
+            }
+            break;
+        case QUERY_BOUNDARY_CALL:
+            callQueue.front().writeHeader();
+            while (!callQueue.empty()) {
+                writeQuery(boundary);
+            }
+            break;
+        case QUERY_BOUNDARY_DRAWCALL:
+            drawcallQueue.front().writeHeader();
+            while (!drawcallQueue.empty()) {
+                writeQuery(boundary);
+            }
+            break;
+        default:
+            break;
     }
     std::cout << std::endl;
 }

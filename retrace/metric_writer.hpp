@@ -10,21 +10,18 @@ class ProfilerQuery
 {
 private:
     unsigned eventId;
-    static void writeMetricHeader(Metric* metric, int event, void* data, int error,
+    static void writeMetricHeaderCallback(Metric* metric, int event, void* data, int error,
                                   void* userData);
-    static void writeMetricEntry(Metric* metric, int event, void* data, int error,
+    static void writeMetricEntryCallback(Metric* metric, int event, void* data, int error,
                                  void* userData);
-
-protected:
-    QueryBoundary qb;
 
 public:
     static std::vector<MetricBackend*>* metricBackends;
 
     ProfilerQuery(QueryBoundary qb, unsigned eventId)
-        : eventId(eventId), qb(qb) {};
-    virtual void writeHeader() const;
-    virtual void writeEntry() const;
+        : eventId(eventId) {};
+    void writeMetricHeader(QueryBoundary qb) const;
+    void writeMetricEntry(QueryBoundary qb) const;
 };
 
 class ProfilerCall : public ProfilerQuery
@@ -37,7 +34,7 @@ public:
         const char* name;
     };
 
-private:
+protected:
     template<typename T>
     class StringTable
     {
@@ -52,10 +49,10 @@ private:
 
     static StringTable<int16_t> nameTable;
 
+    int16_t nameTableEntry;
     bool isFrameEnd;
     unsigned no;
     unsigned program;
-    int16_t nameTableEntry;
 
 public:
     ProfilerCall(unsigned eventId, const data* queryData = nullptr);
@@ -65,7 +62,11 @@ public:
 
 class ProfilerDrawcall : public ProfilerCall
 {
-    ProfilerDrawcall(unsigned eventId, const data* queryData);
+public:
+    ProfilerDrawcall(unsigned eventId, const data* queryData)
+        : ProfilerCall( eventId, queryData) {};
+    void writeHeader() const;
+    void writeEntry() const;
 };
 
 class ProfilerFrame : public ProfilerQuery
@@ -80,8 +81,9 @@ public:
 class MetricWriter
 {
 private:
-    static bool header;
-    std::queue<std::unique_ptr<ProfilerQuery>> queryQueue[QUERY_BOUNDARY_LIST_END];
+    std::queue<ProfilerFrame> frameQueue;
+    std::queue<ProfilerCall> callQueue;
+    std::queue<ProfilerDrawcall> drawcallQueue;
 
 public:
     MetricWriter(std::vector<MetricBackend*> &metricBackends);
