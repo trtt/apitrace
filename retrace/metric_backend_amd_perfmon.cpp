@@ -82,7 +82,7 @@ MetricType Metric_AMD_perfmon::type() {
 MetricBackend_AMD_perfmon::DataCollector::~DataCollector() {
     for (std::vector<unsigned*> &t1 : data) {
         for (unsigned* &t2 : t1) {
-            delete[] t2;
+            alloc.deallocate(t2, 1);
         }
     }
 }
@@ -92,10 +92,10 @@ MetricBackend_AMD_perfmon::DataCollector::newDataBuffer(unsigned event,
                                                         size_t size)
 {
     if (curEvent == 0) {
-        std::vector<unsigned*> vec(1, new unsigned[size]);
+        std::vector<unsigned*> vec(1, alloc.allocate(size));
         data.push_back(vec);
     } else {
-        data[curPass].push_back(new unsigned[size]);
+        data[curPass].push_back(alloc.allocate(size));
     }
     eventMap[event] = curEvent;
     return data[curPass][curEvent++];
@@ -116,8 +116,9 @@ MetricBackend_AMD_perfmon::DataCollector::getDataBuffer(unsigned pass,
     } else return nullptr;
 }
 
-MetricBackend_AMD_perfmon::MetricBackend_AMD_perfmon(glretrace::Context* context) :
-    numPasses(1), curPass(0), curEvent(0) {
+MetricBackend_AMD_perfmon::MetricBackend_AMD_perfmon(glretrace::Context* context,
+                                                     MmapAllocator<char> &alloc)
+    : numPasses(1), curPass(0), curEvent(0), collector(alloc) {
     if (context->hasExtension("GL_AMD_performance_monitor")) {
         supported = true;
     } else {
@@ -396,8 +397,9 @@ unsigned MetricBackend_AMD_perfmon::getNumPasses() {
 }
 
 MetricBackend_AMD_perfmon&
-MetricBackend_AMD_perfmon::getInstance(glretrace::Context* context) {
-    static MetricBackend_AMD_perfmon backend(context);
+MetricBackend_AMD_perfmon::getInstance(glretrace::Context* context,
+                                       MmapAllocator<char> &alloc) {
+    static MetricBackend_AMD_perfmon backend(context, alloc);
     return backend;
 }
 

@@ -33,6 +33,7 @@
 #include "glproc.hpp"
 #include "metric_backend.hpp"
 #include "glretrace.hpp"
+#include "mmap_allocator.hpp"
 
 #define NUM_MONITORS 1 // number of used AMD_perfmon monitors, stick to one at first
 
@@ -73,13 +74,15 @@ private:
     class DataCollector
     {
         private:
-            std::vector<std::vector<unsigned*>> data;
+            MmapAllocator<unsigned> alloc;
+            std::vector<std::vector<unsigned*>, MmapAllocator<std::vector<unsigned*>>> data;
             std::map<unsigned, unsigned> eventMap; // drawCallId <-> callId
             unsigned curPass;
             unsigned curEvent;
 
         public:
-            DataCollector() : curPass(0), curEvent(0) {}
+            DataCollector(MmapAllocator<char> &alloc)
+                : alloc(alloc), data(alloc), curPass(0), curEvent(0) {}
 
             ~DataCollector();
 
@@ -107,7 +110,7 @@ private:
     std::vector<Metric_AMD_perfmon> metrics[2]; // store metrics selected for profiling
     static std::map<std::string, std::pair<unsigned, unsigned>> nameLookup;
 
-    MetricBackend_AMD_perfmon(glretrace::Context* context);
+    MetricBackend_AMD_perfmon(glretrace::Context* context, MmapAllocator<char> &alloc);
 
     MetricBackend_AMD_perfmon(MetricBackend_AMD_perfmon const&) = delete;
 
@@ -156,6 +159,7 @@ public:
 
     unsigned getNumPasses();
 
-    static MetricBackend_AMD_perfmon& getInstance(glretrace::Context* context);
+    static MetricBackend_AMD_perfmon& getInstance(glretrace::Context* context,
+                                                  MmapAllocator<char> &alloc);
 };
 
