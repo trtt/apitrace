@@ -92,7 +92,7 @@ MetricType Metric_INTEL_perfquery::type() {
 MetricBackend_INTEL_perfquery::DataCollector::~DataCollector() {
     for (std::vector<unsigned char*> &t1 : data) {
         for (unsigned char* &t2 : t1) {
-            delete[] t2;
+            alloc.deallocate(t2, 1);
         }
     }
 }
@@ -102,10 +102,10 @@ MetricBackend_INTEL_perfquery::DataCollector::newDataBuffer(unsigned event,
                                                             size_t size)
 {
     if (curEvent == 0) {
-        std::vector<unsigned char*> vec(1, new unsigned char[size]);
+        std::vector<unsigned char*> vec(1, alloc.allocate(size));
         data.push_back(vec);
     } else {
-        data[curPass].push_back(new unsigned char[size]);
+        data[curPass].push_back(alloc.allocate(size));
     }
     eventMap[event] = curEvent;
     return data[curPass][curEvent++];
@@ -126,8 +126,9 @@ MetricBackend_INTEL_perfquery::DataCollector::getDataBuffer(unsigned pass,
     } else return nullptr;
 }
 
-MetricBackend_INTEL_perfquery::MetricBackend_INTEL_perfquery(glretrace::Context* context) :
-    numPasses(1), curPass(0), curEvent(0) {
+MetricBackend_INTEL_perfquery::MetricBackend_INTEL_perfquery(glretrace::Context* context,
+                                                             MmapAllocator<char> &alloc)
+    : numPasses(1), curPass(0), curEvent(0), collector(alloc) {
     if (context->hasExtension("GL_INTEL_performance_query")) {
         supported = true;
     } else {
@@ -317,8 +318,9 @@ unsigned MetricBackend_INTEL_perfquery::getNumPasses() {
 }
 
 MetricBackend_INTEL_perfquery&
-MetricBackend_INTEL_perfquery::getInstance(glretrace::Context* context) {
-    static MetricBackend_INTEL_perfquery backend(context);
+MetricBackend_INTEL_perfquery::getInstance(glretrace::Context* context,
+                                           MmapAllocator<char> &alloc) {
+    static MetricBackend_INTEL_perfquery backend(context, alloc);
     return backend;
 }
 

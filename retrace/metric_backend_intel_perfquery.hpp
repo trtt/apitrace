@@ -76,13 +76,15 @@ private:
     class DataCollector
     {
         private:
-            std::vector<std::vector<unsigned char*>> data;
+            MmapAllocator<unsigned char> alloc;
+            std::vector<std::vector<unsigned char*>, MmapAllocator<std::vector<unsigned char*>>> data;
             std::map<unsigned, unsigned> eventMap; // drawCallId <-> callId
             unsigned curPass;
             unsigned curEvent;
 
         public:
-            DataCollector() : curPass(0), curEvent(0) {}
+            DataCollector(MmapAllocator<char> &alloc)
+                : alloc(alloc), data(alloc), curPass(0), curEvent(0) {}
 
             ~DataCollector();
 
@@ -109,7 +111,7 @@ private:
     /* nameLookup for querying metrics by name */
     static std::map<std::string, std::pair<unsigned, unsigned>> nameLookup;
 
-    MetricBackend_INTEL_perfquery(glretrace::Context* context);
+    MetricBackend_INTEL_perfquery(glretrace::Context* context, MmapAllocator<char> &alloc);
 
     MetricBackend_INTEL_perfquery(MetricBackend_INTEL_perfquery const&) = delete;
 
@@ -153,6 +155,7 @@ public:
 
     unsigned getNumPasses();
 
-    static MetricBackend_INTEL_perfquery& getInstance(glretrace::Context* context);
+    static MetricBackend_INTEL_perfquery& getInstance(glretrace::Context* context,
+                                                      MmapAllocator<char> &alloc);
 };
 
