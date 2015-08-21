@@ -130,14 +130,14 @@ void MetricWriter::addQuery(QueryBoundary boundary, unsigned eventId,
 {
     switch (boundary) {
         case QUERY_BOUNDARY_FRAME:
-            frameQueue.emplace(eventId);
+            frameQueue.emplace_back(eventId);
             break;
         case QUERY_BOUNDARY_CALL:
-            callQueue.emplace(eventId,
+            callQueue.emplace_back(eventId,
                     reinterpret_cast<const ProfilerCall::data*>(queryData));
             break;
         case QUERY_BOUNDARY_DRAWCALL:
-            drawcallQueue.emplace(eventId,
+            drawcallQueue.emplace_back(eventId,
                     reinterpret_cast<const ProfilerCall::data*>(queryData));
             break;
         default:
@@ -149,15 +149,15 @@ void MetricWriter::writeQuery(QueryBoundary boundary) {
     switch (boundary) {
         case QUERY_BOUNDARY_FRAME:
             frameQueue.front().writeEntry();
-            frameQueue.pop();
+            frameQueue.pop_front();
             break;
         case QUERY_BOUNDARY_CALL:
             callQueue.front().writeEntry();
-            callQueue.pop();
+            callQueue.pop_front();
             break;
         case QUERY_BOUNDARY_DRAWCALL:
             drawcallQueue.front().writeEntry();
-            drawcallQueue.pop();
+            drawcallQueue.pop_front();
             break;
         default:
             break;

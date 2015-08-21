@@ -81,9 +81,9 @@ public:
 class MetricWriter
 {
 private:
-    std::queue<ProfilerFrame> frameQueue;
-    std::queue<ProfilerCall> callQueue;
-    std::queue<ProfilerDrawcall> drawcallQueue;
+    std::deque<ProfilerFrame> frameQueue;
+    std::deque<ProfilerCall> callQueue;
+    std::deque<ProfilerDrawcall> drawcallQueue;
 
 public:
     MetricWriter(std::vector<MetricBackend*> &metricBackends);
