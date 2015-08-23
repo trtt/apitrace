@@ -377,12 +377,12 @@ QModelIndex MetricSelectionModel::parentColumn(const QModelIndex &index) const {
 inline QString stringFromHash(QHash<QString, QList<MetricItem*>> hash) {
     QString result;
     for (auto it = hash.cbegin(); it != hash.cend(); ++it) {
-        result += it.key() + ": ";
+        result += it.key() + ":";
         for (auto &p : it.value()) {
             unsigned gId = p->parentItem()->getId();
             result += QString("[%1,%2],").arg(gId).arg(p->getId());
         }
-        result += "; ";
+        result += ";";
     }
     return result;
 }
@@ -405,6 +405,6 @@ void MetricSelectionModel::generateMetricList(QString& cliOption,
             //metricsCall[backendName].append(QPair<int,int>(metricGroupId, metricId));
         }
     }
-    cliOption = "--pframes=\"" + stringFromHash(mFrame) + "\" --pdrawcalls=\""
-             + stringFromHash(mCall) + "\"";
+    cliOption = "--pframes=" + stringFromHash(mFrame) + " --pdrawcalls="
+             + stringFromHash(mCall) + "";
 }

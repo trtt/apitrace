@@ -387,7 +387,8 @@ inline QString stringFromHash(QHash<QString, QList<MetricItem*>> hash) {
     return result;
 }
 
-void MetricSelectionModel::generateMetricList(QString& cliOption,
+void MetricSelectionModel::generateMetricList(QString& cliOptionFrame,
+                                              QString& cliOptionCall,
                                               QHash<QString, QList<MetricItem*>>& mFrame,
                                               QHash<QString, QList<MetricItem*>>& mCall) const
 {
@@ -405,6 +406,6 @@ void MetricSelectionModel::generateMetricList(QString& cliOption,
             //metricsCall[backendName].append(QPair<int,int>(metricGroupId, metricId));
         }
     }
-    cliOption = "--pframes=\"" + stringFromHash(mFrame) + "\" --pdrawcalls=\""
-             + stringFromHash(mCall) + "\"";
+    cliOptionFrame = "--pframes=" + stringFromHash(mFrame);
+    cliOptionCall = "--pdrawcalls=" + stringFromHash(mCall);
 }

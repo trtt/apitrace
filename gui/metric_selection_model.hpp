@@ -123,7 +123,7 @@ public:
     int columnCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE;
     QHash<int, QByteArray> roleNames() const Q_DECL_OVERRIDE;
 
-    void generateMetricList(QString& cliOption,
+    void generateMetricList(QString& cliOptionFrame, QString& cliOptionCall,
                             QHash<QString, QList<MetricItem*>>& mFrame,
                             QHash<QString, QList<MetricItem*>>& mCall) const;
 
