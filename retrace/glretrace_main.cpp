@@ -561,6 +561,22 @@ frame_complete(trace::Call &call) {
     }
 }
 
+void
+beforeContextSwitch()
+{
+    if (retrace::profilingWithBackends && curMetricBackend) {
+        curMetricBackend->stopPass();
+    }
+}
+
+void
+afterContextSwitch()
+{
+    if (retrace::profilingWithBackends && curMetricBackend) {
+        curMetricBackend->continuePass();
+    }
+}
+
 
 // Limit messages
 // TODO: expose this via a command line option.
