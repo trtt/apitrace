@@ -103,6 +103,7 @@ private:
     unsigned curQuery;
     bool supported;
     bool perFrame;
+    bool queryInProgress;
     int numPasses;
     int numFramePasses;
     int curPass;
@@ -144,6 +145,10 @@ public:
     void beginPass();
 
     void endPass();
+
+    void stopPass();
+
+    void continuePass();
 
     void beginQuery(QueryBoundary boundary = QUERY_BOUNDARY_DRAWCALL);
 
