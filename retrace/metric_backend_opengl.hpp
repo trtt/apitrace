@@ -137,6 +137,10 @@ public:
 
     void endPass();
 
+    void stopPass();
+
+    void continuePass();
+
     void beginQuery(QueryBoundary boundary = QUERY_BOUNDARY_DRAWCALL);
 
     void endQuery(QueryBoundary boundary = QUERY_BOUNDARY_DRAWCALL);

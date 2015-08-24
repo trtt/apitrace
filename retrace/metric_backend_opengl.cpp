@@ -330,6 +330,14 @@ void MetricBackend_opengl::endPass() {
     curPass++;
 }
 
+void MetricBackend_opengl::stopPass() {
+    processQueries();
+}
+
+void MetricBackend_opengl::continuePass() {
+
+}
+
 void MetricBackend_opengl::beginQuery(QueryBoundary boundary) {
     // GPU related
     if (glQueriesNeeded[boundary]) {
