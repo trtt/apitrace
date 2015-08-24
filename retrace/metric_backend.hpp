@@ -231,6 +231,10 @@ public:
      */
     virtual void endPass() = 0;
 
+    virtual void stopPass() = 0;
+
+    virtual void continuePass() = 0;
+
     /**
      * Begins query (profiles unit, i.e. frames or calls). Subsequent calls
      * begin next queries.
