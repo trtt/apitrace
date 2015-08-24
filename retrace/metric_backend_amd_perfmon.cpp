@@ -307,6 +307,31 @@ void MetricBackend_AMD_perfmon::endPass() {
     collector.endPass();
 }
 
+void MetricBackend_AMD_perfmon::stopPass() {
+    // clear all queries and monitors
+    if (queryInProgress) {
+        glEndPerfMonitorAMD(monitors[curMonitor]);
+    }
+    for (int k = 0; k < NUM_MONITORS; k++) {
+        freeMonitor(k);
+    }
+    glDeletePerfMonitorsAMD(NUM_MONITORS, monitors);
+}
+
+void MetricBackend_AMD_perfmon::continuePass() {
+    // here new context might be used
+    // better to check if it supports AMD_perfmon extension
+    // TODO
+
+    // safe to call begin pass
+    beginPass();
+    // resume query
+    if (queryInProgress) {
+        monitorEvent[curMonitor] = curEvent;
+        glBeginPerfMonitorAMD(monitors[curMonitor]);
+    }
+}
+
 void MetricBackend_AMD_perfmon::beginQuery(QueryBoundary boundary) {
     if (!numPasses) return;
     if (boundary == QUERY_BOUNDARY_CALL) return;
@@ -315,6 +340,7 @@ void MetricBackend_AMD_perfmon::beginQuery(QueryBoundary boundary) {
     if (!firstRound) freeMonitor(curMonitor);
     monitorEvent[curMonitor] = curEvent;
     glBeginPerfMonitorAMD(monitors[curMonitor]);
+    queryInProgress = true;
 }
 
 void MetricBackend_AMD_perfmon::endQuery(QueryBoundary boundary) {
@@ -327,6 +353,7 @@ void MetricBackend_AMD_perfmon::endQuery(QueryBoundary boundary) {
     curMonitor++;
     if (curMonitor == NUM_MONITORS) firstRound = 0;
     curMonitor %= NUM_MONITORS;
+    queryInProgress = false;
 }
 
 void MetricBackend_AMD_perfmon::freeMonitor(unsigned monitorId) {

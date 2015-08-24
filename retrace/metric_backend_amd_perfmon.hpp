@@ -98,6 +98,7 @@ private:
     unsigned monitors[NUM_MONITORS]; // For cycling, using 2 in current implementation
     unsigned curMonitor;
     bool firstRound, perFrame;
+    bool queryInProgress;
     std::vector<std::vector<Metric_AMD_perfmon>> passes; // metric sets for each pass
     /* metricOffsets[pass][Metric*] -- metric offset in data returned after profiling */
     std::vector<std::map<Metric_AMD_perfmon*, unsigned>> metricOffsets;
@@ -148,6 +149,10 @@ public:
     void beginPass();
 
     void endPass();
+
+    void stopPass();
+
+    void continuePass();
 
     void beginQuery(QueryBoundary boundary = QUERY_BOUNDARY_DRAWCALL);
 
