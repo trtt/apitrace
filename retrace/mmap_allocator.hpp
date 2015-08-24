@@ -15,6 +15,13 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+#define ALLOC_CHUNK_SIZE 64 * 1024 * 1024L
+
+/*
+ * Allocator that backs up memory with mmaped file
+ * File is grown by ALLOC_CHUNK_SIZE
+*/
+
 class MmapedFileBuffer
 {
 private:
@@ -39,7 +46,7 @@ private:
 public:
     MmapedFileBuffer()
         : curChunkSize(0),
-          chunkSize((128 * 1024 * 1024L) & ~(sysconf(_SC_PAGE_SIZE) - 1))
+          chunkSize(ALLOC_CHUNK_SIZE & ~(sysconf(_SC_PAGE_SIZE) - 1))
     {
         char templ[] = ".pbtmpXXXXXX";
         fd = mkstemp(templ);
