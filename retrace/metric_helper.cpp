@@ -15,6 +15,7 @@
 namespace glretrace {
 
 bool metricBackendsSetup = false;
+bool profilingContextAcquired = false;
 bool profilingBoundaries[QUERY_BOUNDARY_LIST_END] = {false};
 unsigned profilingBoundariesIndex[QUERY_BOUNDARY_LIST_END] = {0};
 std::vector<MetricBackend*> metricBackends; // to be populated in initContext()
@@ -78,7 +79,7 @@ void listMetricsCLI() {
 void enableMetricsFromCLI(const char* metrics, QueryBoundary pollingRule) {
     const std::regex rOuter("\\s*([^:]+):\\s*([^;]*);?"); // backend: (...)
     const std::regex rInner("\\s*\\[\\s*(\\d+)\\s*,\\s*(\\d+)\\s*\\]\\s*,?"
-                            "|\\s*([^;\\*,]+),?"); // [g, i] | metricName
+                            "|\\s*([^;,]+),?"); // [g, i] | metricName
     std::unique_ptr<Metric> p;
     std::string metricName;
 

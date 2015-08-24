@@ -483,23 +483,25 @@ initContext() {
                 std::cout << retrace::numPasses << std::endl;
                 exit(0);
             }
-            metricBackendsSetup = 1;
+            metricBackendsSetup = true;
         }
 
-        unsigned numPasses = 0;
-        for (auto &b : metricBackends) {
-            numPasses += b->getNumPasses();
-            if (retrace::curPass < numPasses) {
-                curMetricBackend = b;
-                b->beginPass(); // begin pass
-                break;
+        if (!profilingContextAcquired) {
+            unsigned numPasses = 0;
+            for (auto &b : metricBackends) {
+                numPasses += b->getNumPasses();
+                if (retrace::curPass < numPasses) {
+                    curMetricBackend = b;
+                    b->beginPass(); // begin pass
+                    break;
+                }
             }
-        }
 
-        if (profilingBoundaries[QUERY_BOUNDARY_FRAME]) {
             if (curMetricBackend) {
                 curMetricBackend->beginQuery(QUERY_BOUNDARY_FRAME);
             }
+
+            profilingContextAcquired = true;
         }
     }
 }
@@ -791,6 +793,7 @@ retrace::finishRendering(void) {
     if (retrace::profilingWithBackends) {
         if (glretrace::curMetricBackend) {
             (glretrace::curMetricBackend)->endPass();
+            glretrace::profilingContextAcquired = false;
         }
 
         if (glretrace::isLastPass()) {
