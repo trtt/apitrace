@@ -127,6 +127,8 @@ extern const retrace::Entry egl_callbacks[];
 
 void frame_complete(trace::Call &call);
 void initContext();
+void beforeContextSwitch();
+void afterContextSwitch();
 
 
 void updateDrawable(int width, int height);
