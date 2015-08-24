@@ -299,10 +299,8 @@ void MetricBackend_AMD_perfmon::beginPass() {
 
 void MetricBackend_AMD_perfmon::endPass() {
     if (!numPasses) return;
-    if (!firstRound) {
-        for (unsigned k = 0; k <= curMonitor; k++) {
-            freeMonitor(k);
-        }
+    for (unsigned k = firstRound; k <= curMonitor; k++) {
+        freeMonitor(k);
     }
     glDeletePerfMonitorsAMD(NUM_MONITORS, monitors);
     curPass++;
@@ -314,10 +312,8 @@ void MetricBackend_AMD_perfmon::stopPass() {
     if (queryInProgress) {
         glEndPerfMonitorAMD(monitors[curMonitor]);
     }
-    if (!firstRound) {
-        for (unsigned k = 0; k <= curMonitor; k++) {
-            freeMonitor(k);
-        }
+    for (unsigned k = firstRound; k <= curMonitor; k++) {
+        freeMonitor(k);
     }
     glDeletePerfMonitorsAMD(NUM_MONITORS, monitors);
 }
