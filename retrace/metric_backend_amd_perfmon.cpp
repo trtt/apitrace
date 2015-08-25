@@ -94,14 +94,15 @@ unsigned*
 MetricBackend_AMD_perfmon::DataCollector::newDataBuffer(unsigned event,
                                                         size_t size)
 {
-    if (curEvent == 0) {
+    /*if (curEvent == 0) {
         std::vector<unsigned*> vec(1, alloc.allocate(size));
         data.push_back(vec);
     } else {
         data[curPass].push_back(alloc.allocate(size));
-    }
-    eventMap[event] = curEvent;
-    return data[curPass][curEvent++];
+    }*/
+    data[curPass][event] = alloc.allocate(size);
+    //eventMap[event] = curEvent;
+    return data[curPass][event];
 }
 
 void MetricBackend_AMD_perfmon::DataCollector::endPass() {
@@ -113,9 +114,8 @@ unsigned*
 MetricBackend_AMD_perfmon::DataCollector::getDataBuffer(unsigned pass,
                                                         unsigned event_)
 {
-    if (eventMap.count(event_) > 0) {
-        unsigned event = eventMap[event_];
-        return data[pass][event];
+    if (data[pass].count(event_) > 0) {
+        return data[pass][event_];
     } else return nullptr;
 }
 
