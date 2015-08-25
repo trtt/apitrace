@@ -83,9 +83,9 @@ MetricType Metric_AMD_perfmon::type() {
 }
 
 MetricBackend_AMD_perfmon::DataCollector::~DataCollector() {
-    for (std::vector<unsigned*> &t1 : data) {
-        for (unsigned* &t2 : t1) {
-            alloc.deallocate(t2, 1);
+    for (auto &t1 : data) {
+        for (auto &t2 : t1) {
+            alloc.deallocate(t2.second, 1);
         }
     }
 }
