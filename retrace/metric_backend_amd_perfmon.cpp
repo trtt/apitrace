@@ -324,7 +324,7 @@ void MetricBackend_AMD_perfmon::continuePass() {
     // here new context might be used
     // better to check if it supports AMD_perfmon extension
     glretrace::Context* context = glretrace::getCurrentContext();
-    if (context->hasExtension("GL_AMD_performance_monitor")) {
+    if (context && context->hasExtension("GL_AMD_performance_monitor")) {
         supported = true;
     } else {
         supported = false;
