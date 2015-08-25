@@ -77,7 +77,9 @@ private:
         private:
             MmapAllocator<unsigned> alloc;
             //std::vector<std::vector<unsigned*>, MmapAllocator<std::vector<unsigned*>>> data;
-            std::deque<std::map<unsigned,unsigned*>, MmapAllocator<std::deque<std::map<unsigned,unsigned*>>>> data;
+            template <class T>
+            using mmapdeque = std::deque<T, MmapAllocator<std::deque<T>>>;
+            mmapdeque<mmapdeque<unsigned*>> data;
             //std::map<unsigned, unsigned> eventMap; // drawCallId <-> callId
             unsigned curPass;
             unsigned curEvent;
