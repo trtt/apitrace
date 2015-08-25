@@ -174,6 +174,8 @@ makeCurrent(trace::Call &call, glws::Drawable *drawable, Context *context)
 
     currentContextPtr = context;
 
+    afterContextSwitch();
+
     if (drawable && context) {
         context->drawable = drawable;
         
@@ -182,8 +184,6 @@ makeCurrent(trace::Call &call, glws::Drawable *drawable, Context *context)
             context->used = true;
         }
     }
-
-    afterContextSwitch();
 
     return true;
 }
