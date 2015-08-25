@@ -94,10 +94,6 @@ unsigned*
 MetricBackend_AMD_perfmon::DataCollector::newDataBuffer(unsigned event,
                                                         size_t size)
 {
-    if (curEvent == 0) {
-        //std::vector<unsigned*> vec(1, alloc.allocate(size));
-        data.push_back(mmapdeque<unsigned*>(alloc));
-    }
     data[curPass].resize(event, nullptr);
     data[curPass].push_back(alloc.allocate(size));
     //data[curPass][event] = alloc.allocate(size);
@@ -107,6 +103,7 @@ MetricBackend_AMD_perfmon::DataCollector::newDataBuffer(unsigned event,
 
 void MetricBackend_AMD_perfmon::DataCollector::endPass() {
     curPass++;
+    data.push_back(mmapdeque<unsigned*>(alloc));
     curEvent = 0;
 }
 
@@ -350,6 +347,7 @@ void MetricBackend_AMD_perfmon::beginQuery(QueryBoundary boundary) {
     if (boundary == QUERY_BOUNDARY_CALL) return;
     if ((boundary == QUERY_BOUNDARY_FRAME) && !perFrame) return;
     if ((boundary == QUERY_BOUNDARY_DRAWCALL) && perFrame) return;
+    curMonitor %= NUM_MONITORS;
     if (!firstRound) freeMonitor(curMonitor);
     monitorEvent[curMonitor] = curEvent;
     glBeginPerfMonitorAMD(monitors[curMonitor]);
@@ -366,7 +364,6 @@ void MetricBackend_AMD_perfmon::endQuery(QueryBoundary boundary) {
     glEndPerfMonitorAMD(monitors[curMonitor]);
     curMonitor++;
     if (curMonitor == NUM_MONITORS) firstRound = 0;
-    curMonitor %= NUM_MONITORS;
     queryInProgress = false;
 }
 
