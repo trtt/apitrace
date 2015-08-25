@@ -564,7 +564,9 @@ frame_complete(trace::Call &call) {
 void
 beforeContextSwitch()
 {
-    if (retrace::profilingWithBackends && curMetricBackend) {
+    if (profilingContextAcquired && retrace::profilingWithBackends &&
+        curMetricBackend)
+    {
         curMetricBackend->stopPass();
         profilingContextAcquired = false;
     }
