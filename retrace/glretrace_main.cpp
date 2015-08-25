@@ -453,57 +453,6 @@ initContext() {
         getCurrentRss(currentRss);
         retrace::profiler.setBaseRssUsage(currentRss);
     }
-
-    if (retrace::profilingListMetrics) {
-        listMetricsCLI();
-        exit(0);
-    }
-
-    if (retrace::profilingWithBackends) {
-        if (!metricBackendsSetup) {
-            if (retrace::profilingCallsMetricsString) {
-                enableMetricsFromCLI(retrace::profilingCallsMetricsString,
-                                     QUERY_BOUNDARY_CALL);
-            }
-            if (retrace::profilingFramesMetricsString) {
-                enableMetricsFromCLI(retrace::profilingFramesMetricsString,
-                                     QUERY_BOUNDARY_FRAME);
-            }
-            if (retrace::profilingDrawCallsMetricsString) {
-                enableMetricsFromCLI(retrace::profilingDrawCallsMetricsString,
-                                     QUERY_BOUNDARY_DRAWCALL);
-            }
-            unsigned numPasses = 0;
-            for (auto &b : metricBackends) {
-                b->generatePasses();
-                numPasses += b->getNumPasses();
-            }
-            retrace::numPasses = numPasses > 0 ? numPasses : 1;
-            if (retrace::profilingNumPasses) {
-                std::cout << retrace::numPasses << std::endl;
-                exit(0);
-            }
-            metricBackendsSetup = true;
-        }
-
-        if (!profilingContextAcquired) {
-            unsigned numPasses = 0;
-            for (auto &b : metricBackends) {
-                numPasses += b->getNumPasses();
-                if (retrace::curPass < numPasses) {
-                    curMetricBackend = b;
-                    b->beginPass(); // begin pass
-                    break;
-                }
-            }
-
-            if (curMetricBackend) {
-                curMetricBackend->beginQuery(QUERY_BOUNDARY_FRAME);
-            }
-
-            profilingContextAcquired = true;
-        }
-    }
 }
 
 void
@@ -575,11 +524,61 @@ beforeContextSwitch()
 void
 afterContextSwitch()
 {
-    if (!profilingContextAcquired && retrace::profilingWithBackends &&
-        curMetricBackend)
-    {
-        curMetricBackend->continuePass();
-        profilingContextAcquired = true;
+
+    if (retrace::profilingListMetrics) {
+        listMetricsCLI();
+        exit(0);
+    }
+
+    if (retrace::profilingWithBackends) {
+        if (!metricBackendsSetup) {
+            if (retrace::profilingCallsMetricsString) {
+                enableMetricsFromCLI(retrace::profilingCallsMetricsString,
+                                     QUERY_BOUNDARY_CALL);
+            }
+            if (retrace::profilingFramesMetricsString) {
+                enableMetricsFromCLI(retrace::profilingFramesMetricsString,
+                                     QUERY_BOUNDARY_FRAME);
+            }
+            if (retrace::profilingDrawCallsMetricsString) {
+                enableMetricsFromCLI(retrace::profilingDrawCallsMetricsString,
+                                     QUERY_BOUNDARY_DRAWCALL);
+            }
+            unsigned numPasses = 0;
+            for (auto &b : metricBackends) {
+                b->generatePasses();
+                numPasses += b->getNumPasses();
+            }
+            retrace::numPasses = numPasses > 0 ? numPasses : 1;
+            if (retrace::profilingNumPasses) {
+                std::cout << retrace::numPasses << std::endl;
+                exit(0);
+            }
+            metricBackendsSetup = true;
+        }
+
+        if (!profilingContextAcquired) {
+            unsigned numPasses = 0;
+            for (auto &b : metricBackends) {
+                numPasses += b->getNumPasses();
+                if (retrace::curPass < numPasses) {
+                    curMetricBackend = b;
+                    b->beginPass(); // begin pass
+                    break;
+                }
+            }
+
+            if (curMetricBackend) {
+                curMetricBackend->beginQuery(QUERY_BOUNDARY_FRAME);
+            }
+
+            profilingContextAcquired = true;
+            return;
+        }
+
+        if (curMetricBackend) {
+            curMetricBackend->continuePass();
+        }
     }
 }
 
