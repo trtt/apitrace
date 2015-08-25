@@ -278,7 +278,7 @@ unsigned MetricBackend_AMD_perfmon::generatePasses() {
 }
 
 void MetricBackend_AMD_perfmon::beginPass() {
-    if (!supported || !numPasses) return;
+    if (!numPasses) return;
     /* First process per-frame passes, then per-call passes */
     if (curPass < numFramePasses) {
         perFrame = true;
