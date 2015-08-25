@@ -167,8 +167,6 @@ makeCurrent(trace::Call &call, glws::Drawable *drawable, Context *context)
 
     bool success = glws::makeCurrent(drawable, context ? context->wsContext : NULL);
 
-    afterContextSwitch();
-
     if (!success) {
         std::cerr << "error: failed to make current OpenGL context and drawable\n";
         exit(1);
@@ -184,6 +182,8 @@ makeCurrent(trace::Call &call, glws::Drawable *drawable, Context *context)
             context->used = true;
         }
     }
+
+    afterContextSwitch();
 
     return true;
 }
