@@ -85,7 +85,7 @@ MetricType Metric_AMD_perfmon::type() {
 MetricBackend_AMD_perfmon::DataCollector::~DataCollector() {
     for (auto &t1 : data) {
         for (auto &t2 : t1) {
-            alloc.deallocate(t2.second, 1);
+            alloc.deallocate(t2, 1);
         }
     }
 }
@@ -94,13 +94,13 @@ unsigned*
 MetricBackend_AMD_perfmon::DataCollector::newDataBuffer(unsigned event,
                                                         size_t size)
 {
-    /*if (curEvent == 0) {
-        std::vector<unsigned*> vec(1, alloc.allocate(size));
-        data.push_back(vec);
-    } else {
-        data[curPass].push_back(alloc.allocate(size));
-    }*/
-    data[curPass][event] = alloc.allocate(size);
+    if (curEvent == 0) {
+        //std::vector<unsigned*> vec(1, alloc.allocate(size));
+        data.push_back(mmapdeque<unsigned*>(alloc));
+    }
+    data[curPass].resize(event, nullptr);
+    data[curPass].push_back(alloc.allocate(size));
+    //data[curPass][event] = alloc.allocate(size);
     //eventMap[event] = curEvent;
     return data[curPass][event];
 }
@@ -112,10 +112,10 @@ void MetricBackend_AMD_perfmon::DataCollector::endPass() {
 
 unsigned*
 MetricBackend_AMD_perfmon::DataCollector::getDataBuffer(unsigned pass,
-                                                        unsigned event_)
+                                                        unsigned event)
 {
-    if (data[pass].count(event_) > 0) {
-        return data[pass][event_];
+    if (event < data[pass].size()) {
+        return data[pass][event];
     } else return nullptr;
 }
 
