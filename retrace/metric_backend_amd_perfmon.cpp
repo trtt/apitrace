@@ -294,8 +294,9 @@ void MetricBackend_AMD_perfmon::beginPass() {
         }
     }
     curMonitor = 0;
-    firstRound = 1;
+    firstRound = true;
     curEvent = 0;
+    supported = true; // can change if context is switched, so revert back
 }
 
 void MetricBackend_AMD_perfmon::endPass() {
