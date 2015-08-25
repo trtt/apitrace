@@ -27,11 +27,18 @@
 
 void Metric_AMD_perfmon::precache() {
     GLenum type;
+    int length;
+    std::string name;
     glGetPerfMonitorCounterInfoAMD(m_group, m_id, GL_COUNTER_TYPE_AMD, &type);
     if (type == GL_UNSIGNED_INT) m_nType = CNT_NUM_UINT;
     else if (type == GL_FLOAT || type == GL_PERCENTAGE_AMD) m_nType = CNT_NUM_FLOAT;
     else if (type == GL_UNSIGNED_INT64_AMD) m_nType = CNT_NUM_UINT64;
     else m_nType = CNT_NUM_UINT;
+
+    glGetPerfMonitorCounterStringAMD(m_group, m_id, 0, &length, nullptr);
+    name.resize(length);
+    glGetPerfMonitorCounterStringAMD(m_group, m_id, length, 0, &name[0]);
+    m_name = name;
     m_precached = true;
 }
 
@@ -44,12 +51,8 @@ unsigned Metric_AMD_perfmon::groupId() {
 }
 
 std::string Metric_AMD_perfmon::name() {
-    int length;
-    std::string name;
-    glGetPerfMonitorCounterStringAMD(m_group, m_id, 0, &length, nullptr);
-    name.resize(length);
-    glGetPerfMonitorCounterStringAMD(m_group, m_id, length, 0, &name[0]);
-    return name;
+    if (!m_precached) precache();
+    return m_name;
 }
 
 std::string Metric_AMD_perfmon::description() {
@@ -224,6 +227,7 @@ int MetricBackend_AMD_perfmon::enableMetric(Metric* metric_, QueryBoundary polli
     }
 
     Metric_AMD_perfmon metric(gid, id);
+    metric.numType(); // precache metric vars (in case context changes)
     metrics[pollingRule].push_back(metric);
     return 0;
 }
@@ -311,8 +315,11 @@ void MetricBackend_AMD_perfmon::endPass() {
 void MetricBackend_AMD_perfmon::stopPass() {
     if (!supported || !numPasses) return;
     // clear all queries and monitors
+    // ignore data from the query in progress
     if (queryInProgress) {
         glEndPerfMonitorAMD(monitors[curMonitor]);
+        curEvent++;
+        queryInProgress = false;
     }
     for (unsigned k = 0; k < curMonitor; k++) {
         freeMonitor(k);
@@ -331,13 +338,10 @@ void MetricBackend_AMD_perfmon::continuePass() {
     }
 
     if (supported && numPasses) {
-    // safe to call begin pass
+    // call begin pass and save/restore event id
+        unsigned tempId = curEvent;
         beginPass();
-        // resume query
-        if (queryInProgress) {
-            monitorEvent[curMonitor] = curEvent;
-            glBeginPerfMonitorAMD(monitors[curMonitor]);
-        }
+        curEvent = tempId;
     }
 }
 
@@ -354,6 +358,7 @@ void MetricBackend_AMD_perfmon::beginQuery(QueryBoundary boundary) {
 }
 
 void MetricBackend_AMD_perfmon::endQuery(QueryBoundary boundary) {
+    if (!queryInProgress) return;
     if (!supported || !numPasses) return;
     if (boundary == QUERY_BOUNDARY_CALL) return;
     if ((boundary == QUERY_BOUNDARY_FRAME) && !perFrame) return;

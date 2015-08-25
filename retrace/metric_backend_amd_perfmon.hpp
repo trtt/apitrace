@@ -42,6 +42,7 @@ class Metric_AMD_perfmon : public Metric
 private:
     unsigned m_group, m_id;
     MetricNumType m_nType;
+    std::string m_name;
     bool m_precached;
 
     void precache();
