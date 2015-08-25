@@ -517,7 +517,6 @@ beforeContextSwitch()
         curMetricBackend)
     {
         curMetricBackend->stopPass();
-        profilingContextAcquired = false;
     }
 }
 
