@@ -276,7 +276,7 @@ unsigned MetricBackend_AMD_perfmon::generatePasses() {
 }
 
 void MetricBackend_AMD_perfmon::beginPass() {
-    if (!numPasses) return;
+    if (!supported || !numPasses) return;
     /* First process per-frame passes, then per-call passes */
     if (curPass < numFramePasses) {
         perFrame = true;
@@ -298,21 +298,23 @@ void MetricBackend_AMD_perfmon::beginPass() {
 }
 
 void MetricBackend_AMD_perfmon::endPass() {
-    if (!numPasses) return;
-    for (unsigned k = firstRound; k <= curMonitor; k++) {
-        freeMonitor(k);
+    if (supported && numPasses) {
+        for (unsigned k = 0; k < curMonitor; k++) {
+            freeMonitor(k);
+        }
+        glDeletePerfMonitorsAMD(NUM_MONITORS, monitors);
     }
-    glDeletePerfMonitorsAMD(NUM_MONITORS, monitors);
     curPass++;
     collector.endPass();
 }
 
 void MetricBackend_AMD_perfmon::stopPass() {
+    if (!supported || !numPasses) return;
     // clear all queries and monitors
     if (queryInProgress) {
         glEndPerfMonitorAMD(monitors[curMonitor]);
     }
-    for (unsigned k = firstRound; k <= curMonitor; k++) {
+    for (unsigned k = 0; k < curMonitor; k++) {
         freeMonitor(k);
     }
     glDeletePerfMonitorsAMD(NUM_MONITORS, monitors);
@@ -321,22 +323,30 @@ void MetricBackend_AMD_perfmon::stopPass() {
 void MetricBackend_AMD_perfmon::continuePass() {
     // here new context might be used
     // better to check if it supports AMD_perfmon extension
-    // TODO
+    glretrace::Context* context = glretrace::getCurrentContext();
+    if (context->hasExtension("GL_AMD_performance_monitor")) {
+        supported = true;
+    } else {
+        supported = false;
+    }
 
+    if (supported && numPasses) {
     // safe to call begin pass
-    beginPass();
-    // resume query
-    if (queryInProgress) {
-        monitorEvent[curMonitor] = curEvent;
-        glBeginPerfMonitorAMD(monitors[curMonitor]);
+        beginPass();
+        // resume query
+        if (queryInProgress) {
+            monitorEvent[curMonitor] = curEvent;
+            glBeginPerfMonitorAMD(monitors[curMonitor]);
+        }
     }
 }
 
 void MetricBackend_AMD_perfmon::beginQuery(QueryBoundary boundary) {
-    if (!numPasses) return;
+    if (!supported || !numPasses) return;
     if (boundary == QUERY_BOUNDARY_CALL) return;
     if ((boundary == QUERY_BOUNDARY_FRAME) && !perFrame) return;
     if ((boundary == QUERY_BOUNDARY_DRAWCALL) && perFrame) return;
+    curMonitor %= NUM_MONITORS;
     if (!firstRound) freeMonitor(curMonitor);
     monitorEvent[curMonitor] = curEvent;
     glBeginPerfMonitorAMD(monitors[curMonitor]);
@@ -344,7 +354,7 @@ void MetricBackend_AMD_perfmon::beginQuery(QueryBoundary boundary) {
 }
 
 void MetricBackend_AMD_perfmon::endQuery(QueryBoundary boundary) {
-    if (!numPasses) return;
+    if (!supported || !numPasses) return;
     if (boundary == QUERY_BOUNDARY_CALL) return;
     if ((boundary == QUERY_BOUNDARY_FRAME) && !perFrame) return;
     if ((boundary == QUERY_BOUNDARY_DRAWCALL) && perFrame) return;
@@ -352,7 +362,6 @@ void MetricBackend_AMD_perfmon::endQuery(QueryBoundary boundary) {
     glEndPerfMonitorAMD(monitors[curMonitor]);
     curMonitor++;
     if (curMonitor == NUM_MONITORS) firstRound = 0;
-    curMonitor %= NUM_MONITORS;
     queryInProgress = false;
 }
 
