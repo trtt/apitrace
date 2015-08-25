@@ -29,6 +29,7 @@ void Metric_AMD_perfmon::precache() {
     GLenum type;
     int length;
     std::string name;
+
     glGetPerfMonitorCounterInfoAMD(m_group, m_id, GL_COUNTER_TYPE_AMD, &type);
     if (type == GL_UNSIGNED_INT) m_nType = CNT_NUM_UINT;
     else if (type == GL_FLOAT || type == GL_PERCENTAGE_AMD) m_nType = CNT_NUM_FLOAT;
@@ -82,6 +83,7 @@ MetricType Metric_AMD_perfmon::type() {
     else return CNT_TYPE_OTHER;
 }
 
+
 MetricBackend_AMD_perfmon::DataCollector::~DataCollector() {
     for (auto &t1 : data) {
         for (auto &t2 : t1) {
@@ -94,17 +96,15 @@ unsigned*
 MetricBackend_AMD_perfmon::DataCollector::newDataBuffer(unsigned event,
                                                         size_t size)
 {
+    // in case there is no data for previous events fill with nullptr
     data[curPass].resize(event, nullptr);
     data[curPass].push_back(alloc.allocate(size));
-    //data[curPass][event] = alloc.allocate(size);
-    //eventMap[event] = curEvent;
     return data[curPass][event];
 }
 
 void MetricBackend_AMD_perfmon::DataCollector::endPass() {
     curPass++;
     data.push_back(mmapdeque<unsigned*>(alloc));
-    curEvent = 0;
 }
 
 unsigned*
@@ -115,6 +115,7 @@ MetricBackend_AMD_perfmon::DataCollector::getDataBuffer(unsigned pass,
         return data[pass][event];
     } else return nullptr;
 }
+
 
 MetricBackend_AMD_perfmon::MetricBackend_AMD_perfmon(glretrace::Context* context,
                                                      MmapAllocator<char> &alloc)
@@ -179,7 +180,7 @@ void MetricBackend_AMD_perfmon::populateLookupMetrics(Metric* metric,
                                                       void* userData)
 {
     nameLookup[metric->name()] = std::make_pair(metric->groupId(),
-                                                   metric->id());
+                                                metric->id());
 }
 
 std::unique_ptr<Metric>
@@ -224,7 +225,7 @@ int MetricBackend_AMD_perfmon::enableMetric(Metric* metric_, QueryBoundary polli
     }
 
     Metric_AMD_perfmon metric(gid, id);
-    metric.numType(); // precache metric vars (in case context changes)
+    metric.numType(); // triggers metric vars precache (in case context changes)
     metrics[pollingRule].push_back(metric);
     return 0;
 }
@@ -286,9 +287,8 @@ void MetricBackend_AMD_perfmon::beginPass() {
     }
     /* Generate monitor */
     glGenPerfMonitorsAMD(NUM_MONITORS, monitors);
-    unsigned id;
     for (Metric_AMD_perfmon &c : passes[curPass]) {
-        id = c.id();
+        unsigned id = c.id();
         for (int k = 0; k < NUM_MONITORS; k++) {
             glSelectPerfMonitorCountersAMD(monitors[k], 1, c.groupId(), 1, &id);
         }
@@ -347,9 +347,10 @@ void MetricBackend_AMD_perfmon::beginQuery(QueryBoundary boundary) {
     if (boundary == QUERY_BOUNDARY_CALL) return;
     if ((boundary == QUERY_BOUNDARY_FRAME) && !perFrame) return;
     if ((boundary == QUERY_BOUNDARY_DRAWCALL) && perFrame) return;
+
     curMonitor %= NUM_MONITORS;
-    if (!firstRound) freeMonitor(curMonitor);
-    monitorEvent[curMonitor] = curEvent;
+    if (!firstRound) freeMonitor(curMonitor); // get existing data
+    monitorEvent[curMonitor] = curEvent; // save monitored event
     glBeginPerfMonitorAMD(monitors[curMonitor]);
     queryInProgress = true;
 }
@@ -360,6 +361,7 @@ void MetricBackend_AMD_perfmon::endQuery(QueryBoundary boundary) {
     if (boundary == QUERY_BOUNDARY_CALL) return;
     if ((boundary == QUERY_BOUNDARY_FRAME) && !perFrame) return;
     if ((boundary == QUERY_BOUNDARY_DRAWCALL) && perFrame) return;
+
     curEvent++;
     glEndPerfMonitorAMD(monitors[curMonitor]);
     curMonitor++;
@@ -369,13 +371,14 @@ void MetricBackend_AMD_perfmon::endQuery(QueryBoundary boundary) {
 
 void MetricBackend_AMD_perfmon::freeMonitor(unsigned monitorId) {
     unsigned monitor = monitors[monitorId];
-    glFlush();
     GLuint dataAvail = 0;
+    GLuint size;
+
+    glFlush();
     while (!dataAvail) {
         glGetPerfMonitorCounterDataAMD(monitor, GL_PERFMON_RESULT_AVAILABLE_AMD,
                                        sizeof(GLuint), &dataAvail, nullptr);
     }
-    GLuint size;
     glGetPerfMonitorCounterDataAMD(monitor, GL_PERFMON_RESULT_SIZE_AMD,
                                    sizeof(GLuint), &size, nullptr);
     // collect data

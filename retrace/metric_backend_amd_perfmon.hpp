@@ -35,7 +35,7 @@
 #include "glretrace.hpp"
 #include "mmap_allocator.hpp"
 
-#define NUM_MONITORS 1 // number of used AMD_perfmon monitors, stick to one at first
+#define NUM_MONITORS 1 // number of max used AMD_perfmon monitors
 
 class Metric_AMD_perfmon : public Metric
 {
@@ -75,19 +75,18 @@ private:
     class DataCollector
     {
         private:
-            MmapAllocator<unsigned> alloc;
-            //std::vector<std::vector<unsigned*>, MmapAllocator<std::vector<unsigned*>>> data;
+            MmapAllocator<unsigned> alloc; // allocator
+            // deque with custom allocator
             template <class T>
             using mmapdeque = std::deque<T, MmapAllocator<std::deque<T>>>;
+            // data storage
             mmapdeque<mmapdeque<unsigned*>> data;
-            //std::map<unsigned, unsigned> eventMap; // drawCallId <-> callId
             unsigned curPass;
-            unsigned curEvent;
 
         public:
             DataCollector(MmapAllocator<char> &alloc)
                 : alloc(alloc), data(1, mmapdeque<unsigned*>(alloc), alloc),
-                  curPass(0), curEvent(0) {}
+                  curPass(0) {}
 
             ~DataCollector();
 
@@ -99,21 +98,25 @@ private:
     };
 
 private:
-    bool supported;
-    unsigned monitors[NUM_MONITORS]; // For cycling, using 2 in current implementation
-    unsigned curMonitor;
-    bool firstRound, perFrame;
+    bool supported; // extension support (checked initially and w/ context switch)
+    bool firstRound; // first profiling round (no need to free monitors)
+    bool perFrame; // profiling frames?
     bool queryInProgress;
-    std::vector<std::vector<Metric_AMD_perfmon>> passes; // metric sets for each pass
-    /* metricOffsets[pass][Metric*] -- metric offset in data returned after profiling */
-    std::vector<std::map<Metric_AMD_perfmon*, unsigned>> metricOffsets;
-    int numPasses;
-    int numFramePasses;
-    int curPass;
-    unsigned curEvent; // Currently evaluated event
+    unsigned monitors[NUM_MONITORS]; // For cycling
+    unsigned curMonitor;
     unsigned monitorEvent[NUM_MONITORS]; // Event saved in monitor
-    DataCollector collector;
-    std::vector<Metric_AMD_perfmon> metrics[2]; // store metrics selected for profiling
+    unsigned numPasses; // all passes
+    unsigned numFramePasses; // frame passes
+    unsigned curPass;
+    unsigned curEvent; // Currently evaluated event
+    // metrics selected for profiling boundaries (frames, draw calls)
+    std::vector<Metric_AMD_perfmon> metrics[2];
+    // metric sets for each pass
+    std::vector<std::vector<Metric_AMD_perfmon>> passes;
+    // metric offsets in data for each pass
+    std::vector<std::map<Metric_AMD_perfmon*, unsigned>> metricOffsets;
+    DataCollector collector; // data storage
+    // lookup table (metric name -> (gid, id))
     static std::map<std::string, std::pair<unsigned, unsigned>> nameLookup;
 
     MetricBackend_AMD_perfmon(glretrace::Context* context, MmapAllocator<char> &alloc);
