@@ -566,14 +566,18 @@ beforeContextSwitch()
 {
     if (retrace::profilingWithBackends && curMetricBackend) {
         curMetricBackend->stopPass();
+        profilingContextAcquired = false;
     }
 }
 
 void
 afterContextSwitch()
 {
-    if (retrace::profilingWithBackends && curMetricBackend) {
+    if (!profilingContextAcquired && retrace::profilingWithBackends &&
+        curMetricBackend)
+    {
         curMetricBackend->continuePass();
+        profilingContextAcquired = true;
     }
 }
 
