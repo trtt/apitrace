@@ -86,7 +86,8 @@ private:
 
         public:
             DataCollector(MmapAllocator<char> &alloc)
-                : alloc(alloc), data(alloc), curPass(0), curEvent(0) {}
+                : alloc(alloc), data(1, mmapdeque<unsigned*>(alloc), alloc),
+                  curPass(0), curEvent(0) {}
 
             ~DataCollector();
 
