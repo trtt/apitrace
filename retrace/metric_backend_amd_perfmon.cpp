@@ -350,7 +350,6 @@ void MetricBackend_AMD_perfmon::beginQuery(QueryBoundary boundary) {
     if (boundary == QUERY_BOUNDARY_CALL) return;
     if ((boundary == QUERY_BOUNDARY_FRAME) && !perFrame) return;
     if ((boundary == QUERY_BOUNDARY_DRAWCALL) && perFrame) return;
-    curMonitor %= NUM_MONITORS;
     if (!firstRound) freeMonitor(curMonitor);
     monitorEvent[curMonitor] = curEvent;
     glBeginPerfMonitorAMD(monitors[curMonitor]);
@@ -367,6 +366,7 @@ void MetricBackend_AMD_perfmon::endQuery(QueryBoundary boundary) {
     glEndPerfMonitorAMD(monitors[curMonitor]);
     curMonitor++;
     if (curMonitor == NUM_MONITORS) firstRound = 0;
+    curMonitor %= NUM_MONITORS;
     queryInProgress = false;
 }
 
