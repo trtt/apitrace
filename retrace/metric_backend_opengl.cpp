@@ -52,7 +52,7 @@ MetricBackend_opengl::MetricBackend_opengl(glretrace::Context* context,
                                            MmapAllocator<char> &alloc)
     : alloc(alloc)
 {
-    glprofile::Profile currentProfile = context->profile();
+    glprofile::Profile currentProfile = context->actualProfile();
     supportsTimestamp   = currentProfile.versionGreaterOrEqual(glprofile::API_GL, 3, 3) ||
                           context->hasExtension("GL_ARB_timer_query");
     supportsElapsed     = context->hasExtension("GL_EXT_timer_query") || supportsTimestamp;
