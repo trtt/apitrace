@@ -92,6 +92,7 @@ private:
     bool glQueriesNeededAnyBoundary;
     bool cpugpuSync;
     bool twoPasses; // profiling in two passes
+    bool queryInProgress[QUERY_BOUNDARY_LIST_END];
 
     unsigned curPass;
 
