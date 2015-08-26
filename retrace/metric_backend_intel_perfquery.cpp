@@ -270,7 +270,7 @@ void MetricBackend_INTEL_perfquery::stopPass() {
 
 void MetricBackend_INTEL_perfquery::continuePass() {
     // here new context might be used
-    // better to check if it supports AMD_perfmon extension
+    // better to check if it supports INTEL_perfquery extension
     glretrace::Context* context = glretrace::getCurrentContext();
     if (context && context->hasExtension("GL_INTEL_performance_query")) {
         supported = true;

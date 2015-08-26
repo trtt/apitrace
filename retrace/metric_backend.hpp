@@ -231,8 +231,19 @@ public:
      */
     virtual void endPass() = 0;
 
+    /**
+     * Stop pass with all the queries in progress.
+     * Backend decides what to do with the data of interrupted
+     * query.
+     * Can be used before the context switch in OpenGl.
+     */
     virtual void stopPass() = 0;
 
+    /**
+     * Continue profiling the pass after stopPass().
+     * Backend decides whether to reprofile interrupted by stopPass() query.
+     * Can be used after the context switch in OpenGl.
+     */
     virtual void continuePass() = 0;
 
     /**
