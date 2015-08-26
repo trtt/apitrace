@@ -42,6 +42,7 @@ class Metric_INTEL_perfquery : public Metric
 private:
     unsigned m_group, m_id;
     unsigned m_offset;
+    std:: string m_name;
     MetricNumType m_nType;
     bool m_precached;
 
@@ -77,14 +78,17 @@ private:
     {
         private:
             MmapAllocator<unsigned char> alloc;
-            std::vector<std::vector<unsigned char*>, MmapAllocator<std::vector<unsigned char*>>> data;
-            std::map<unsigned, unsigned> eventMap; // drawCallId <-> callId
+            // deque with custom allocator
+            template <class T>
+            using mmapdeque = std::deque<T, MmapAllocator<std::deque<T>>>;
+            // data storage
+            mmapdeque<mmapdeque<unsigned char*>> data;
             unsigned curPass;
-            unsigned curEvent;
 
         public:
             DataCollector(MmapAllocator<char> &alloc)
-                : alloc(alloc), data(alloc), curPass(0), curEvent(0) {}
+                : alloc(alloc), data(1, mmapdeque<unsigned char*>(alloc), alloc),
+                  curPass(0) {}
 
             ~DataCollector();
 

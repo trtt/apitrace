@@ -41,6 +41,11 @@ void Metric_INTEL_perfquery::precache() {
     else if (type == GL_PERFQUERY_COUNTER_DATA_UINT64_INTEL) m_nType = CNT_NUM_UINT64;
     else m_nType = CNT_NUM_UINT;
 
+    char name[INTEL_NAME_LENGTH];
+    glGetPerfCounterInfoINTEL(m_group, m_id, INTEL_NAME_LENGTH, name, 0, nullptr,
+                              nullptr, nullptr, nullptr, nullptr, nullptr);
+    m_name = std::string(name);
+
     m_precached = true;
 }
 
@@ -53,10 +58,8 @@ unsigned Metric_INTEL_perfquery::groupId() {
 }
 
 std::string Metric_INTEL_perfquery::name() {
-    char name[INTEL_NAME_LENGTH];
-    glGetPerfCounterInfoINTEL(m_group, m_id, INTEL_NAME_LENGTH, name, 0, nullptr,
-                              nullptr, nullptr, nullptr, nullptr, nullptr);
-    return std::string(name);
+    if (!m_precached) precache();
+    return m_name;
 }
 
 std::string Metric_INTEL_perfquery::description() {
@@ -90,8 +93,8 @@ MetricType Metric_INTEL_perfquery::type() {
 }
 
 MetricBackend_INTEL_perfquery::DataCollector::~DataCollector() {
-    for (std::vector<unsigned char*> &t1 : data) {
-        for (unsigned char* &t2 : t1) {
+    for (auto &t1 : data) {
+        for (auto &t2 : t1) {
             alloc.deallocate(t2, 1);
         }
     }
@@ -101,27 +104,22 @@ unsigned char*
 MetricBackend_INTEL_perfquery::DataCollector::newDataBuffer(unsigned event,
                                                             size_t size)
 {
-    if (curEvent == 0) {
-        std::vector<unsigned char*> vec(1, alloc.allocate(size));
-        data.push_back(vec);
-    } else {
-        data[curPass].push_back(alloc.allocate(size));
-    }
-    eventMap[event] = curEvent;
-    return data[curPass][curEvent++];
+    // in case there is no data for previous events fill with nullptr
+    data[curPass].resize(event, nullptr);
+    data[curPass].push_back(alloc.allocate(size));
+    return data[curPass][event];
 }
 
 void MetricBackend_INTEL_perfquery::DataCollector::endPass() {
     curPass++;
-    curEvent = 0;
+    data.push_back(mmapdeque<unsigned char*>(alloc));
 }
 
 unsigned char*
 MetricBackend_INTEL_perfquery::DataCollector::getDataBuffer(unsigned pass,
-                                                            unsigned event_)
+                                                            unsigned event)
 {
-    if (eventMap.count(event_) > 0) {
-        unsigned event = eventMap[event_];
+    if (event < data[pass].size()) {
         return data[pass][event];
     } else return nullptr;
 }
