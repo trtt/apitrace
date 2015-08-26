@@ -19,7 +19,8 @@
 
 /*
  * Allocator that backs up memory with mmaped file
- * File is grown by ALLOC_CHUNK_SIZE
+ * File is grown by ALLOC_CHUNK_SIZE, this new region is mmaped then
+ * Nothing is deallocated
 */
 
 class MmapedFileBuffer
@@ -30,6 +31,7 @@ private:
     const size_t chunkSize;
     std::list<void*> mmaps;
     void* vptr;
+    std::string fileName;
 
     MmapedFileBuffer(MmapedFileBuffer const&) = delete;
 
@@ -50,6 +52,7 @@ public:
     {
         char templ[] = ".pbtmpXXXXXX";
         fd = mkstemp(templ);
+        fileName = templ;
         newMmap();
     }
 
@@ -58,6 +61,7 @@ public:
         for (auto &m : mmaps) {
             munmap(m, chunkSize);
         }
+        unlink(fileName.c_str());
     }
 
     void* allocate(size_t size) {
