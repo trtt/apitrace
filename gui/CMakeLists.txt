@@ -66,6 +66,8 @@ set(qqapitrace_SRCS
    qqmain.cpp
    metric_selection_model.cpp
    metric_data_model.cpp
+   graphing/graphview.cpp
+   graphing/histogramview.cpp
 )
 
 qt5_add_resources(qapitrace_SRCS qapitrace.qrc)
