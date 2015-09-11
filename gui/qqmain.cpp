@@ -6,6 +6,8 @@
 
 #include "metric_selection_model.hpp"
 #include "metric_data_model.hpp"
+#include "metric_graph_data.hpp"
+#include "graphing/histogramview.h"
 
 #include "ui_metric_selection.h"
 #include "ui_qqmain.h"
@@ -77,6 +79,37 @@ int main(int argc, char *argv[])
     });
     win.connect(winui.callAddMetrics, &QPushButton::clicked, [&]{
             addMetrics(model, argv[1]);
+    });
+
+    // Frame and call graphs
+    HistogramView* histFrame = new HistogramView(0);
+    MetricGraphData dataFrame = MetricGraphData(&modelFrame, 1);
+    histFrame->setDataProvider(&dataFrame);
+    histFrame->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    winui.graphsLayoutFrame->addWidget(histFrame);
+
+    HistogramView* histCall = new HistogramView(0);
+    MetricGraphData dataCall = MetricGraphData(&modelCall, 4);
+    histCall->setDataProvider(&dataCall);
+    histCall->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    winui.graphsLayoutCall->addWidget(histCall);
+
+    // Selected column is plotted
+    win.connect(winui.frameTableView->selectionModel(),
+                 &QItemSelectionModel::selectionChanged, [&] {
+        QList<QModelIndex> columns = winui.frameTableView->selectionModel()->selectedColumns();
+        if (!columns.empty()) {
+            dataFrame.setColumn(columns[0].column());
+            histFrame->update();
+        }
+    });
+    win.connect(winui.callTableView->selectionModel(),
+                 &QItemSelectionModel::selectionChanged, [&] {
+        QList<QModelIndex> columns = winui.callTableView->selectionModel()->selectedColumns();
+        if (!columns.empty()) {
+            dataCall.setColumn(columns[0].column());
+            histCall->update();
+        }
     });
 
     win.show();
