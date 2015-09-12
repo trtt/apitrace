@@ -64,6 +64,7 @@ int main(int argc, char *argv[])
     process.setReadChannel(QProcess::StandardOutput);
     process.waitForFinished(-1);
     MetricSelectionModel model(process);
+    process.kill();
 
     // metrics selection dialog at the start
     addMetrics(model, argv[1]);
