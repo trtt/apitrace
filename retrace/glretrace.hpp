@@ -35,9 +35,76 @@
 
 namespace glretrace {
 
+class ResetManager
+{
+public:
+    static void reset(void) {
+        for (auto &f : callbacks()) {
+            f();
+        }
+    }
+
+    static void addCallback(std::function<void()>&& func) {
+        callbacks().push_back(func);
+    }
+
+    static void addCallback(const std::function<void()>& func) {
+        callbacks().push_back(func);
+    }
+
+private:
+    static std::vector< std::function<void()> >& callbacks(void) {
+        static std::vector< std::function<void()> > callbacks;
+        return callbacks;
+    }
+};
+
+template<typename K, typename V>
+class rmap : public std::map<K, V>
+{
+public:
+    rmap() : std::map<K, V>() {
+        ResetManager::addCallback(std::bind(&rmap<K, V>::_reset, this));
+    }
+
+    ~rmap() {}
+
+private:
+    void _reset(void) {
+        this->clear();
+    }
+};
+
+template<typename K, typename V>
+class rmap<K, V*> : public std::map<K, V*>
+{
+public:
+    rmap() : std::map<K, V*>() {
+        ResetManager::addCallback(std::bind(&rmap<K, V*>::_reset, this));
+    }
+
+    ~rmap() {
+         freePtrs();
+    }
+
+private:
+    void freePtrs(void) {
+        for (auto &p : *this) {
+             delete p.second;
+        }
+    }
+
+    void _reset(void) {
+        freePtrs();
+        this->clear();
+    }
+};
+
 class Context
 {
 public:
+    friend class rmap<unsigned long long, Context *>; // to clean unreleased
+
     Context(glws::Context* context)
         : wsContext(context)
     {
