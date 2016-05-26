@@ -45,9 +45,9 @@
 using namespace glretrace;
 
 
-typedef std::map<unsigned long long, glws::Drawable *> DrawableMap;
-typedef std::map<unsigned long long, Context *> ContextMap;
-typedef std::map<unsigned long long, glfeatures::Profile> ProfileMap;
+typedef rmap<unsigned long long, glws::Drawable *> DrawableMap;
+typedef rmap<unsigned long long, Context *> ContextMap;
+typedef rmap<unsigned long long, glfeatures::Profile> ProfileMap;
 static DrawableMap drawable_map;
 static ContextMap context_map;
 static ProfileMap profile_map;

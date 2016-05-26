@@ -892,6 +892,7 @@ retrace::finishRendering(void) {
             }
         }
     }
+    glretrace::ResetManager::reset();
 }
 
 void

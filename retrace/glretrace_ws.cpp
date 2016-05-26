@@ -44,7 +44,7 @@
 namespace glretrace {
 
 
-static std::map<glfeatures::Profile, glws::Visual *>
+static rmap<glfeatures::Profile, glws::Visual *>
 visuals;
 
 

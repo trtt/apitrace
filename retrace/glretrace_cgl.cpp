@@ -85,8 +85,8 @@
 using namespace glretrace;
 
 
-typedef std::map<unsigned long long, glws::Drawable *> DrawableMap;
-typedef std::map<unsigned long long, Context *> ContextMap;
+typedef rmap<unsigned long long, glws::Drawable *> DrawableMap;
+typedef rmap<unsigned long long, Context *> ContextMap;
 
 // sid -> Drawable* map
 static DrawableMap drawable_map;
