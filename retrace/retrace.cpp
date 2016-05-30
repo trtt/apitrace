@@ -98,23 +98,19 @@ checkMismatch(trace::Call &call, const char *expr, trace::Value *traceValue, lon
 }
 
 
-void ignore(trace::Call &call) {
-    (void)call;
-}
-
 void unsupported(trace::Call &call) {
     warning(call) << "unsupported " << call.name() << " call\n";
 }
 
 inline void Retracer::addCallback(const Entry *entry) {
     assert(entry->name);
-    assert(entry->callback);
+    //assert(entry->callback);
     map[entry->name] = entry->callback;
 }
 
 
 void Retracer::addCallbacks(const Entry *entries) {
-    while (entries->name && entries->callback) {
+    while (entries->name) {
         addCallback(entries++);
     }
 }
@@ -143,18 +139,23 @@ void Retracer::retrace(trace::Call &call) {
         callbacks[id] = callback;
     }
 
-    assert(callback);
-    assert(callbacks[id] == callback);
+    //assert(callback);
+    //assert(callbacks[id] == callback);
 
     if (verbosity >= 1) {
         if (verbosity >= 2 ||
             (!(call.flags & trace::CALL_FLAG_VERBOSE) &&
-             callback != &ignore)) {
+             !callback)) {
             dumpCall(call);
         }
     }
 
-    callback(call);
+    if (!callback) {
+        // callback = ignore
+        (void)call;
+    } else {
+        callback(call);
+    }
 }
 
 
