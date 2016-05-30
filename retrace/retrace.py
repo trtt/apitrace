@@ -628,14 +628,14 @@ class Retracer:
                 if function.sideeffects:
                     print '    {"%s", &retrace_%s},' % (sigName, self.makeFunctionId(function))
                 else:
-                    print '    {"%s", &retrace::ignore},' % (sigName,)
+                    print '    {"%s", retrace::ignore},' % (sigName,)
         for interface in interfaces:
             for base, method in interface.iterBaseMethods():
                 sigName = method.sigName()
                 if method.sideeffects:
                     print '    {"%s::%s", &retrace_%s__%s},' % (interface.name, sigName, base.name, self.makeFunctionId(method))
                 else:
-                    print '    {"%s::%s", &retrace::ignore},' % (interface.name, sigName)
+                    print '    {"%s::%s", retrace::ignore},' % (interface.name, sigName)
         print '    {NULL, NULL}'
         print '};'
         print

@@ -33,6 +33,7 @@
 #include <list>
 #include <map>
 #include <ostream>
+#include <functional>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -177,11 +178,11 @@ void failed(trace::Call &call, HRESULT hr);
 
 void checkMismatch(trace::Call &call, const char *expr, trace::Value *traceValue, long actualValue);
 
-void ignore(trace::Call &call);
+
+typedef std::function<void(trace::Call &call)> Callback;
+
+const Callback ignore = nullptr;
 void unsupported(trace::Call &call);
-
-
-typedef void (*Callback)(trace::Call &call);
 
 struct Entry {
     const char *name;
