@@ -63,8 +63,6 @@ static unsigned snapshotInterval = 0;
 
 static unsigned dumpStateCallNo = ~0;
 
-retrace::Retracer retracer;
-
 
 namespace retrace {
 
@@ -216,7 +214,7 @@ takeSnapshot(unsigned call_no) {
  * the respective handler.
  */
 static void
-retraceCall(trace::Call *call) {
+retraceCall(Retracer &retracer, trace::Call *call) {
     callNo = call->no;
 
     bool swapRenderTarget = call->flags &
@@ -273,8 +271,11 @@ private:
      */
     std::vector<RelayRunner*> runners;
 
+    friend class RelayRunner;
+    Retracer &retracer;
+
 public:
-    RelayRace();
+    RelayRace(Retracer &retracer);
 
     ~RelayRace();
 
@@ -390,7 +391,7 @@ public:
             assert(call);
             assert(call->thread_id == leg);
 
-            retraceCall(call);
+            retraceCall(race->retracer, call);
             delete call;
             call = parser->parse_call();
 
@@ -450,7 +451,7 @@ RelayRunner::runnerThread(RelayRunner *_this) {
 }
 
 
-RelayRace::RelayRace() {
+RelayRace::RelayRace(Retracer &retracer) : retracer(retracer) {
     runners.push_back(new RelayRunner(this, 0));
 }
 
@@ -554,6 +555,7 @@ RelayRace::stopRunners(void) {
 
 static void
 mainLoop() {
+    Retracer retracer;
     addCallbacks(retracer);
 
     long long startTime = 0; 
@@ -564,11 +566,11 @@ mainLoop() {
     if (singleThread) {
         trace::Call *call;
         while ((call = parser->parse_call())) {
-            retraceCall(call);
+            retraceCall(retracer, call);
             delete call;
         }
     } else {
-        RelayRace race;
+        RelayRace race(retracer);
         race.run();
     }
     finishRendering();
