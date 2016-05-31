@@ -833,11 +833,7 @@ retrace::setFeatureLevel(const char *featureLevel)
 
 void
 retrace::setUp(void) {
-    using namespace glretrace;
-    glretrace::glws = new GLWs();
     glws::init();
-    interfaces.push_back(std::unique_ptr<GLInterface>(
-                         new GLInterfaceGLX(glretrace::glws)));
     dumper = &glDumper;
 }
 
@@ -845,9 +841,16 @@ retrace::setUp(void) {
 void
 retrace::addCallbacks(retrace::Retracer &retracer)
 {
+    // Reinstantiate window helper and interfaces (glx etc.)
+    // Probably not the best place to do it (!)
+    glretrace::glws = new glretrace::GLWs();
+    glretrace::interfaces.push_back(std::unique_ptr<glretrace::GLInterface>(
+                                    new glretrace::GLInterfaceGLX(glretrace::glws)));
+
     for (auto const &i : glretrace::interfaces) {
         i->registerCallbacks(retracer);
     }
+
     retracer.addCallbacks(glretrace::gl_callbacks);
 }
 
