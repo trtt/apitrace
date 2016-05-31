@@ -160,10 +160,10 @@ insertCallMarker(trace::Call &call, Context *currentContext);
 
 
 extern const retrace::Entry gl_callbacks[];
-extern const retrace::Entry cgl_callbacks[];
-extern const retrace::Entry glx_callbacks[];
-extern const retrace::Entry wgl_callbacks[];
-extern const retrace::Entry egl_callbacks[];
+//extern const retrace::Entry cgl_callbacks[];
+//extern const retrace::Entry glx_callbacks[];
+//extern const retrace::Entry wgl_callbacks[];
+//extern const retrace::Entry egl_callbacks[];
 
 void frame_complete(trace::Call &call);
 void initContext();

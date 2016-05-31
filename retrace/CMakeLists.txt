@@ -69,11 +69,6 @@ endif ()
 add_library (glretrace_common STATIC
     glretrace.hpp
     glretrace_gl.cpp
-    glretrace_cgl.cpp
-    glretrace_glx.cpp
-    glretrace_wgl.cpp
-    glretrace_wgl_font.cpp
-    glretrace_egl.cpp
     glretrace_main.cpp
     glretrace_ws.cpp
     glstate.cpp
