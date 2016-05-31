@@ -36,6 +36,19 @@
 
 namespace glretrace {
 
+class GLInterface
+{
+protected:
+    GLWs &glws;
+
+public:
+    GLInterface(GLWs* glws) : glws(*glws) {}
+    virtual ~GLInterface() {}
+
+    virtual void registerCallbacks(retrace::Retracer &retracer) = 0;
+};
+
+extern std::vector<std::unique_ptr<GLInterface>> interfaces;
 extern GLWs* glws;
 
 extern bool metricBackendsSetup;

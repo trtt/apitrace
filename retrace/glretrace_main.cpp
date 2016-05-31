@@ -53,6 +53,7 @@ glfeatures::Profile defaultProfile(glfeatures::API_GL, 1, 0);
 
 bool supportsARBShaderObjects = false;
 
+std::vector<std::unique_ptr<GLInterface>> interfaces;
 GLWs* glws;
 
 enum {
@@ -841,6 +842,9 @@ retrace::setUp(void) {
 void
 retrace::addCallbacks(retrace::Retracer &retracer)
 {
+    for (auto const &i : glretrace::interfaces) {
+        i->registerCallbacks(retracer);
+    }
     retracer.addCallbacks(glretrace::gl_callbacks);
 }
 
@@ -893,6 +897,8 @@ retrace::finishRendering(void) {
         }
     }
 
+    // Reset interfaces
+    glretrace::interfaces.clear();
     delete glretrace::glws;
 }
 
