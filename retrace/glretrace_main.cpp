@@ -838,10 +838,6 @@ void
 retrace::addCallbacks(retrace::Retracer &retracer)
 {
     retracer.addCallbacks(glretrace::gl_callbacks);
-    retracer.addCallbacks(glretrace::glx_callbacks);
-    retracer.addCallbacks(glretrace::wgl_callbacks);
-    retracer.addCallbacks(glretrace::cgl_callbacks);
-    retracer.addCallbacks(glretrace::egl_callbacks);
 }
 
 
