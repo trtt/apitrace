@@ -38,6 +38,7 @@
 #include "os_time.hpp"
 #include "os_memory.hpp"
 #include "highlight.hpp"
+#include "glretrace_glx.hpp"
 
 /* Synchronous debug output may reduce performance however,
  * without it the callNo in the callback may be inaccurate
@@ -835,6 +836,8 @@ retrace::setUp(void) {
     using namespace glretrace;
     glretrace::glws = new GLWs();
     glws::init();
+    interfaces.push_back(std::unique_ptr<GLInterface>(
+                         new GLInterfaceGLX(glretrace::glws)));
     dumper = &glDumper;
 }
 

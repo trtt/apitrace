@@ -69,6 +69,7 @@ endif ()
 add_library (glretrace_common STATIC
     glretrace.hpp
     glretrace_gl.cpp
+    glretrace_glx.cpp
     glretrace_main.cpp
     glretrace_ws.cpp
     glstate.cpp
