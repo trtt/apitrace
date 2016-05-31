@@ -145,6 +145,8 @@ private:
     }
 
 public:
+    ~GLWs();
+
     inline Context *
     getCurrentContext(void) {
         return currentContextPtr;

@@ -50,6 +50,8 @@ private:
 public:
     GLInterfaceGLX(GLWs* glws) : GLInterface(glws) {}
 
+    ~GLInterfaceGLX();
+
     void registerCallbacks(retrace::Retracer &retracer);
 
     void retrace_glXCreateContext(trace::Call &call);
