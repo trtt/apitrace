@@ -53,6 +53,8 @@ glfeatures::Profile defaultProfile(glfeatures::API_GL, 1, 0);
 
 bool supportsARBShaderObjects = false;
 
+GLWs* glws;
+
 enum {
     GPU_START = 0,
     GPU_DURATION,
@@ -829,6 +831,8 @@ retrace::setFeatureLevel(const char *featureLevel)
 
 void
 retrace::setUp(void) {
+    using namespace glretrace;
+    glretrace::glws = new GLWs();
     glws::init();
     dumper = &glDumper;
 }
@@ -888,6 +892,8 @@ retrace::finishRendering(void) {
             }
         }
     }
+
+    delete glretrace::glws;
 }
 
 void

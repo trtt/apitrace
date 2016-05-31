@@ -208,26 +208,26 @@ class GlRetracer(Retracer):
     def invokeFunction(self, function):
         # Infer the drawable size from GL calls
         if function.name == "glViewport":
-            print '    glretrace::updateDrawable(x + width, y + height);'
+            print '    glretrace::glws->updateDrawable(x + width, y + height);'
         if function.name == "glViewportArray":
             # We are concerned about drawables so only care for the first viewport
             print '    if (first == 0 && count > 0) {'
             print '        GLfloat x = v[0], y = v[1], w = v[2], h = v[3];'
-            print '        glretrace::updateDrawable(x + w, y + h);'
+            print '        glretrace::glws->updateDrawable(x + w, y + h);'
             print '    }'
         if function.name == "glViewportIndexedf":
             print '    if (index == 0) {'
-            print '        glretrace::updateDrawable(x + w, y + h);'
+            print '        glretrace::glws->updateDrawable(x + w, y + h);'
             print '    }'
         if function.name == "glViewportIndexedfv":
             print '    if (index == 0) {'
             print '        GLfloat x = v[0], y = v[1], w = v[2], h = v[3];'
-            print '        glretrace::updateDrawable(x + w, y + h);'
+            print '        glretrace::glws->updateDrawable(x + w, y + h);'
             print '    }'
         if function.name in ('glBlitFramebuffer', 'glBlitFramebufferEXT'):
             # Some applications do all their rendering in a framebuffer, and
             # then just blit to the drawable without ever calling glViewport.
-            print '    glretrace::updateDrawable(std::max(dstX0, dstX1), std::max(dstY0, dstY1));'
+            print '    glretrace::glws->updateDrawable(std::max(dstX0, dstX1), std::max(dstY0, dstY1));'
 
         if function.name == "glEnd":
             print r'    if (currentContext) {'

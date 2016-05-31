@@ -41,43 +41,14 @@
 #include "glretrace.hpp"
 
 
-namespace glretrace {
+using namespace glretrace;
 
 
-static std::map<glfeatures::Profile, glws::Visual *>
-visuals;
+OS_THREAD_LOCAL Context * GLWs::currentContextPtr = nullptr;
 
-
-inline glws::Visual *
-getVisual(glfeatures::Profile profile) {
-    std::map<glfeatures::Profile, glws::Visual *>::iterator it = visuals.find(profile);
-    if (it == visuals.end()) {
-        glws::Visual *visual = NULL;
-        unsigned samples = retrace::samples;
-        /* The requested number of samples might not be available, try fewer until we succeed */
-        while (!visual && samples > 0) {
-            visual = glws::createVisual(retrace::doubleBuffer, samples, profile);
-            if (!visual) {
-                samples--;
-            }
-        }
-        if (!visual) {
-            std::cerr << "error: failed to create OpenGL visual\n";
-            exit(1);
-        }
-        if (samples != retrace::samples) {
-            std::cerr << "warning: Using " << samples << " samples instead of the requested " << retrace::samples << "\n";
-        }
-        visuals[profile] = visual;
-        return visual;
-    }
-    return it->second;
-}
-
-
-static glws::Drawable *
-createDrawableHelper(glfeatures::Profile profile, int width = 32, int height = 32,
-                     const glws::pbuffer_info *pbInfo = NULL) {
+glws::Drawable *
+GLWs::createDrawableHelper(glfeatures::Profile profile, int width, int height,
+                     const glws::pbuffer_info *pbInfo) {
     glws::Visual *visual = getVisual(profile);
     glws::Drawable *draw = glws::createDrawable(visual, width, height, pbInfo);
     if (!draw) {
@@ -93,19 +64,19 @@ createDrawableHelper(glfeatures::Profile profile, int width = 32, int height = 3
 
 
 glws::Drawable *
-createDrawable(glfeatures::Profile profile) {
+GLWs::createDrawable(glfeatures::Profile profile) {
     return createDrawableHelper(profile);
 }
 
 
 glws::Drawable *
-createDrawable(void) {
+GLWs::createDrawable(void) {
     return createDrawable(defaultProfile);
 }
 
 
 glws::Drawable *
-createPbuffer(int width, int height, const glws::pbuffer_info *pbInfo) {
+GLWs::createPbuffer(int width, int height, const glws::pbuffer_info *pbInfo) {
     // Zero area pbuffers are often accepted, but given we create window
     // drawables instead, they should have non-zero area.
     width  = std::max(width,  1);
@@ -116,7 +87,7 @@ createPbuffer(int width, int height, const glws::pbuffer_info *pbInfo) {
 
 
 Context *
-createContext(Context *shareContext, glfeatures::Profile profile) {
+GLWs::createContext(Context *shareContext, glfeatures::Profile profile) {
     glws::Visual *visual = getVisual(profile);
     glws::Context *shareWsContext = shareContext ? shareContext->wsContext : NULL;
     glws::Context *ctx = glws::createContext(visual, shareWsContext, retrace::debug);
@@ -130,7 +101,7 @@ createContext(Context *shareContext, glfeatures::Profile profile) {
 
 
 Context *
-createContext(Context *shareContext) {
+GLWs::createContext(Context *shareContext) {
     return createContext(shareContext, defaultProfile);
 }
 
@@ -144,12 +115,8 @@ Context::~Context()
 }
 
 
-OS_THREAD_LOCAL Context *
-currentContextPtr;
-
-
 bool
-makeCurrent(trace::Call &call, glws::Drawable *drawable, Context *context)
+GLWs::makeCurrent(trace::Call &call, glws::Drawable *drawable, Context *context)
 {
     Context *currentContext = currentContextPtr;
     glws::Drawable *currentDrawable = currentContext ? currentContext->drawable : NULL;
@@ -209,7 +176,7 @@ makeCurrent(trace::Call &call, glws::Drawable *drawable, Context *context)
  * are specified by OS specific calls which we do not trace.
  */
 void
-updateDrawable(int width, int height) {
+GLWs::updateDrawable(int width, int height) {
     Context *currentContext = getCurrentContext();
     if (!currentContext) {
         return;
@@ -268,7 +235,7 @@ updateDrawable(int width, int height) {
 
 
 int
-parseAttrib(const trace::Value *attribs, int param, int default_, int terminator) {
+GLWs::parseAttrib(const trace::Value *attribs, int param, int default_, int terminator) {
     const trace::Array *attribs_ = attribs ? attribs->toArray() : NULL;
 
     if (attribs_) {
@@ -293,7 +260,7 @@ parseAttrib(const trace::Value *attribs, int param, int default_, int terminator
  * Parse GLX/WGL_ARB_create_context attribute list.
  */
 glfeatures::Profile
-parseContextAttribList(const trace::Value *attribs)
+GLWs::parseContextAttribList(const trace::Value *attribs)
 {
     // {GLX,WGL}_CONTEXT_MAJOR_VERSION_ARB
     int major_version = parseAttrib(attribs, 0x2091, 1);
@@ -337,20 +304,18 @@ parseContextAttribList(const trace::Value *attribs)
 
 // WGL_ARB_render_texture / wglBindTexImageARB()
 bool
-bindTexImage(glws::Drawable *pBuffer, int iBuffer) {
+GLWs::bindTexImage(glws::Drawable *pBuffer, int iBuffer) {
     return glws::bindTexImage(pBuffer, iBuffer);
 }
 
 // WGL_ARB_render_texture / wglReleaseTexImageARB()
 bool
-releaseTexImage(glws::Drawable *pBuffer, int iBuffer) {
+GLWs::releaseTexImage(glws::Drawable *pBuffer, int iBuffer) {
     return glws::releaseTexImage(pBuffer, iBuffer);
 }
 
 // WGL_ARB_render_texture / wglSetPbufferAttribARB()
 bool
-setPbufferAttrib(glws::Drawable *pBuffer, const int *attribs) {
+GLWs::setPbufferAttrib(glws::Drawable *pBuffer, const int *attribs) {
     return glws::setPbufferAttrib(pBuffer, attribs);
 }
-
-} /* namespace glretrace */
