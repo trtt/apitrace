@@ -28,15 +28,77 @@
 
 #include "glimports.hpp"
 
+#include "glretrace.hpp"
 
-struct Bitmap {
-    GLsizei width;
-    GLsizei height;
-    GLfloat xorig;
-    GLfloat yorig;
-    GLfloat xmove;
-    GLfloat ymove;
-    const char * pixels;
+
+namespace glretrace {
+
+
+class GLInterfaceWGL : public GLInterface
+{
+public:
+    inline GLInterfaceWGL(GLWs* glws) : GLInterface(glws) {}
+
+    ~GLInterfaceWGL() {}
+
+    void registerCallbacks(retrace::Retracer &retracer);
+
+private:
+    struct Bitmap {
+        GLsizei width;
+        GLsizei height;
+        GLfloat xorig;
+        GLfloat yorig;
+        GLfloat xmove;
+        GLfloat ymove;
+        const char * pixels;
+    };
+
+    static const Bitmap wglSystemFontBitmaps[256];
+
+    typedef std::map<unsigned long long, glws::Drawable *> DrawableMap;
+    typedef std::map<unsigned long long, Context *> ContextMap;
+    DrawableMap drawable_map;
+    DrawableMap pbuffer_map;
+    ContextMap context_map;
+
+
+    glws::Drawable *
+        getDrawable(unsigned long long hdc);
+
+    Context *
+        getContext(unsigned long long context_ptr);
+
+    void retrace_wglCreateContext(trace::Call &call);
+
+    void retrace_wglDeleteContext(trace::Call &call);
+
+    void retrace_wglMakeCurrent(trace::Call &call);
+
+    void retrace_wglSwapBuffers(trace::Call &call);
+
+    void retrace_wglShareLists(trace::Call &call);
+
+    void retrace_wglCreateLayerContext(trace::Call &call);
+
+    void retrace_wglSwapLayerBuffers(trace::Call &call);
+
+    void retrace_wglCreatePbufferARB(trace::Call &call);
+
+    void retrace_wglGetPbufferDCARB(trace::Call &call);
+
+    void retrace_wglCreateContextAttribsARB(trace::Call &call);
+
+    GLenum
+        wgl_buffer_to_enum(int iBuffer);
+
+    void retrace_wglBindTexImageARB(trace::Call &call);
+
+    void retrace_wglReleaseTexImageARB(trace::Call &call);
+
+    void retrace_wglSetPbufferAttribARB(trace::Call &call);
+
+    void retrace_wglUseFontBitmapsAW(trace::Call &call);
 };
 
-extern const Bitmap wglSystemFontBitmaps[256];
+} /* namespace glretrace */

@@ -34,15 +34,8 @@
 using namespace glretrace;
 
 
-typedef std::map<unsigned long long, glws::Drawable *> DrawableMap;
-typedef std::map<unsigned long long, Context *> ContextMap;
-static DrawableMap drawable_map;
-static DrawableMap pbuffer_map;
-static ContextMap context_map;
-
-
-static glws::Drawable *
-getDrawable(unsigned long long hdc) {
+glws::Drawable *
+GLInterfaceWGL::getDrawable(unsigned long long hdc) {
     if (hdc == 0) {
         return NULL;
     }
@@ -50,14 +43,14 @@ getDrawable(unsigned long long hdc) {
     DrawableMap::const_iterator it;
     it = drawable_map.find(hdc);
     if (it == drawable_map.end()) {
-        return (drawable_map[hdc] = glretrace::createDrawable());
+        return (drawable_map[hdc] = glws.createDrawable());
     }
 
     return it->second;
 }
 
-static Context *
-getContext(unsigned long long context_ptr) {
+Context *
+GLInterfaceWGL::getContext(unsigned long long context_ptr) {
     if (context_ptr == 0) {
         return NULL;
     }
@@ -72,17 +65,17 @@ getContext(unsigned long long context_ptr) {
     return it->second;
 }
 
-static void retrace_wglCreateContext(trace::Call &call) {
+void GLInterfaceWGL::retrace_wglCreateContext(trace::Call &call) {
     unsigned long long orig_context = call.ret->toUIntPtr();
     if (!orig_context) {
         return;
     }
 
-    Context *context = glretrace::createContext();
+    Context *context = glws.createContext();
     context_map[orig_context] = context;
 }
 
-static void retrace_wglDeleteContext(trace::Call &call) {
+void GLInterfaceWGL::retrace_wglDeleteContext(trace::Call &call) {
     unsigned long long hglrc = call.arg(0).toUIntPtr();
 
     ContextMap::iterator it;
@@ -96,7 +89,7 @@ static void retrace_wglDeleteContext(trace::Call &call) {
     context_map.erase(it);
 }
 
-static void retrace_wglMakeCurrent(trace::Call &call) {
+void GLInterfaceWGL::retrace_wglMakeCurrent(trace::Call &call) {
     bool ret = call.ret->toBool();
 
     glws::Drawable *new_drawable = NULL;
@@ -109,10 +102,10 @@ static void retrace_wglMakeCurrent(trace::Call &call) {
         }
     }
 
-    glretrace::makeCurrent(call, new_drawable, new_context);
+    glws.makeCurrent(call, new_drawable, new_context);
 }
 
-static void retrace_wglSwapBuffers(trace::Call &call) {
+void GLInterfaceWGL::retrace_wglSwapBuffers(trace::Call &call) {
     bool ret = call.ret->toBool();
     if (!ret) {
         return;
@@ -135,7 +128,7 @@ static void retrace_wglSwapBuffers(trace::Call &call) {
     }
 }
 
-static void retrace_wglShareLists(trace::Call &call) {
+void GLInterfaceWGL::retrace_wglShareLists(trace::Call &call) {
     bool ret = call.ret->toBool();
     if (!ret) {
         return;
@@ -148,11 +141,11 @@ static void retrace_wglShareLists(trace::Call &call) {
     Context *old_context = getContext(hglrc2);
 
     glfeatures::Profile profile = old_context->profile();
-    Context *new_context = glretrace::createContext(share_context, profile);
+    Context *new_context = glws.createContext(share_context, profile);
     if (new_context) {
         glretrace::Context *currentContext = glretrace::getCurrentContext();
         if (currentContext == old_context) {
-            glretrace::makeCurrent(call, currentContext->drawable, new_context);
+            glws.makeCurrent(call, currentContext->drawable, new_context);
         }
 
         context_map[hglrc2] = new_context;
@@ -161,11 +154,11 @@ static void retrace_wglShareLists(trace::Call &call) {
     }
 }
 
-static void retrace_wglCreateLayerContext(trace::Call &call) {
+void GLInterfaceWGL::retrace_wglCreateLayerContext(trace::Call &call) {
     retrace_wglCreateContext(call);
 }
 
-static void retrace_wglSwapLayerBuffers(trace::Call &call) {
+void GLInterfaceWGL::retrace_wglSwapLayerBuffers(trace::Call &call) {
     retrace_wglSwapBuffers(call);
 }
 
@@ -199,7 +192,7 @@ static void retrace_wglSwapLayerBuffers(trace::Call &call) {
 #define WGL_AUX8_ARB                        0x208F
 #define WGL_AUX9_ARB                        0x2090
 
-static void retrace_wglCreatePbufferARB(trace::Call &call) {
+void GLInterfaceWGL::retrace_wglCreatePbufferARB(trace::Call &call) {
     unsigned long long orig_pbuffer = call.ret->toUIntPtr();
     if (!orig_pbuffer) {
         return;
@@ -213,7 +206,7 @@ static void retrace_wglCreatePbufferARB(trace::Call &call) {
     // XXX parse attrib list to populate pbInfo
     int k;
 
-    k = parseAttrib(attribs, WGL_TEXTURE_FORMAT_ARB, WGL_NO_TEXTURE_ARB);
+    k = glws.parseAttrib(attribs, WGL_TEXTURE_FORMAT_ARB, WGL_NO_TEXTURE_ARB);
     switch (k) {
     case WGL_TEXTURE_RGB_ARB:
         pbInfo.texFormat = GL_RGB;
@@ -229,7 +222,7 @@ static void retrace_wglCreatePbufferARB(trace::Call &call) {
         pbInfo.texFormat = GL_NONE;
     }
 
-    k = parseAttrib(attribs, WGL_TEXTURE_TARGET_ARB, WGL_NO_TEXTURE_ARB);
+    k = glws.parseAttrib(attribs, WGL_TEXTURE_TARGET_ARB, WGL_NO_TEXTURE_ARB);
     switch (k) {
     case WGL_TEXTURE_CUBE_MAP_ARB:
         pbInfo.texTarget = GL_TEXTURE_CUBE_MAP;
@@ -248,18 +241,18 @@ static void retrace_wglCreatePbufferARB(trace::Call &call) {
         pbInfo.texTarget = GL_NONE;
     }
 
-    pbInfo.texMipmap = !!parseAttrib(attribs, WGL_MIPMAP_TEXTURE_ARB, 0);
+    pbInfo.texMipmap = !!glws.parseAttrib(attribs, WGL_MIPMAP_TEXTURE_ARB, 0);
 
     // WGL interface needs the HDC
     pbInfo.hdc_drawable = getDrawable(call.arg(0).toUInt());
 
-    glws::Drawable *drawable = glretrace::createPbuffer(iWidth, iHeight,
+    glws::Drawable *drawable = glws.createPbuffer(iWidth, iHeight,
                                                         &pbInfo);
 
     pbuffer_map[orig_pbuffer] = drawable;
 }
 
-static void retrace_wglGetPbufferDCARB(trace::Call &call) {
+void GLInterfaceWGL::retrace_wglGetPbufferDCARB(trace::Call &call) {
     unsigned long long orig_hdc = call.ret->toUIntPtr();
     if (!orig_hdc) {
         return;
@@ -270,7 +263,7 @@ static void retrace_wglGetPbufferDCARB(trace::Call &call) {
     drawable_map[orig_hdc] = pbuffer;
 }
 
-static void retrace_wglCreateContextAttribsARB(trace::Call &call) {
+void GLInterfaceWGL::retrace_wglCreateContextAttribsARB(trace::Call &call) {
     unsigned long long orig_context = call.ret->toUIntPtr();
     if (!orig_context) {
         return;
@@ -279,15 +272,15 @@ static void retrace_wglCreateContextAttribsARB(trace::Call &call) {
     Context *share_context = getContext(call.arg(1).toUIntPtr());
 
     const trace::Value * attribList = &call.arg(2);
-    glfeatures::Profile profile = parseContextAttribList(attribList);
+    glfeatures::Profile profile = glws.parseContextAttribList(attribList);
 
-    Context *context = glretrace::createContext(share_context, profile);
+    Context *context = glws.createContext(share_context, profile);
     context_map[orig_context] = context;
 }
 
 
-static GLenum
-wgl_buffer_to_enum(int iBuffer)
+GLenum
+GLInterfaceWGL::wgl_buffer_to_enum(int iBuffer)
 {
     switch (iBuffer) {
     case WGL_FRONT_LEFT_ARB:
@@ -306,21 +299,21 @@ wgl_buffer_to_enum(int iBuffer)
     }
 }
 
-static void retrace_wglBindTexImageARB(trace::Call &call) {
+void GLInterfaceWGL::retrace_wglBindTexImageARB(trace::Call &call) {
     glws::Drawable *pbuffer = pbuffer_map[call.arg(0).toUIntPtr()];
     signed long long iBuffer = call.arg(1).toSInt();
 
-    glretrace::bindTexImage(pbuffer, wgl_buffer_to_enum(iBuffer));
+    glws.bindTexImage(pbuffer, wgl_buffer_to_enum(iBuffer));
 }
 
-static void retrace_wglReleaseTexImageARB(trace::Call &call) {
+void GLInterfaceWGL::retrace_wglReleaseTexImageARB(trace::Call &call) {
     glws::Drawable *pbuffer = pbuffer_map[call.arg(0).toUIntPtr()];
     signed long long iBuffer = call.arg(1).toSInt();
 
-    glretrace::releaseTexImage(pbuffer, wgl_buffer_to_enum(iBuffer));
+    glws.releaseTexImage(pbuffer, wgl_buffer_to_enum(iBuffer));
 }
 
-static void retrace_wglSetPbufferAttribARB(trace::Call &call) {
+void GLInterfaceWGL::retrace_wglSetPbufferAttribARB(trace::Call &call) {
     glws::Drawable *pbuffer = pbuffer_map[call.arg(0).toUIntPtr()];
     const trace::Value * attribList = &call.arg(1);
 
@@ -339,7 +332,7 @@ static void retrace_wglSetPbufferAttribARB(trace::Call &call) {
             attribs[j+1] = attribs_->values[i+1]->toSInt();
         }
 
-        glretrace::setPbufferAttrib(pbuffer, attribs);
+        glws.setPbufferAttrib(pbuffer, attribs);
     }
 
     if (!pbuffer || !attribList)
@@ -349,12 +342,12 @@ static void retrace_wglSetPbufferAttribARB(trace::Call &call) {
     const int undefined = -99999;
     int val;
 
-    val = parseAttrib(attribList, WGL_MIPMAP_LEVEL_ARB, undefined);
+    val = glws.parseAttrib(attribList, WGL_MIPMAP_LEVEL_ARB, undefined);
     if (val != undefined) {
         pbuffer->mipmapLevel = val;
     }
 
-    val = parseAttrib(attribList, WGL_CUBE_MAP_FACE_ARB, undefined);
+    val = glws.parseAttrib(attribList, WGL_CUBE_MAP_FACE_ARB, undefined);
     if (val != undefined) {
         // Drawable::cubeFace is integer in [0..5]
         val -= WGL_TEXTURE_CUBE_MAP_POSITIVE_X_ARB;
@@ -368,7 +361,7 @@ static void retrace_wglSetPbufferAttribARB(trace::Call &call) {
 }
 
 
-static void retrace_wglUseFontBitmapsAW(trace::Call &call)
+void GLInterfaceWGL::retrace_wglUseFontBitmapsAW(trace::Call &call)
 {
     bool ret = call.ret->toBool();
     if (!ret) {
@@ -404,50 +397,57 @@ static void retrace_wglUseFontBitmapsAW(trace::Call &call)
     glPixelStorei(GL_UNPACK_ALIGNMENT, alignment);
 }
 
+void GLInterfaceWGL::registerCallbacks(retrace::Retracer &retracer) {
+    using namespace std::placeholders;
 
+    #define wrap(func) std::bind(&GLInterfaceWGL::func, this, _1)
 
-const retrace::Entry glretrace::wgl_callbacks[] = {
-    {"glAddSwapHintRectWIN", retrace::ignore},
-    {"wglBindTexImageARB", &retrace_wglBindTexImageARB},
-    {"wglChoosePixelFormat", retrace::ignore},
-    {"wglChoosePixelFormatARB", retrace::ignore},
-    {"wglChoosePixelFormatEXT", retrace::ignore},
-    {"wglCreateContext", &retrace_wglCreateContext},
-    {"wglCreateContextAttribsARB", &retrace_wglCreateContextAttribsARB},
-    {"wglCreateLayerContext", &retrace_wglCreateLayerContext},
-    {"wglCreatePbufferARB", &retrace_wglCreatePbufferARB},
-    {"wglDeleteContext", &retrace_wglDeleteContext},
-    {"wglDescribeLayerPlane", retrace::ignore},
-    {"wglDescribePixelFormat", retrace::ignore},
-    {"wglDestroyPbufferARB", retrace::ignore},
-    {"wglGetCurrentContext", retrace::ignore},
-    {"wglGetCurrentDC", retrace::ignore},
-    {"wglGetCurrentReadDCARB", retrace::ignore},
-    {"wglGetCurrentReadDCEXT", retrace::ignore},
-    {"wglGetDefaultProcAddress", retrace::ignore},
-    {"wglGetExtensionsStringARB", retrace::ignore},
-    {"wglGetExtensionsStringEXT", retrace::ignore},
-    {"wglGetLayerPaletteEntries", retrace::ignore},
-    {"wglGetPbufferDCARB", &retrace_wglGetPbufferDCARB},
-    {"wglGetPixelFormat", retrace::ignore},
-    {"wglGetPixelFormatAttribfvARB", retrace::ignore},
-    {"wglGetPixelFormatAttribfvEXT", retrace::ignore},
-    {"wglGetPixelFormatAttribivARB", retrace::ignore},
-    {"wglGetPixelFormatAttribivEXT", retrace::ignore},
-    {"wglGetProcAddress", retrace::ignore},
-    {"wglGetSwapIntervalEXT", retrace::ignore},
-    {"wglMakeCurrent", &retrace_wglMakeCurrent},
-    {"wglQueryPbufferARB", retrace::ignore},
-    {"wglReleasePbufferDCARB", retrace::ignore},
-    {"wglReleaseTexImageARB", &retrace_wglReleaseTexImageARB},
-    {"wglSetPbufferAttribARB", &retrace_wglSetPbufferAttribARB},
-    {"wglSetPixelFormat", retrace::ignore},
-    {"wglShareLists", &retrace_wglShareLists},
-    {"wglSwapBuffers", &retrace_wglSwapBuffers},
-    {"wglSwapIntervalEXT", retrace::ignore},
-    {"wglSwapLayerBuffers", &retrace_wglSwapLayerBuffers},
-    {"wglUseFontBitmapsA", &retrace_wglUseFontBitmapsAW},
-    {"wglUseFontBitmapsW", &retrace_wglUseFontBitmapsAW},
-    {NULL, NULL}
-};
+    const retrace::Entry wgl_callbacks[] = {
+        {"glAddSwapHintRectWIN", retrace::ignore},
+        {"wglBindTexImageARB", wrap(retrace_wglBindTexImageARB)},
+        {"wglChoosePixelFormat", retrace::ignore},
+        {"wglChoosePixelFormatARB", retrace::ignore},
+        {"wglChoosePixelFormatEXT", retrace::ignore},
+        {"wglCreateContext", wrap(retrace_wglCreateContext)},
+        {"wglCreateContextAttribsARB", wrap(retrace_wglCreateContextAttribsARB)},
+        {"wglCreateLayerContext", wrap(retrace_wglCreateLayerContext)},
+        {"wglCreatePbufferARB", wrap(retrace_wglCreatePbufferARB)},
+        {"wglDeleteContext", wrap(retrace_wglDeleteContext)},
+        {"wglDescribeLayerPlane", retrace::ignore},
+        {"wglDescribePixelFormat", retrace::ignore},
+        {"wglDestroyPbufferARB", retrace::ignore},
+        {"wglGetCurrentContext", retrace::ignore},
+        {"wglGetCurrentDC", retrace::ignore},
+        {"wglGetCurrentReadDCARB", retrace::ignore},
+        {"wglGetCurrentReadDCEXT", retrace::ignore},
+        {"wglGetDefaultProcAddress", retrace::ignore},
+        {"wglGetExtensionsStringARB", retrace::ignore},
+        {"wglGetExtensionsStringEXT", retrace::ignore},
+        {"wglGetLayerPaletteEntries", retrace::ignore},
+        {"wglGetPbufferDCARB", wrap(retrace_wglGetPbufferDCARB)},
+        {"wglGetPixelFormat", retrace::ignore},
+        {"wglGetPixelFormatAttribfvARB", retrace::ignore},
+        {"wglGetPixelFormatAttribfvEXT", retrace::ignore},
+        {"wglGetPixelFormatAttribivARB", retrace::ignore},
+        {"wglGetPixelFormatAttribivEXT", retrace::ignore},
+        {"wglGetProcAddress", retrace::ignore},
+        {"wglGetSwapIntervalEXT", retrace::ignore},
+        {"wglMakeCurrent", wrap(retrace_wglMakeCurrent)},
+        {"wglQueryPbufferARB", retrace::ignore},
+        {"wglReleasePbufferDCARB", retrace::ignore},
+        {"wglReleaseTexImageARB", wrap(retrace_wglReleaseTexImageARB)},
+        {"wglSetPbufferAttribARB", wrap(retrace_wglSetPbufferAttribARB)},
+        {"wglSetPixelFormat", retrace::ignore},
+        {"wglShareLists", wrap(retrace_wglShareLists)},
+        {"wglSwapBuffers", wrap(retrace_wglSwapBuffers)},
+        {"wglSwapIntervalEXT", retrace::ignore},
+        {"wglSwapLayerBuffers", wrap(retrace_wglSwapLayerBuffers)},
+        {"wglUseFontBitmapsA", wrap(retrace_wglUseFontBitmapsAW)},
+        {"wglUseFontBitmapsW", wrap(retrace_wglUseFontBitmapsAW)},
+        {NULL, NULL}
+    };
+    #undef wrap
+
+    retracer.addCallbacks(wgl_callbacks);
+}
 

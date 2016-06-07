@@ -71,6 +71,8 @@ add_library (glretrace_common STATIC
     glretrace_gl.cpp
     glretrace_glx.cpp
     glretrace_cgl.cpp
+    glretrace_wgl.cpp
+    glretrace_wgl_font.cpp
     glretrace_main.cpp
     glretrace_ws.cpp
     glstate.cpp

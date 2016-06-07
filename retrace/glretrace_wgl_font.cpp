@@ -27,8 +27,10 @@
 #include "glretrace_wgl.hpp"
 
 
-const Bitmap
-wglSystemFontBitmaps[256] = {
+using namespace glretrace;
+
+const GLInterfaceWGL::Bitmap
+GLInterfaceWGL::wglSystemFontBitmaps[256] = {
     {
         32, 16, 0.0f, 3.0f, 4.0f, 0.0f,
         "\x00\x00\x00\x00"
