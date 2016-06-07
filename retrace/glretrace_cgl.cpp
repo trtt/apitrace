@@ -26,10 +26,8 @@
 
 #include <string.h>
 
-#include "glproc.hpp"
-#include "retrace.hpp"
 #include "retrace_swizzle.hpp"
-#include "glretrace.hpp"
+#include "glretrace_cgl.hpp"
 
 
 #define kCGLNoError 0
@@ -85,30 +83,8 @@
 using namespace glretrace;
 
 
-typedef std::map<unsigned long long, glws::Drawable *> DrawableMap;
-typedef std::map<unsigned long long, Context *> ContextMap;
-
-// sid -> Drawable* map
-static DrawableMap drawable_map;
-
-// ctx -> Context* map
-static ContextMap context_map;
-
-static Context *sharedContext = NULL;
-
-
-struct PixelFormat
-{
-    glfeatures::Profile profile;
-
-    PixelFormat() :
-        profile(glfeatures::API_GL, 1, 0)
-    {}
-};
-
-
-static glws::Drawable *
-getDrawable(unsigned long drawable_id, glfeatures::Profile profile) {
+glws::Drawable *
+GLInterfaceCGL::getDrawable(unsigned long drawable_id, glfeatures::Profile profile) {
     if (drawable_id == 0) {
         return NULL;
     }
@@ -116,15 +92,15 @@ getDrawable(unsigned long drawable_id, glfeatures::Profile profile) {
     DrawableMap::const_iterator it;
     it = drawable_map.find(drawable_id);
     if (it == drawable_map.end()) {
-        return (drawable_map[drawable_id] = glretrace::createDrawable(profile));
+        return (drawable_map[drawable_id] = glws.createDrawable(profile));
     }
 
     return it->second;
 }
 
 
-static Context *
-getContext(unsigned long long ctx) {
+Context *
+GLInterfaceCGL::getContext(unsigned long long ctx) {
     if (ctx == 0) {
         return NULL;
     }
@@ -133,7 +109,7 @@ getContext(unsigned long long ctx) {
     it = context_map.find(ctx);
     if (it == context_map.end()) {
         Context *context;
-        context_map[ctx] = context = glretrace::createContext(sharedContext);
+        context_map[ctx] = context = glws.createContext(sharedContext);
         if (!sharedContext) {
             sharedContext = context;
         }
@@ -144,7 +120,7 @@ getContext(unsigned long long ctx) {
 }
 
 
-static void retrace_CGLChoosePixelFormat(trace::Call &call) {
+void GLInterfaceCGL::retrace_CGLChoosePixelFormat(trace::Call &call) {
     if (call.ret->toUInt() != kCGLNoError) {
         return;
     }
@@ -255,7 +231,7 @@ static void retrace_CGLChoosePixelFormat(trace::Call &call) {
 }
 
 
-static void retrace_CGLDestroyPixelFormat(trace::Call &call) {
+void GLInterfaceCGL::retrace_CGLDestroyPixelFormat(trace::Call &call) {
     if (call.ret->toUInt() != kCGLNoError) {
         return;
     }
@@ -269,7 +245,7 @@ static void retrace_CGLDestroyPixelFormat(trace::Call &call) {
 }
 
 
-static void retrace_CGLCreateContext(trace::Call &call) {
+void GLInterfaceCGL::retrace_CGLCreateContext(trace::Call &call) {
     if (call.ret->toUInt() != kCGLNoError) {
         return;
     }
@@ -285,12 +261,12 @@ static void retrace_CGLCreateContext(trace::Call &call) {
     assert(ctx_ptr);
     unsigned long long ctx = ctx_ptr->values[0]->toUIntPtr();
 
-    Context *context = glretrace::createContext(sharedContext, profile);
+    Context *context = glws.createContext(sharedContext, profile);
     context_map[ctx] = context;
 }
 
 
-static void retrace_CGLDestroyContext(trace::Call &call) {
+void GLInterfaceCGL::retrace_CGLDestroyContext(trace::Call &call) {
     if (call.ret->toUInt() != kCGLNoError) {
         return;
     }
@@ -309,7 +285,7 @@ static void retrace_CGLDestroyContext(trace::Call &call) {
 }
 
 
-static void retrace_CGLSetSurface(trace::Call &call) {
+void GLInterfaceCGL::retrace_CGLSetSurface(trace::Call &call) {
     if (call.ret->toUInt() != kCGLNoError) {
         return;
     }
@@ -330,7 +306,7 @@ static void retrace_CGLSetSurface(trace::Call &call) {
 }
 
 
-static void retrace_CGLClearDrawable(trace::Call &call) {
+void GLInterfaceCGL::retrace_CGLClearDrawable(trace::Call &call) {
     if (call.ret->toUInt() != kCGLNoError) {
         return;
     }
@@ -343,7 +319,7 @@ static void retrace_CGLClearDrawable(trace::Call &call) {
 }
 
 
-static void retrace_CGLSetCurrentContext(trace::Call &call) {
+void GLInterfaceCGL::retrace_CGLSetCurrentContext(trace::Call &call) {
     if (call.ret->toUInt() != kCGLNoError) {
         return;
     }
@@ -355,16 +331,16 @@ static void retrace_CGLSetCurrentContext(trace::Call &call) {
     if (new_context) {
         if (!new_context->drawable) {
             glfeatures::Profile profile = new_context->profile();
-            new_context->drawable = glretrace::createDrawable(profile);
+            new_context->drawable = glws.createDrawable(profile);
         }
         new_drawable = new_context->drawable;
     }
 
-    glretrace::makeCurrent(call, new_drawable, new_context);
+    glws.makeCurrent(call, new_drawable, new_context);
 }
 
 
-static void retrace_CGLFlushDrawable(trace::Call &call) {
+void GLInterfaceCGL::retrace_CGLFlushDrawable(trace::Call &call) {
     if (call.ret->toUInt() != kCGLNoError) {
         return;
     }
@@ -390,7 +366,7 @@ static void retrace_CGLFlushDrawable(trace::Call &call) {
 }
 
 
-static void retrace_CGLSetVirtualScreen(trace::Call &call) {
+void GLInterfaceCGL::retrace_CGLSetVirtualScreen(trace::Call &call) {
     if (call.ret->toUInt() != kCGLNoError) {
         return;
     }
@@ -410,7 +386,7 @@ static void retrace_CGLSetVirtualScreen(trace::Call &call) {
  * See also:
  * - /System/Library/Frameworks/OpenGL.framework/Headers/CGLIOSurface.h
  */
-static void retrace_CGLTexImageIOSurface2D(trace::Call &call) {
+void GLInterfaceCGL::retrace_CGLTexImageIOSurface2D(trace::Call &call) {
     if (call.ret->toUInt() != kCGLNoError) {
         return;
     }
@@ -458,38 +434,46 @@ static void retrace_CGLTexImageIOSurface2D(trace::Call &call) {
     }
 }
 
+void GLInterfaceCGL::registerCallbacks(retrace::Retracer &retracer) {
+    using namespace std::placeholders;
 
-const retrace::Entry glretrace::cgl_callbacks[] = {
-    {"CGLChoosePixelFormat", &retrace_CGLChoosePixelFormat},
-    {"CGLClearDrawable", &retrace_CGLClearDrawable},
-    {"CGLCreateContext", &retrace_CGLCreateContext},
-    {"CGLDescribePixelFormat", retrace::ignore},
-    {"CGLDescribeRenderer", retrace::ignore},
-    {"CGLDestroyContext", &retrace_CGLDestroyContext},
-    {"CGLDestroyPixelFormat", &retrace_CGLDestroyPixelFormat},
-    {"CGLDisable", retrace::ignore},
-    {"CGLEnable", retrace::ignore},
-    {"CGLErrorString", retrace::ignore},
-    {"CGLFlushDrawable", &retrace_CGLFlushDrawable},
-    {"CGLGetCurrentContext", retrace::ignore},
-    {"CGLGetGlobalOption", retrace::ignore},
-    {"CGLGetOption", retrace::ignore},
-    {"CGLGetParameter", retrace::ignore},
-    {"CGLGetPixelFormat", retrace::ignore},
-    {"CGLGetSurface", retrace::ignore},
-    {"CGLGetVersion", retrace::ignore},
-    {"CGLGetVirtualScreen", retrace::ignore},
-    {"CGLIsEnabled", retrace::ignore},
-    {"CGLLockContext", retrace::ignore},
-    {"CGLSetCurrentContext", &retrace_CGLSetCurrentContext},
-    {"CGLSetGlobalOption", retrace::ignore},
-    {"CGLSetOption", retrace::ignore},
-    {"CGLSetSurface", &retrace_CGLSetSurface},
-    {"CGLSetParameter", retrace::ignore},
-    {"CGLSetVirtualScreen", &retrace_CGLSetVirtualScreen},
-    {"CGLTexImageIOSurface2D", &retrace_CGLTexImageIOSurface2D},
-    {"CGLUnlockContext", retrace::ignore},
-    {"CGLUpdateContext", retrace::ignore},
-    {NULL, NULL},
-};
+    #define wrap(func) std::bind(&GLInterfaceCGL::func, this, _1)
+
+    const retrace::Entry cgl_callbacks[] = {
+        {"CGLChoosePixelFormat", wrap(retrace_CGLChoosePixelFormat)},
+        {"CGLClearDrawable", wrap(retrace_CGLClearDrawable)},
+        {"CGLCreateContext", wrap(retrace_CGLCreateContext)},
+        {"CGLDescribePixelFormat", retrace::ignore},
+        {"CGLDescribeRenderer", retrace::ignore},
+        {"CGLDestroyContext", wrap(retrace_CGLDestroyContext)},
+        {"CGLDestroyPixelFormat", wrap(retrace_CGLDestroyPixelFormat)},
+        {"CGLDisable", retrace::ignore},
+        {"CGLEnable", retrace::ignore},
+        {"CGLErrorString", retrace::ignore},
+        {"CGLFlushDrawable", wrap(retrace_CGLFlushDrawable)},
+        {"CGLGetCurrentContext", retrace::ignore},
+        {"CGLGetGlobalOption", retrace::ignore},
+        {"CGLGetOption", retrace::ignore},
+        {"CGLGetParameter", retrace::ignore},
+        {"CGLGetPixelFormat", retrace::ignore},
+        {"CGLGetSurface", retrace::ignore},
+        {"CGLGetVersion", retrace::ignore},
+        {"CGLGetVirtualScreen", retrace::ignore},
+        {"CGLIsEnabled", retrace::ignore},
+        {"CGLLockContext", retrace::ignore},
+        {"CGLSetCurrentContext", wrap(retrace_CGLSetCurrentContext)},
+        {"CGLSetGlobalOption", retrace::ignore},
+        {"CGLSetOption", retrace::ignore},
+        {"CGLSetSurface", wrap(retrace_CGLSetSurface)},
+        {"CGLSetParameter", retrace::ignore},
+        {"CGLSetVirtualScreen", wrap(retrace_CGLSetVirtualScreen)},
+        {"CGLTexImageIOSurface2D", wrap(retrace_CGLTexImageIOSurface2D)},
+        {"CGLUnlockContext", retrace::ignore},
+        {"CGLUpdateContext", retrace::ignore},
+        {NULL, NULL},
+    };
+    #undef wrap
+
+    retracer.addCallbacks(cgl_callbacks);
+}
 
