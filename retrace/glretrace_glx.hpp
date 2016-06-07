@@ -38,7 +38,7 @@ class GLInterfaceGLX : public GLInterface
 public:
     inline GLInterfaceGLX(GLWs* glws) : GLInterface(glws) {}
 
-    ~GLInterfaceGLX() {}
+    ~GLInterfaceGLX();
 
 private:
     typedef std::map<unsigned long, glws::Drawable *> DrawableMap;

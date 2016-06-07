@@ -40,6 +40,16 @@
 using namespace glretrace;
 
 
+GLInterfaceGLX::~GLInterfaceGLX() {
+    for (auto &d : drawable_map) {
+        delete d.second;
+    }
+    for (auto &c : context_map) {
+        // may still leak (if context is not properly destroyed by trace file)
+        c.second->release();
+    }
+}
+
 glws::Drawable *
 GLInterfaceGLX::getDrawable(unsigned long drawable_id) {
     if (drawable_id == 0) {

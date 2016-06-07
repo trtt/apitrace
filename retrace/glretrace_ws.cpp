@@ -46,6 +46,13 @@ using namespace glretrace;
 
 OS_THREAD_LOCAL Context * GLWs::currentContextPtr = nullptr;
 
+
+GLWs::~GLWs() {
+    for (auto &v : visuals) {
+        delete v.second;
+    }
+}
+
 glws::Drawable *
 GLWs::createDrawableHelper(glfeatures::Profile profile, int width, int height,
                      const glws::pbuffer_info *pbInfo) {
