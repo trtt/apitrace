@@ -33,44 +33,13 @@
 #include "glretrace.hpp"
 #include "os.hpp"
 #include "eglsize.hpp"
-
-#ifndef EGL_OPENGL_ES_API
-#define EGL_OPENGL_ES_API		0x30A0
-#define EGL_OPENVG_API			0x30A1
-#define EGL_OPENGL_API			0x30A2
-#define EGL_CONTEXT_CLIENT_VERSION	0x3098
-#endif
-
+#include "glretrace_egl.hpp"
 
 using namespace glretrace;
 
 
-typedef std::map<unsigned long long, glws::Drawable *> DrawableMap;
-typedef std::map<unsigned long long, Context *> ContextMap;
-typedef std::map<unsigned long long, glfeatures::Profile> ProfileMap;
-static DrawableMap drawable_map;
-static ContextMap context_map;
-static ProfileMap profile_map;
-
-/* FIXME: This should be tracked per thread. */
-static unsigned int current_api = EGL_OPENGL_ES_API;
-
-/*
- * FIXME: Ideally we would defer the context creation until the profile was
- * clear, as explained in https://github.com/apitrace/apitrace/issues/197 ,
- * instead of guessing.  For now, start with a guess of ES2 profile, which
- * should be the most common case for EGL.
- */
-static glfeatures::Profile last_profile(glfeatures::API_GLES, 2, 0);
-
-static glws::Drawable *null_drawable = NULL;
-
-
-static void
-createDrawable(unsigned long long orig_config, unsigned long long orig_surface);
-
-static glws::Drawable *
-getDrawable(unsigned long long surface_ptr) {
+glws::Drawable *
+GLInterfaceEGL::getDrawable(unsigned long long surface_ptr) {
     if (surface_ptr == 0) {
         return NULL;
     }
@@ -88,8 +57,8 @@ getDrawable(unsigned long long surface_ptr) {
     return (it != drawable_map.end()) ? it->second : NULL;
 }
 
-static Context *
-getContext(unsigned long long context_ptr) {
+Context *
+GLInterfaceEGL::getContext(unsigned long long context_ptr) {
     if (context_ptr == 0) {
         return NULL;
     }
@@ -100,7 +69,7 @@ getContext(unsigned long long context_ptr) {
     return (it != context_map.end()) ? it->second : NULL;
 }
 
-static void createDrawable(unsigned long long orig_config, unsigned long long orig_surface)
+void GLInterfaceEGL::createDrawable(unsigned long long orig_config, unsigned long long orig_surface)
 {
     ProfileMap::iterator it = profile_map.find(orig_config);
     glfeatures::Profile profile;
@@ -114,11 +83,11 @@ static void createDrawable(unsigned long long orig_config, unsigned long long or
         profile = last_profile;
     }
 
-    glws::Drawable *drawable = glretrace::createDrawable(profile);
+    glws::Drawable *drawable = glws.createDrawable(profile);
     drawable_map[orig_surface] = drawable;
 }
 
-static void retrace_eglChooseConfig(trace::Call &call) {
+void GLInterfaceEGL::retrace_eglChooseConfig(trace::Call &call) {
     if (!call.ret->toSInt()) {
         return;
     }
@@ -131,7 +100,7 @@ static void retrace_eglChooseConfig(trace::Call &call) {
     }
 
     glfeatures::Profile profile;
-    unsigned renderableType = parseAttrib(attrib_array, EGL_RENDERABLE_TYPE, EGL_OPENGL_ES_BIT);
+    unsigned renderableType = glws.parseAttrib(attrib_array, EGL_RENDERABLE_TYPE, EGL_OPENGL_ES_BIT);
     std::cerr << "renderableType = " << renderableType << "\n";
     if (renderableType & EGL_OPENGL_BIT) {
         profile = glfeatures::Profile(glfeatures::API_GL, 1, 0);
@@ -153,20 +122,20 @@ static void retrace_eglChooseConfig(trace::Call &call) {
     }
 }
 
-static void retrace_eglCreateWindowSurface(trace::Call &call) {
+void GLInterfaceEGL::retrace_eglCreateWindowSurface(trace::Call &call) {
     unsigned long long orig_config = call.arg(1).toUIntPtr();
     unsigned long long orig_surface = call.ret->toUIntPtr();
     createDrawable(orig_config, orig_surface);
 }
 
-static void retrace_eglCreatePbufferSurface(trace::Call &call) {
+void GLInterfaceEGL::retrace_eglCreatePbufferSurface(trace::Call &call) {
     unsigned long long orig_config = call.arg(1).toUIntPtr();
     unsigned long long orig_surface = call.ret->toUIntPtr();
     createDrawable(orig_config, orig_surface);
     // TODO: Respect the pbuffer dimensions too
 }
 
-static void retrace_eglDestroySurface(trace::Call &call) {
+void GLInterfaceEGL::retrace_eglDestroySurface(trace::Call &call) {
     unsigned long long orig_surface = call.arg(1).toUIntPtr();
 
     DrawableMap::iterator it;
@@ -182,7 +151,7 @@ static void retrace_eglDestroySurface(trace::Call &call) {
     }
 }
 
-static void retrace_eglBindAPI(trace::Call &call) {
+void GLInterfaceEGL::retrace_eglBindAPI(trace::Call &call) {
     if (!call.ret->toBool()) {
         return;
     }
@@ -190,7 +159,7 @@ static void retrace_eglBindAPI(trace::Call &call) {
     current_api = call.arg(0).toUInt();
 }
 
-static void retrace_eglCreateContext(trace::Call &call) {
+void GLInterfaceEGL::retrace_eglCreateContext(trace::Call &call) {
     unsigned long long orig_context = call.ret->toUIntPtr();
     unsigned long long orig_config = call.arg(1).toUIntPtr();
     Context *share_context = getContext(call.arg(2).toUIntPtr());
@@ -200,14 +169,14 @@ static void retrace_eglCreateContext(trace::Call &call) {
     switch (current_api) {
     case EGL_OPENGL_API:
         profile.api = glfeatures::API_GL;
-        profile.major = parseAttrib(attrib_array, EGL_CONTEXT_MAJOR_VERSION, 1);
-        profile.minor = parseAttrib(attrib_array, EGL_CONTEXT_MINOR_VERSION, 0);
+        profile.major = glws.parseAttrib(attrib_array, EGL_CONTEXT_MAJOR_VERSION, 1);
+        profile.minor = glws.parseAttrib(attrib_array, EGL_CONTEXT_MINOR_VERSION, 0);
         if (profile.versionGreaterOrEqual(3,2)) {
-             int profileMask = parseAttrib(attrib_array, EGL_CONTEXT_OPENGL_PROFILE_MASK_KHR, EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT_KHR);
+             int profileMask = glws.parseAttrib(attrib_array, EGL_CONTEXT_OPENGL_PROFILE_MASK_KHR, EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT_KHR);
              if (profileMask & EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT_KHR) {
                  profile.core = true;
              }
-             int contextFlags = parseAttrib(attrib_array, EGL_CONTEXT_FLAGS_KHR, 0);
+             int contextFlags = glws.parseAttrib(attrib_array, EGL_CONTEXT_FLAGS_KHR, 0);
              if (contextFlags & EGL_CONTEXT_OPENGL_FORWARD_COMPATIBLE_BIT_KHR) {
                  profile.forwardCompatible = true;
              }
@@ -216,13 +185,13 @@ static void retrace_eglCreateContext(trace::Call &call) {
     case EGL_OPENGL_ES_API:
     default:
         profile.api = glfeatures::API_GLES;
-        profile.major = parseAttrib(attrib_array, EGL_CONTEXT_MAJOR_VERSION, 1);
-        profile.minor = parseAttrib(attrib_array, EGL_CONTEXT_MINOR_VERSION, 0);
+        profile.major = glws.parseAttrib(attrib_array, EGL_CONTEXT_MAJOR_VERSION, 1);
+        profile.minor = glws.parseAttrib(attrib_array, EGL_CONTEXT_MINOR_VERSION, 0);
         break;
     }
 
 
-    Context *context = glretrace::createContext(share_context, profile);
+    Context *context = glws.createContext(share_context, profile);
     assert(context);
 
     context_map[orig_context] = context;
@@ -230,7 +199,7 @@ static void retrace_eglCreateContext(trace::Call &call) {
     last_profile = profile;
 }
 
-static void retrace_eglDestroyContext(trace::Call &call) {
+void GLInterfaceEGL::retrace_eglDestroyContext(trace::Call &call) {
     unsigned long long orig_context = call.arg(1).toUIntPtr();
 
     ContextMap::iterator it;
@@ -246,7 +215,7 @@ static void retrace_eglDestroyContext(trace::Call &call) {
     }
 }
 
-static void retrace_eglMakeCurrent(trace::Call &call) {
+void GLInterfaceEGL::retrace_eglMakeCurrent(trace::Call &call) {
     if (!call.ret->toSInt()) {
         // Previously current rendering context and surfaces (if any) remain
         // unchanged.
@@ -259,16 +228,16 @@ static void retrace_eglMakeCurrent(trace::Call &call) {
     // Try to support GL_OES_surfaceless_context by creating a dummy drawable.
     if (new_context && !new_drawable) {
         if (!null_drawable) {
-            null_drawable = glretrace::createDrawable(last_profile);
+            null_drawable = glws.createDrawable(last_profile);
         }
         new_drawable = null_drawable;
     }
 
-    glretrace::makeCurrent(call, new_drawable, new_context);
+    glws.makeCurrent(call, new_drawable, new_context);
 }
 
 
-static void retrace_eglSwapBuffers(trace::Call &call) {
+void GLInterfaceEGL::retrace_eglSwapBuffers(trace::Call &call) {
     glws::Drawable *drawable = getDrawable(call.arg(1).toUIntPtr());
 
     frame_complete(call);
@@ -282,46 +251,55 @@ static void retrace_eglSwapBuffers(trace::Call &call) {
     }
 }
 
-const retrace::Entry glretrace::egl_callbacks[] = {
-    {"eglGetError", retrace::ignore},
-    {"eglGetDisplay", retrace::ignore},
-    {"eglInitialize", retrace::ignore},
-    {"eglTerminate", retrace::ignore},
-    {"eglQueryString", retrace::ignore},
-    {"eglGetConfigs", retrace::ignore},
-    {"eglChooseConfig", &retrace_eglChooseConfig},
-    {"eglGetConfigAttrib", retrace::ignore},
-    {"eglCreateWindowSurface", &retrace_eglCreateWindowSurface},
-    {"eglCreatePbufferSurface", &retrace_eglCreatePbufferSurface},
-    //{"eglCreatePixmapSurface", retrace::ignore},
-    {"eglDestroySurface", &retrace_eglDestroySurface},
-    {"eglQuerySurface", retrace::ignore},
-    {"eglBindAPI", &retrace_eglBindAPI},
-    {"eglQueryAPI", retrace::ignore},
-    //{"eglWaitClient", retrace::ignore},
-    //{"eglReleaseThread", retrace::ignore},
-    //{"eglCreatePbufferFromClientBuffer", retrace::ignore},
-    //{"eglSurfaceAttrib", retrace::ignore},
-    //{"eglBindTexImage", retrace::ignore},
-    //{"eglReleaseTexImage", retrace::ignore},
-    {"eglSwapInterval", retrace::ignore},
-    {"eglCreateContext", &retrace_eglCreateContext},
-    {"eglDestroyContext", &retrace_eglDestroyContext},
-    {"eglMakeCurrent", &retrace_eglMakeCurrent},
-    {"eglGetCurrentContext", retrace::ignore},
-    {"eglGetCurrentSurface", retrace::ignore},
-    {"eglGetCurrentDisplay", retrace::ignore},
-    {"eglQueryContext", retrace::ignore},
-    {"eglWaitGL", retrace::ignore},
-    {"eglWaitNative", retrace::ignore},
-    {"eglReleaseThread", retrace::ignore},
-    {"eglSwapBuffers", &retrace_eglSwapBuffers},
-    {"eglSwapBuffersWithDamageEXT", &retrace_eglSwapBuffers},  // ignores additional params
-    {"eglSwapBuffersWithDamageKHR", &retrace_eglSwapBuffers},  // ignores additional params
-    //{"eglCopyBuffers", retrace::ignore},
-    {"eglGetProcAddress", retrace::ignore},
-    {"eglCreateImageKHR", retrace::ignore},
-    {"eglDestroyImageKHR", retrace::ignore},
-    {"glEGLImageTargetTexture2DOES", retrace::ignore},
-    {NULL, NULL},
-};
+void GLInterfaceEGL::registerCallbacks(retrace::Retracer &retracer) {
+    using namespace std::placeholders;
+
+    #define wrap(func) std::bind(&GLInterfaceEGL::func, this, _1)
+
+    const retrace::Entry egl_callbacks[] = {
+        {"eglGetError", retrace::ignore},
+        {"eglGetDisplay", retrace::ignore},
+        {"eglInitialize", retrace::ignore},
+        {"eglTerminate", retrace::ignore},
+        {"eglQueryString", retrace::ignore},
+        {"eglGetConfigs", retrace::ignore},
+        {"eglChooseConfig", wrap(retrace_eglChooseConfig)},
+        {"eglGetConfigAttrib", retrace::ignore},
+        {"eglCreateWindowSurface", wrap(retrace_eglCreateWindowSurface)},
+        {"eglCreatePbufferSurface", wrap(retrace_eglCreatePbufferSurface)},
+        //{"eglCreatePixmapSurface", retrace::ignore},
+        {"eglDestroySurface", wrap(retrace_eglDestroySurface)},
+        {"eglQuerySurface", retrace::ignore},
+        {"eglBindAPI", wrap(retrace_eglBindAPI)},
+        {"eglQueryAPI", retrace::ignore},
+        //{"eglWaitClient", retrace::ignore},
+        //{"eglReleaseThread", retrace::ignore},
+        //{"eglCreatePbufferFromClientBuffer", retrace::ignore},
+        //{"eglSurfaceAttrib", retrace::ignore},
+        //{"eglBindTexImage", retrace::ignore},
+        //{"eglReleaseTexImage", retrace::ignore},
+        {"eglSwapInterval", retrace::ignore},
+        {"eglCreateContext", wrap(retrace_eglCreateContext)},
+        {"eglDestroyContext", wrap(retrace_eglDestroyContext)},
+        {"eglMakeCurrent", wrap(retrace_eglMakeCurrent)},
+        {"eglGetCurrentContext", retrace::ignore},
+        {"eglGetCurrentSurface", retrace::ignore},
+        {"eglGetCurrentDisplay", retrace::ignore},
+        {"eglQueryContext", retrace::ignore},
+        {"eglWaitGL", retrace::ignore},
+        {"eglWaitNative", retrace::ignore},
+        {"eglReleaseThread", retrace::ignore},
+        {"eglSwapBuffers", wrap(retrace_eglSwapBuffers)},
+        {"eglSwapBuffersWithDamageEXT", wrap(retrace_eglSwapBuffers)},  // ignores additional params
+        {"eglSwapBuffersWithDamageKHR", wrap(retrace_eglSwapBuffers)},  // ignores additional params
+        //{"eglCopyBuffers", retrace::ignore},
+        {"eglGetProcAddress", retrace::ignore},
+        {"eglCreateImageKHR", retrace::ignore},
+        {"eglDestroyImageKHR", retrace::ignore},
+        {"glEGLImageTargetTexture2DOES", retrace::ignore},
+        {NULL, NULL},
+    };
+    #undef wrap
+
+    retracer.addCallbacks(egl_callbacks);
+}

@@ -41,6 +41,7 @@
 #include "glretrace_glx.hpp"
 #include "glretrace_cgl.hpp"
 #include "glretrace_wgl.hpp"
+#include "glretrace_egl.hpp"
 
 /* Synchronous debug output may reduce performance however,
  * without it the callNo in the callback may be inaccurate
@@ -852,6 +853,8 @@ retrace::addCallbacks(retrace::Retracer &retracer)
                                     new glretrace::GLInterfaceCGL(glretrace::glws)));
     glretrace::interfaces.push_back(std::unique_ptr<glretrace::GLInterface>(
                                     new glretrace::GLInterfaceWGL(glretrace::glws)));
+    glretrace::interfaces.push_back(std::unique_ptr<glretrace::GLInterface>(
+                                    new glretrace::GLInterfaceEGL(glretrace::glws)));
 
     for (auto const &i : glretrace::interfaces) {
         i->registerCallbacks(retracer);
