@@ -321,6 +321,7 @@ Qt::ItemFlags MetricSelectionModel::flags(const QModelIndex &index) const
 
     Qt::ItemFlags flags = QAbstractItemModel::flags(index) | Qt::ItemIsUserCheckable | Qt::ItemIsTristate;
     if (profiled.contains(index)) flags ^= Qt::ItemIsEnabled;
+    if (index.column() == 1) flags ^= Qt::ItemIsEnabled; // FIX (currently disable frames)
     return flags;
 }
 

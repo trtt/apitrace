@@ -66,6 +66,9 @@ set(qqapitrace_SRCS
    qqmain.cpp
    metric_selection_model.cpp
    metric_data_model.cpp
+   bargraph.cpp
+   rangestats.cpp
+   metric_graphs.cpp
    graphing/graphview.cpp
    graphing/histogramview.cpp
 )
@@ -123,7 +126,7 @@ else ()
     target_link_libraries (qubjson Qt5::Widgets)
     target_link_libraries (qubjson_test Qt5::Widgets)
     target_link_libraries (qapitrace Qt5::Widgets Qt5::Network)
-    target_link_libraries (qqapitrace Qt5::Widgets)
+    target_link_libraries (qqapitrace Qt5::Widgets Qt5::Quick Qt5::OpenGL Qt5::QuickWidgets)
 endif ()
 
 target_link_libraries (qapitrace

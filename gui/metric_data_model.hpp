@@ -20,26 +20,49 @@ enum QueryBoundary {
     QUERY_BOUNDARY_LIST_END
 };
 
-class QueryItem
+class MetricStorage
 {
 public:
-    void addMetric(QVariant &&data);
-    QVariant getMetric(int index) const;
+    /*
+    * making storage for metrics explicitly (via new)
+    * so std::vector does not move around
+    */
+    MetricStorage(MetricItem* item) : item(item) {
+        data = new std::vector<float>();
+    }
+    ~MetricStorage() { if (data) delete data; }
+    MetricStorage(MetricStorage&& ms) : data(ms.data), item(ms.item) { ms.data = nullptr; }
+
+    void addMetricData(float data);
+    float getMetricData(unsigned index) const { return (*data)[index]; }
+    MetricItem* metric() const { return item; }
+    const std::vector<float>* vector() const { return data; }
+
 private:
-    // QVariant is probably not the best thing to use here
-    // TODO: external storage for metrics
-    QList<QVariant> m_metrics;
+    std::vector<float>* data;
+    MetricItem* item;
 };
 
-// currently only draw calls
-class CallItem : public QueryItem
+
+class DrawcallStorage
 {
 public:
-    CallItem(unsigned no, unsigned program, unsigned frame, QString name);
-    unsigned no() const;
-    unsigned program() const;
-    unsigned frame() const;
-    QString name() const;
+    DrawcallStorage() {}
+
+    std::string name(unsigned index) const { return nameTable.getString(nameHash[index]); }
+    unsigned no(unsigned index) const { return s_no[index]; }
+    unsigned program(unsigned index) const { return s_program[index]; }
+    unsigned frame(unsigned index) const { return s_frame[index]; }
+
+    unsigned size() const { return s_no.size(); }
+
+    void addDrawcall(unsigned no, unsigned program, unsigned frame, QString name);
+
+    void addTimestamp(qlonglong time);
+
+    std::vector<unsigned>* timestampHData() { return &s_timestampH; }
+    std::vector<unsigned>* timestampLData() { return &s_timestampL; }
+    std::vector<unsigned>* programData() { return &s_program; }
 
 private:
     template<typename T>
@@ -62,63 +85,27 @@ private:
             }
             return index;
         }
-        std::string getString(T id) {
+        std::string getString(T id) const {
             return strings[static_cast<typename decltype(stringLookupTable)::size_type>(id)];
         }
     };
-    static StringTable<int16_t> nameTable;
+    StringTable<unsigned> nameTable;
 
-    unsigned m_no;
-    unsigned m_program;
-    unsigned m_frame;
-    int16_t m_nameTableEntry;
+    std::vector<unsigned> nameHash;
+    std::vector<unsigned> s_no;
+    std::vector<unsigned> s_program;
+    std::vector<unsigned> s_frame;
+
+    std::vector<unsigned> s_timestampH;
+    std::vector<unsigned> s_timestampL;
 };
-
-
-class FrameItem : public QueryItem
-{
-public:
-    FrameItem(unsigned no) : m_no(no) {};
-    unsigned no() const;
-
-private:
-    unsigned m_no;
-};
-
-
-class MetricFrameDataModel : public QAbstractTableModel
-{
-    Q_OBJECT
-
-public:
-    explicit MetricFrameDataModel(QObject *parent = 0) : init(false) {}
-
-    QVariant data(const QModelIndex &index, int role) const Q_DECL_OVERRIDE;
-    QVariant headerData(int section, Qt::Orientation orientation,
-                        int role = Qt::DisplayRole) const Q_DECL_OVERRIDE;
-    int rowCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE;
-    int columnCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE;
-
-    void addMetricsData(QTextStream &stream, MetricOutputLookup &lookup);
-private:
-    enum PreColumns {
-        COLUMN_ID = 0,
-        COLUMN_METRICS_BEGIN
-    };
-
-    QList<MetricItem*> m_metrics;
-    std::vector<FrameItem> m_data;
-    bool init;
-};
-
-
 
 class MetricCallDataModel : public QAbstractTableModel
 {
     Q_OBJECT
 
 public:
-    explicit MetricCallDataModel(QObject *parent = 0) : init(false) {}
+    explicit MetricCallDataModel(QObject *parent = 0) : init(false), durationIndexInMetrics(0) {}
 
     QVariant data(const QModelIndex &index, int role) const Q_DECL_OVERRIDE;
     QVariant headerData(int section, Qt::Orientation orientation,
@@ -127,6 +114,12 @@ public:
     int columnCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE;
 
     void addMetricsData(QTextStream &stream, MetricOutputLookup &lookup);
+
+    const std::vector<float>* durationData() const;
+
+    DrawcallStorage& calls() { return m_calls; }
+    std::vector<MetricStorage>& metrics() { return m_metrics; }
+
 private:
     enum PreColumns {
         COLUMN_ID = 0,
@@ -136,7 +129,8 @@ private:
         COLUMN_METRICS_BEGIN
     };
 
-    QList<MetricItem*> m_metrics;
-    std::vector<CallItem> m_data;
+    std::vector<MetricStorage> m_metrics;
+    DrawcallStorage m_calls;
     bool init;
+    unsigned durationIndexInMetrics;
 };
