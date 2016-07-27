@@ -120,7 +120,7 @@ void MetricSelectionModel::parseData(QIODevice &io) {
             backend->appendChild(group);
             itemType[group] = MSGroup;
 
-            QRegularExpression reMetric("Metric #(\\d+): ([^\\(]*) \\(type: ([^,]*), num\\. type: ([^\\)]*)");
+            QRegularExpression reMetric("Metric #(\\d+): (.*) \\(type: ([^,]*), num\\. type: ([^\\)]*)");
             QRegularExpression reDescription("Description: (.*)$");
             line = stream.readLine();
             match = reMetric.match(line);
