@@ -7,7 +7,7 @@ void RangeStats::collect() {
 
     m_numEvents = 0;
     if (index != -1) {
-        m_max = m_ptr->data()->dataY()->data[index];
+        m_max = static_cast<BarGraphData*>(m_ptr->data())->dataY()->data[index];
         m_min = m_max;
     } else {
         m_max = 0;
@@ -16,7 +16,7 @@ void RangeStats::collect() {
     m_mean = 0;
     while (index != -1) {
         ++m_numEvents;
-        float value = m_ptr->data()->dataY()->data[index];
+        float value = static_cast<BarGraphData*>(m_ptr->data())->dataY()->data[index];
         if (value > m_max) m_max = value;
         if (value < m_max) m_min = value;
         m_mean += value;

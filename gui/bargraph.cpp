@@ -1,58 +1,33 @@
 #include "bargraph.h"
 
 #include <QQuickWindow>
-#include <QElapsedTimer>
 
-#include <iostream>
 #include <cmath>
-#include <chrono>
 
 
-void TimelineAxis::init() {
-    if (!m_initTimes) {
-        xH->init();
-        xL->init();
-        xW->init();
-    }
-    m_initTimes++;
-}
-
-void TimelineAxis::deinit() {
-    if (!(--m_initTimes)) {
-        if (xH.unique())
-            xH->deinit();
-        if (xL.unique())
-            xL->deinit();
-        if (xW.unique())
-            xW->deinit();
-    }
-}
-
-
-void BarGraphData::init() {
-    if (!m_initTimes) {
+void BarGraphData::acquireResHandle() {
+    if (!m_numHandles) {
         m_dataY->init();
-        m_dataFilter->init();
     }
-    m_initTimes++;
+    AbstractGraphData::acquireResHandle();
 }
 
-void BarGraphData::deinit() {
-    if (!(--m_initTimes)) {
+void BarGraphData::freeResHandle() {
+    AbstractGraphData::freeResHandle();
+    if (!m_numHandles) {
         if (m_dataY.unique())
             m_dataY->deinit();
-        if (m_dataFilter.unique())
-            m_dataFilter->deinit();
     }
+}
+
+float BarGraphData::eventYValue(int id) const {
+     return m_dataY->data[id];
 }
 
 
 BarGraph::BarGraph(QQuickItem *parent)
-    : QQuickFramebufferObject(parent),  m_renderer(0), m_filtered(true),
-      m_needsUpdating(true), m_axis(nullptr), m_data(nullptr), m_numElements(0),
-      m_maxY(1.f), m_filter(0), m_bgcolor("white")
+    : m_maxY(1.f)
 {
-    setMirrorVertically(true);
 }
 
 QQuickFramebufferObject::Renderer* BarGraph::createRenderer() const {
@@ -60,133 +35,14 @@ QQuickFramebufferObject::Renderer* BarGraph::createRenderer() const {
 }
 
 void BarGraph::forceupdate() {
-    m_needsUpdating = true;
-    update();
-}
-
-void BarGraph::initRenderer() {
-    connect(m_axis, &TimelineAxis::dispStartTimeChanged, this, &BarGraph::forceupdate);
-    connect(m_axis, &TimelineAxis::dispEndTimeChanged, this, &BarGraph::forceupdate);
-    m_axis->init();
-    m_data->init();
-}
-
-void BarGraph::setAxis(TimelineAxis* axis) {
-    m_axis = axis;
-    connect(axis, &TimelineAxis::dispStartTimeChanged, this, &BarGraph::updateMaxY);
-    connect(axis, &TimelineAxis::dispEndTimeChanged, this, &BarGraph::updateMaxY);
-}
-
-
-QOpenGLShaderProgram* BarGraphRenderer::m_filtProgram = nullptr;
-QOpenGLShaderProgram* BarGraphRenderer::m_nofiltProgram = nullptr;
-QGLBuffer BarGraphRenderer::m_vertexBuffer = QGLBuffer(QGLBuffer::VertexBuffer);
-GLuint BarGraphRenderer::m_vao = 0;
-unsigned BarGraphRenderer::m_numInstances = 0;
-
-BarGraphRenderer::BarGraphRenderer(BarGraph* item) : m_item(item) {
-    m_item->initRenderer();
-    m_numInstances++;
-}
-
-BarGraphRenderer::~BarGraphRenderer() {
-    m_axisCopy->deinit();
-    m_dataCopy->deinit();
-    if (!(--m_numInstances)) {
-        glDeleteVertexArrays(1, &m_vao);
-        delete m_filtProgram;
-        delete m_nofiltProgram;
-        m_filtProgram = nullptr;
-        m_nofiltProgram = nullptr;
-    }
-}
-
-static int upper_bound64(int begin, int end, const std::vector<GLuint>& dataH,
-                         const std::vector<GLuint>& dataL,
-                         int stride, uint64_t val)
-{
-    int count = end - begin;
-    while (count > 0) {
-        int step = (count / stride ) / 2 * stride;
-        uint64_t curValue = ((uint64_t)dataH[begin+step] << 32) + dataL[begin+step];
-        if (!(val < curValue)) {
-            begin += step + stride;
-            count -= step + stride;
-        } else {
-            count = step;
-        }
-    }
-    return begin;
-}
-
-void TimelineAxis::mapEvents() {
-    m_dispFirstEvent = upper_bound64(m_firstEvent, m_lastEvent,
-                                         xH->data, xL->data,
-                                         1, m_dispStartTime) - 1;
-    m_dispLastEvent  = upper_bound64(m_firstEvent, m_lastEvent,
-                                         xH->data, xL->data,
-                                         1, m_dispEndTime) - 1;
-}
-
-int TimelineAxis::findEventAtTime(qlonglong time) const {
-    return upper_bound64(m_dispFirstEvent, m_dispLastEvent+1, xH->data, xL->data,
-                         1, time) - 1;
-}
-
-qlonglong TimelineAxis::eventStartTime(int id) const {
-     return ((uint64_t)xH->data[id] << 32) + xL->data[id];
-}
-
-qlonglong TimelineAxis::eventDurationTime(int id) const {
-     return (double)xW->data[id] * 1e9;
-}
-
-
-float BarGraphData::eventYValue(int id) const {
-     return m_dataY->data[id];
-}
-
-
-bool BarGraph::isEventFiltered(int id) const {
-    return (m_filtered && m_data->dataFilter()->data[id] != m_filter);
-}
-
-uint BarGraph::eventFilter(int id) const {
-    return m_filter;
-}
-
-BarGraph::range_iterator::range_iterator(BarGraph* bg, uint64_t begin,
-                                         uint64_t duration)
-    : ptr(bg), end(begin+duration)
-{
-    curElement = upper_bound64(ptr->m_axis->m_dispFirstEvent,
-                               ptr->m_axis->m_dispLastEvent,
-                               ptr->m_axis->xH->data, ptr->m_axis->xL->data,
-                               1, begin) - 1;
-    operator++();
-    if ( ((uint64_t)ptr->m_axis->xH->data[curElement] << 32) \
-         + ptr->m_axis->xL->data[curElement] < begin) curElement = -1;
-}
-
-int BarGraph::range_iterator::operator++() {
-    if (curElement == -1) return -1;
-    do {
-        ++curElement;
-        uint64_t elementEnd = ((uint64_t)ptr->m_axis->xH->data[curElement] << 32) \
-                              + ptr->m_axis->xL->data[curElement] \
-                              + ptr->m_axis->xW->data[curElement] * (double)1e9;
-        if (elementEnd > end) {
-            curElement = -1;
-            break;
-        }
-    } while (ptr->m_filtered && ptr->m_data->dataFilter()->data[curElement] != ptr->m_filter);
-    return curElement;
+    updateMaxY();
+    AbstractGraph::forceupdate();
 }
 
 float BarGraph::maxVisibleEvent() const {
     int firstEvent = m_axis->m_dispFirstEvent;
     int lastEvent = m_axis->m_dispLastEvent;
-    const std::vector<GLfloat>& v = m_data->dataY()->data;
+    const std::vector<GLfloat>& v = static_cast<BarGraphData*>(m_data)->dataY()->data;
 
     double stride = (lastEvent - firstEvent) / (double)(m_numElements-1);
     if (firstEvent == lastEvent) {
@@ -208,7 +64,7 @@ float BarGraph::maxVisibleEvent() const {
 }
 
 void BarGraph::updateMaxY() {
-    if (!m_numElements || !m_axis) return;
+    if (!m_numElements || !m_axis || !m_data) return;
     if (m_offscreen) {
         m_needsUpdatingMaxY = true;
         return;
@@ -220,66 +76,35 @@ void BarGraph::updateMaxY() {
 }
 
 
-GLfloat max_element_strided(const std::vector<GLfloat>& v,
-                           uint firstEvent, uint lastEvent, uint numEvents)
-{
-    float stride = (lastEvent - firstEvent) / (numEvents-1);
-    if (firstEvent == lastEvent) {
-        return v[lastEvent];
-    } else if (firstEvent > lastEvent) {
-        return 0;
-    }
-    GLfloat largest = v[firstEvent];
-    for (uint i=1; i < numEvents; ++i) {
-        float tested = v[round(firstEvent + i * stride)];
-        if (largest < tested) {
-            largest = tested;
-        }
-    }
-    return largest;
+QOpenGLShaderProgram* BarGraphRenderer::m_filtProgram = nullptr;
+QOpenGLShaderProgram* BarGraphRenderer::m_nofiltProgram = nullptr;
+QGLBuffer BarGraphRenderer::m_vertexBuffer = QGLBuffer(QGLBuffer::VertexBuffer);
+GLuint BarGraphRenderer::m_vao = 0;
+unsigned BarGraphRenderer::m_numInstances = 0;
+
+BarGraphRenderer::BarGraphRenderer(BarGraph* item) : AbstractGraphRenderer(item) {
+    m_numInstances++;
 }
 
-void BarGraphRenderer::synchronize(QQuickFramebufferObject* item) {
-    if (!m_item->m_needsUpdating) return;
-
-    if (!m_item) return;
-    auto& i = m_item;
-
-    m_axisCopy = i->m_axis;
-    m_dataCopy = i->m_data;
-
-    m_sceneCoord = i->parentItem()->mapToScene(QPointF(i->x(), i->y()));
-    m_width = i->width();
-    m_height = i->height();
-    m_winHeight = i->window()->size().height();
-
-    if ((m_sceneCoord.y() + i->height() < 0) ||
-        (m_sceneCoord.y() > m_winHeight))
-    {
-        i->m_offscreen = true;
-    } else {
-        i->m_offscreen = false;
+BarGraphRenderer::~BarGraphRenderer() {
+    if (!(--m_numInstances)) {
+        glDeleteVertexArrays(1, &m_vao);
+        delete m_filtProgram;
+        delete m_nofiltProgram;
+        m_filtProgram = nullptr;
+        m_nofiltProgram = nullptr;
     }
+}
 
-    if (i->m_offscreen) return;
+void BarGraphRenderer::synchronizeAfter(QQuickFramebufferObject* item) {
+    BarGraph* i = static_cast<BarGraph*>(item);
 
     if (i->m_needsUpdatingMaxY) {
         i->updateMaxY();
         i->m_needsUpdatingMaxY = false;
     }
 
-    m_filteredCopy = i->m_filtered;
-    m_numElementsCopy = i->m_numElements;
     m_maxYCopy = i->m_maxY;
-    m_filterCopy = i->m_filter;
-    m_bgcolorCopy = i->m_bgcolor;
-
-    m_dispStartTimeCopy = i->m_axis->dispStartTime();
-    m_dispEndTimeCopy = i->m_axis->dispEndTime();
-    m_dispFirstEventCopy = i->m_axis->m_dispFirstEvent;
-    m_dispLastEventCopy = i->m_axis->m_dispLastEvent;
-
-
 }
 
 void BarGraphRenderer::render() {
@@ -289,10 +114,10 @@ void BarGraphRenderer::render() {
                           *filtfshader = nullptr, *nofiltfshader = nullptr;
     if (!m_GLinit) {
         initializeOpenGLFunctions();
-        if (m_item->window()->openglContext()->hasExtension("GL_ARB_gpu_shader_fp64")) {
+        if (m_win->openglContext()->hasExtension("GL_ARB_gpu_shader_fp64")) {
             m_doublePrecision = true;
             glUniform1d = reinterpret_cast<glUniform1dType>(
-                m_item->window()->openglContext()->getProcAddress("glUniform1d")
+                m_win->openglContext()->getProcAddress("glUniform1d")
             );
         }
         m_GLinit = true;
@@ -432,8 +257,7 @@ void BarGraphRenderer::render() {
         m_program = m_nofiltProgram;
     }
 
-    if (!m_item->m_needsUpdating) return;
-    if (m_item->m_offscreen) return;
+    if (!m_needsUpdating || !m_axisCopy || !m_dataCopy) return;
 
     m_program->bind();
     glBindVertexArray(m_vao);
@@ -444,10 +268,10 @@ void BarGraphRenderer::render() {
     glActiveTexture(GL_TEXTURE2);
     m_axisCopy->xW->bindTexture();
     glActiveTexture(GL_TEXTURE3);
-    m_item->data()->dataY()->bindTexture();
+    static_cast<BarGraphData*>(m_dataCopy)->dataY()->bindTexture();
     if (m_filteredCopy) {
         glActiveTexture(GL_TEXTURE4);
-        m_item->data()->dataFilter()->bindTexture();
+        m_dataCopy->dataFilter()->bindTexture();
     }
 
     int colorLocation = m_program->uniformLocation("color");
@@ -492,6 +316,6 @@ void BarGraphRenderer::render() {
     glBindVertexArray(0);
 
     m_program->release();
-    m_item->m_needsUpdating = false;
-    m_item->window()->resetOpenGLState();
+    m_needsUpdating = false;
+    m_win->resetOpenGLState();
 }

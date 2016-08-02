@@ -66,6 +66,7 @@ set(qqapitrace_SRCS
    qqmain.cpp
    metric_selection_model.cpp
    metric_data_model.cpp
+   abstractgraph.cpp
    bargraph.cpp
    rangestats.cpp
    metric_graphs.cpp
