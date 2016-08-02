@@ -1,26 +1,30 @@
 #include "metric_data_model.hpp"
 #include "bargraph.h"
 
-class MetricGraphs : public QObject
+class MetricGraphs : public QAbstractListModel
 {
     Q_OBJECT
-    Q_PROPERTY(uint size READ size)
-    Q_PROPERTY(QString name READ name)
-    Q_PROPERTY(BarGraphData* graphdata READ graphdata)
 
 public:
-    MetricGraphs(MetricCallDataModel& model);
+    enum CustomRoles {
+        CaptionRole = Qt::UserRole + 1,
+        DataRole = Qt::UserRole + 2,
+        SizeRole
+    };
+
+    explicit MetricGraphs(MetricCallDataModel& model);
     ~MetricGraphs();
 
-    unsigned size() const;
-    QString name() const;
-    BarGraphData* graphdata();
-    Q_INVOKABLE void next();
+    QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const Q_DECL_OVERRIDE;
+    int rowCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE;
+    QHash<int, QByteArray> roleNames() const;
 
 private:
-    unsigned index;
-    MetricCallDataModel& model;
-    std::shared_ptr<TextureBufferData<GLuint>> filter;
-    std::vector<std::shared_ptr<TextureBufferData<GLfloat>>> textureData;
-    std::vector<BarGraphData*> data;
+    QString name(unsigned index) const;
+    void addGraphsData();
+
+    MetricCallDataModel& m_model;
+    std::shared_ptr<TextureBufferData<GLuint>> m_filter;
+    std::vector<std::shared_ptr<TextureBufferData<GLfloat>>> m_textureData;
+    std::vector<BarGraphData*> m_data;
 };

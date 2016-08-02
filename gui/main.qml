@@ -11,6 +11,16 @@ function setCoarsed() {
     finetimer.restart();
 }
 
+function findGraph(x, y) {
+    var index = column.childAt(x, y)
+    var coord = column.mapToItem(index, x, y)
+    var oldIndex = index
+    index = index.childAt(coord.x, coord.y)
+    if (index.graph) return index.graph
+    coord = oldIndex.mapToItem(index, coord.x, coord.y)
+    return index.item.childAt(coord.x, coord.y).graph
+}
+
 Binding {
     target: baraxis
     property: "dispStartTime"
@@ -37,7 +47,7 @@ Keys.onPressed: {
 
 TimelineAxis {
     id: axis
-    x: flick.vaxisWidth
+    x: flick.x + flick.vaxisWidth
     width: parent.width - x
     anchors.top: parent.top
     anchors.bottom: scrollview.bottom
@@ -53,7 +63,62 @@ Rectangle {
     color: "black"
 }
 
-ScrollView {
+Component {
+    id: programComponent
+
+    Column {
+        width: flick.width
+    Repeater {
+        model: programs
+        Item {
+            width: parent.width
+            height: 1. * flick.height/10 + ((index == programs.length-1)?3:1)
+            property var graph: graphElement
+            Item {
+                id: vaxisheader
+                anchors.left: parent.left
+                width: flick.vaxisWidth - 100
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                Text {
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: " (" + modelData + ")"
+                }
+            }
+            VerticalAxis {
+                id: vaxis
+                maxY: graphElement.maxY
+                anchors.left: vaxisheader.right
+                width: 100
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+            }
+            BarGraph {
+                id: graphElement
+                anchors.left: vaxis.right
+                anchors.right: parent.right
+                height: parent.height
+
+                bgcolor: index % 2 == 1 ? Qt.rgba(0,0,0,0) : Qt.tint("transparent", "#10FF0000")
+                filter: modelData
+                axis: baraxis
+                data: graphData
+                numElements: Math.max(width * (coarsed ? coarse.value : fine.value), 0)
+            }
+            Rectangle {
+                color: "gray"
+                width: parent.width
+                anchors.bottom: parent.bottom
+                height: (index == programs.length-1) ? 3:1
+            }
+        }
+    }
+    }
+}
+
+
+Item {
     id: scrollview
     y: axis.panelHeight
     height: root.height - y
@@ -64,58 +129,83 @@ Flickable {
     anchors.fill: parent
     property int vaxisWidth: 240
     clip: true
-    contentHeight: graphs.size*setiter.size  * (flick.height/10 + 5)
+    contentHeight: column.height
     onContentYChanged: {
-        var pos = Math.floor(flick.contentY /  (flick.height/10))
-        for (var i = Math.max(0, pos-5); i < Math.min(column.children.length, pos+20); i++) {
-            if (column.children[i].graph) {
-                column.children[i].graph.update();
-            }
-        }
+        findGraph(vaxisWidth+10, contentY+1).update();
+        findGraph(vaxisWidth+10, contentY+height-1).update();
     }
     Column {
         id: column
-        anchors.fill: parent
-        spacing: 5
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
         Repeater {
-            model: graphs.size
-            onItemAdded: graphs.next()
-        Repeater {
-            model: setiter.size
-            onItemAdded: setiter.next()
-            Item {
-                width: parent.width
-                height: 1. * flick.height/10
-                property var graph: graphElement
-                VerticalAxis {
-                    id: vaxis
-                    caption: " " + (index ? " ":graphs.name) + " (" + setiter.value + ")"
-                    maxY: graphElement.maxY
-                    anchors.left: parent.left
-                    width: flick.vaxisWidth
-                    anchors.top: parent.top
-                    anchors.bottom: parent.bottom
-                }
-                BarGraph {
-                    id: graphElement
-                    anchors.left: vaxis.right
-                    anchors.right: parent.right
-                    height: parent.height
-
-                    bgcolor: index % 2 == 1 ? Qt.rgba(0,0,0,0) : Qt.tint("transparent", "#10FF0000")
-                    filter: setiter.value
-                    axis: baraxis
-                    data: graphs.graphdata
-                    numElements: width * (coarsed ? coarse.value : fine.value)
-                }
-                Rectangle {
-                    color: "gray"
+            model: graphs
+            Column {
+                property bool programFiltered: programSwitch.checked
+                anchors.left: parent.left
+                anchors.right: parent.right
+                Item {
                     width: parent.width
-                    anchors.bottom: parent.bottom
-                    height: (index == setiter.size-1) ? 3:1
+                    height: 1. * flick.height/10 + 1
+                    property var graph: graphElement
+                    Rectangle {
+                        id: vaxisheader
+                        anchors.left: parent.left
+                        width: flick.vaxisWidth - 100
+                        anchors.top: parent.top
+                        anchors.bottom: parent.bottom
+                        color: "oldlace"
+                        Text {
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: " " + bgcaption
+                        }
+                        Switch {
+                            id: programSwitch
+                            checked: false
+                        }
+                    }
+                    VerticalAxis {
+                        id: vaxis
+                        maxY: graphElement.maxY
+                        anchors.left: vaxisheader.right
+                        width: 100
+                        anchors.top: parent.top
+                        anchors.bottom: parent.bottom
+                    }
+                    BarGraph {
+                        id: graphElement
+                        anchors.left: vaxis.right
+                        anchors.right: parent.right
+                        height: parent.height
+
+                        bgcolor: index % 2 == 1 ? Qt.rgba(0,0,0,0) : Qt.tint("transparent", "#10FF0000")
+                        filtered: false
+                        axis: baraxis
+                        data: bgdata
+                        numElements: Math.max(width * (coarsed ? coarse.value : fine.value), 0)
+                    }
+                    Rectangle {
+                        color: "gray"
+                        width: parent.width
+                        anchors.bottom: parent.bottom
+                        height: 1
+                    }
                 }
+
+                Loader {
+                    sourceComponent: programFiltered?programComponent:undefined
+                    property var graphData: bgdata
+                    onSourceComponentChanged: {
+                        setCoarsed()
+                        if (item) height = item.childrenRect.height
+                        else height = 0
+                    }
+                }
+
             }
-        }
+
         }
     }
 }
@@ -123,7 +213,7 @@ Flickable {
 
 MouseArea {
     id: view
-    x: flick.vaxisWidth
+    x: flick.x + flick.vaxisWidth
     width: parent.width - x
     anchors.top: scrollview.top
     anchors.bottom: scrollview.bottom
@@ -132,7 +222,6 @@ MouseArea {
     hoverEnabled: true
     onPressed: {
         oldX = mouse.x
-        setCoarsed()
         dragged = true
     }
     onPositionChanged: {
@@ -145,9 +234,7 @@ MouseArea {
         } else {
 
             vertcursor.x = view.x + mouse.x
-            var index = Math.floor((flick.contentY + mouse.y) / (view.height/10+column.spacing))
-            index += Math.floor(index / setiter.size) // for each N plots there's one Repeater (nested one)
-            stats.graph = column.children[index].graph
+            stats.graph = findGraph(mouse.x, mouse.y)
             stats.start = baraxis.dispStartTime + mouse.x / view.width * (baraxis.dispEndTime - baraxis.dispStartTime)
             statspanel.xtime = stats.start * 1e-9
             stats.duration = 1. / view.width * (baraxis.dispEndTime - baraxis.dispStartTime)
@@ -189,9 +276,6 @@ MouseArea {
             if (scroll.position < 0) scroll.position = 0
             scroll.size -= scroll.size*wheel.angleDelta.y/120/16
             if (scroll.size > 1 - scroll.position) scroll.size = 1 - scroll.position
-        } else {
-            flick.contentY -= wheel.angleDelta.y
-            flick.returnToBounds()
         }
     }
 }

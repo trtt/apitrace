@@ -71,10 +71,12 @@ public:
     {
         m_startTime = (((uint64_t)xH->data[0] << 32) + xL->data[0] );
         m_endTime = (((uint64_t)xH->data[m_lastEvent] << 32) + xL->data[m_lastEvent]);
+        m_dispStartTime = m_startTime;
+        m_dispEndTime = m_endTime;
     }
 
-    inline void init() {if (!m_init) { xH->init(); xL->init(); xW->init(); m_init=true;} }
-    inline void deinit() { if (m_init) {xH->deinit(); xL->deinit(); xW->deinit(); m_init=false;} }
+    void init();
+    void deinit();
 
     Q_INVOKABLE int findEventAtTime(qlonglong time) const;
     Q_INVOKABLE qlonglong eventStartTime(int id) const;
@@ -102,7 +104,7 @@ signals:
 private:
     void mapEvents();
 
-    bool m_init = false;
+    unsigned m_initTimes = 0;
     uint64_t m_startTime;
     uint64_t m_endTime;
     uint64_t m_dispStartTime;
@@ -125,10 +127,15 @@ public:
     TextureBufferData<GLuint>* dataFilter() const { return m_dataFilter.get();}
     Q_INVOKABLE float eventYValue(int id) const;
 
+    void init();
+    void deinit();
+
 private:
+    unsigned m_initTimes = 0;
     std::shared_ptr<TextureBufferData<GLfloat>> m_dataY;
     std::shared_ptr<TextureBufferData<GLuint>> m_dataFilter;
 };
+
 
 class BarGraph;
 class BarGraphRenderer : public QQuickFramebufferObject::Renderer, protected QOpenGLFunctions_3_1
@@ -146,11 +153,38 @@ public:
 private:
     bool m_GLinit = false;
     bool m_doublePrecision = false;
-    static QOpenGLShaderProgram* m_program;
+    QOpenGLShaderProgram* m_program;
+    static QOpenGLShaderProgram* m_filtProgram;
+    static QOpenGLShaderProgram* m_nofiltProgram;
     BarGraph* m_item;
     static QGLBuffer m_vertexBuffer;
     static GLuint m_vao;
+    static unsigned m_numInstances;
     QSize m_viewport;
+
+    /*
+    * Below are duplicates of BarGraph and TimelineAxis (writeable) members
+    * using them to avoid race conditions
+    * since Renderer is called on rendering thread (not gui)
+    */
+
+    bool m_filteredCopy;
+    TimelineAxis* m_axisCopy;
+    BarGraphData*  m_dataCopy;
+    uint m_numElementsCopy;
+    GLfloat m_maxYCopy;
+    GLuint m_filterCopy;
+    QColor m_bgcolorCopy;
+
+    uint64_t m_dispStartTimeCopy;
+    uint64_t m_dispEndTimeCopy;
+    GLuint m_dispFirstEventCopy;
+    GLuint m_dispLastEventCopy;
+
+    QPointF m_sceneCoord;
+    qreal m_width;
+    qreal m_height;
+    qreal m_winHeight;
 };
 
 
@@ -158,30 +192,29 @@ class BarGraph : public QQuickFramebufferObject
 {
     Q_OBJECT
     Q_PROPERTY(uint numElements READ numElements WRITE setNumElements NOTIFY numElementsChanged)
-    Q_PROPERTY(uint rendTime READ rendTime WRITE setRendTime NOTIFY rendTimeChanged)
     Q_PROPERTY(TimelineAxis* axis READ axis WRITE setAxis NOTIFY axisChanged)
     Q_PROPERTY(BarGraphData* data READ data WRITE setData)
     Q_PROPERTY(uint filter MEMBER m_filter)
     Q_PROPERTY(QColor bgcolor MEMBER m_bgcolor)
+    Q_PROPERTY(bool filtered MEMBER m_filtered)
     Q_PROPERTY(float maxY READ maxY WRITE setMaxY NOTIFY maxYChanged)
+
+    friend class BarGraphRenderer;
 
 public:
     BarGraph(QQuickItem *parent = 0);
 
     uint numElements() const { return m_numElements; }
-    void setNumElements(uint num) { if (m_numElements != num) {m_numElements = num; forceupdate();} }
-
-    uint rendTime() const { return m_rendTime; }
-    void setRendTime(uint time) { m_rendTime = time; emit rendTimeChanged(); }
+    void setNumElements(uint num) { if (m_numElements != num) {m_numElements = num; updateMaxY(); forceupdate();} }
 
     TimelineAxis* axis() const { return m_axis; }
-    void setAxis(TimelineAxis* axis) { m_axis = axis; }
+    void setAxis(TimelineAxis* axis);
 
     BarGraphData* data() const { return m_data; }
     void setData(BarGraphData* data) { m_data = data; }
 
     float maxY() const { return m_maxY; }
-    void setMaxY(float maxy) { m_maxY = maxy; emit maxYChanged(); }
+    void setMaxY(float maxy) { m_maxY = maxy; forceupdate(); emit maxYChanged(); }
 
     QQuickFramebufferObject::Renderer* createRenderer() const;
 
@@ -203,62 +236,28 @@ public:
     };
 
 signals:
-    void fileChanged();
     void numElementsChanged();
-    void rendTimeChanged();
     void axisChanged();
     void maxYChanged();
 
 public slots:
     void forceupdate();
     void initRenderer();
-    void cleanupRenderer();
+    void updateMaxY();
 
 private:
     BarGraphRenderer* m_renderer;
+    bool m_offscreen = false;
+    bool m_needsUpdatingMaxY = false;
 
-public:
-    bool m_needsUpdating;
+    bool m_filtered;
+    std::atomic<bool> m_needsUpdating;
     TimelineAxis* m_axis;
     BarGraphData*  m_data;
 
     uint m_numElements;
     GLfloat m_maxY;
-    GLuint m_rendTime;
 
     GLuint m_filter;
     QColor m_bgcolor;
 };
-
-class SetIterHelper : public QObject
-{
-    Q_OBJECT
-
-public:
-    SetIterHelper(std::set<GLuint>& set) : m_set(set) {}
-    Q_PROPERTY(uint size READ size)
-    Q_PROPERTY(int value READ value)
-
-    void reset() {
-        it = m_set.begin();
-    }
-
-    GLint value() {
-        return *it;
-    }
-
-    Q_INVOKABLE void next() {
-        if (++it == m_set.end()) {
-            reset();
-        }
-    }
-
-    GLuint size() {
-        return m_set.size();
-    }
-
-private:
-    std::set<GLuint>& m_set;
-    std::set<GLuint>::iterator it;
-};
-

@@ -5,13 +5,6 @@ id: root
 
 property double maxY: 1
 property int numTicks: 3
-property var caption
-
-Text {
-    anchors.left: parent.left
-    anchors.verticalCenter: parent.verticalCenter
-    text: caption
-}
 
 Column {
     anchors.fill: parent

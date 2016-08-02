@@ -25,8 +25,7 @@ MetricCallDataModel modelCall;
 
 TimelineAxis* axis;
 RangeStats* stats;
-std::set<GLuint> dataFilterUnique;
-SetIterHelper setIter(dataFilterUnique);
+QStringList dataFilterUnique;
 
 void addMetrics(MetricSelectionModel& model, const char* target) {
     QDialog* widget = new QDialog;
@@ -111,7 +110,8 @@ int main(int argc, char *argv[])
             std::make_shared<TextureBufferData<GLfloat>>(*modelCall.durationData()));
 
     for (auto& i : *modelCall.calls().programData()) {
-        dataFilterUnique.insert(i);
+        auto str = QString::number(i);
+        if (!dataFilterUnique.contains(str)) dataFilterUnique.append(str);
     }
 
     MetricGraphs graphs(modelCall);
@@ -122,8 +122,7 @@ int main(int argc, char *argv[])
     QQmlContext *ctxt = view.rootContext();
     ctxt->setContextProperty("baraxis", axis);
     ctxt->setContextProperty("stats", stats);
-	setIter.reset();
-    ctxt->setContextProperty("setiter", &setIter);
+    ctxt->setContextProperty("programs", QVariant::fromValue(dataFilterUnique));
     ctxt->setContextProperty("graphs", &graphs);
     QSurfaceFormat format(view.format());
     format.setVersion(3,1);

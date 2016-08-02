@@ -8,9 +8,49 @@
 #include <chrono>
 
 
+void TimelineAxis::init() {
+    if (!m_initTimes) {
+        xH->init();
+        xL->init();
+        xW->init();
+    }
+    m_initTimes++;
+}
+
+void TimelineAxis::deinit() {
+    if (!(--m_initTimes)) {
+        if (xH.unique())
+            xH->deinit();
+        if (xL.unique())
+            xL->deinit();
+        if (xW.unique())
+            xW->deinit();
+    }
+}
+
+
+void BarGraphData::init() {
+    if (!m_initTimes) {
+        m_dataY->init();
+        m_dataFilter->init();
+    }
+    m_initTimes++;
+}
+
+void BarGraphData::deinit() {
+    if (!(--m_initTimes)) {
+        if (m_dataY.unique())
+            m_dataY->deinit();
+        if (m_dataFilter.unique())
+            m_dataFilter->deinit();
+    }
+}
+
+
 BarGraph::BarGraph(QQuickItem *parent)
-    : QQuickFramebufferObject(parent),  m_renderer(0), m_needsUpdating(true),
-      m_numElements(0), m_filter(0), m_bgcolor("white")
+    : QQuickFramebufferObject(parent),  m_renderer(0), m_filtered(true),
+      m_needsUpdating(true), m_axis(nullptr), m_data(nullptr), m_numElements(0),
+      m_maxY(1.f), m_filter(0), m_bgcolor("white")
 {
     setMirrorVertically(true);
 }
@@ -28,30 +68,36 @@ void BarGraph::initRenderer() {
     connect(m_axis, &TimelineAxis::dispStartTimeChanged, this, &BarGraph::forceupdate);
     connect(m_axis, &TimelineAxis::dispEndTimeChanged, this, &BarGraph::forceupdate);
     m_axis->init();
-    m_data->dataY()->init();
-    m_data->dataFilter()->init();
+    m_data->init();
 }
 
-void BarGraph::cleanupRenderer() {
-    m_axis->deinit();
-    m_data->dataY()->deinit();
-    m_data->dataFilter()->deinit();
+void BarGraph::setAxis(TimelineAxis* axis) {
+    m_axis = axis;
+    connect(axis, &TimelineAxis::dispStartTimeChanged, this, &BarGraph::updateMaxY);
+    connect(axis, &TimelineAxis::dispEndTimeChanged, this, &BarGraph::updateMaxY);
 }
 
-QOpenGLShaderProgram* BarGraphRenderer::m_program = nullptr;
+
+QOpenGLShaderProgram* BarGraphRenderer::m_filtProgram = nullptr;
+QOpenGLShaderProgram* BarGraphRenderer::m_nofiltProgram = nullptr;
 QGLBuffer BarGraphRenderer::m_vertexBuffer = QGLBuffer(QGLBuffer::VertexBuffer);
 GLuint BarGraphRenderer::m_vao = 0;
+unsigned BarGraphRenderer::m_numInstances = 0;
 
 BarGraphRenderer::BarGraphRenderer(BarGraph* item) : m_item(item) {
     m_item->initRenderer();
+    m_numInstances++;
 }
 
 BarGraphRenderer::~BarGraphRenderer() {
-    m_item->cleanupRenderer();
-    glDeleteVertexArrays(1, &m_vao);
-    if (m_program) {
-        delete m_program;
-        m_program = nullptr;
+    m_axisCopy->deinit();
+    m_dataCopy->deinit();
+    if (!(--m_numInstances)) {
+        glDeleteVertexArrays(1, &m_vao);
+        delete m_filtProgram;
+        delete m_nofiltProgram;
+        m_filtProgram = nullptr;
+        m_nofiltProgram = nullptr;
     }
 }
 
@@ -102,7 +148,7 @@ float BarGraphData::eventYValue(int id) const {
 
 
 bool BarGraph::isEventFiltered(int id) const {
-    return (m_data->dataFilter()->data[id] != m_filter);
+    return (m_filtered && m_data->dataFilter()->data[id] != m_filter);
 }
 
 uint BarGraph::eventFilter(int id) const {
@@ -133,7 +179,7 @@ int BarGraph::range_iterator::operator++() {
             curElement = -1;
             break;
         }
-    } while (ptr->m_data->dataFilter()->data[curElement] != ptr->m_filter);
+    } while (ptr->m_filtered && ptr->m_data->dataFilter()->data[curElement] != ptr->m_filter);
     return curElement;
 }
 
@@ -161,6 +207,19 @@ float BarGraph::maxVisibleEvent() const {
     return largest;
 }
 
+void BarGraph::updateMaxY() {
+    if (!m_numElements || !m_axis) return;
+    if (m_offscreen) {
+        m_needsUpdatingMaxY = true;
+        return;
+    }
+    float maxY = maxVisibleEvent();
+    if (std::abs(maxY) < std::numeric_limits<float>::epsilon())
+        maxY = 1.;
+    setMaxY(maxY);
+}
+
+
 GLfloat max_element_strided(const std::vector<GLfloat>& v,
                            uint firstEvent, uint lastEvent, uint numEvents)
 {
@@ -181,12 +240,53 @@ GLfloat max_element_strided(const std::vector<GLfloat>& v,
 }
 
 void BarGraphRenderer::synchronize(QQuickFramebufferObject* item) {
+    if (!m_item->m_needsUpdating) return;
+
+    if (!m_item) return;
+    auto& i = m_item;
+
+    m_axisCopy = i->m_axis;
+    m_dataCopy = i->m_data;
+
+    m_sceneCoord = i->parentItem()->mapToScene(QPointF(i->x(), i->y()));
+    m_width = i->width();
+    m_height = i->height();
+    m_winHeight = i->window()->size().height();
+
+    if ((m_sceneCoord.y() + i->height() < 0) ||
+        (m_sceneCoord.y() > m_winHeight))
+    {
+        i->m_offscreen = true;
+    } else {
+        i->m_offscreen = false;
+    }
+
+    if (i->m_offscreen) return;
+
+    if (i->m_needsUpdatingMaxY) {
+        i->updateMaxY();
+        i->m_needsUpdatingMaxY = false;
+    }
+
+    m_filteredCopy = i->m_filtered;
+    m_numElementsCopy = i->m_numElements;
+    m_maxYCopy = i->m_maxY;
+    m_filterCopy = i->m_filter;
+    m_bgcolorCopy = i->m_bgcolor;
+
+    m_dispStartTimeCopy = i->m_axis->dispStartTime();
+    m_dispEndTimeCopy = i->m_axis->dispEndTime();
+    m_dispFirstEventCopy = i->m_axis->m_dispFirstEvent;
+    m_dispLastEventCopy = i->m_axis->m_dispLastEvent;
+
 
 }
 
 void BarGraphRenderer::render() {
     typedef void (*glUniform1dType)(int, double);
     static glUniform1dType glUniform1d = nullptr;
+    static QOpenGLShader *fp32vshader = nullptr, *fp64vshader = nullptr,
+                          *filtfshader = nullptr, *nofiltfshader = nullptr;
     if (!m_GLinit) {
         initializeOpenGLFunctions();
         if (m_item->window()->openglContext()->hasExtension("GL_ARB_gpu_shader_fp64")) {
@@ -197,12 +297,12 @@ void BarGraphRenderer::render() {
         }
         m_GLinit = true;
     }
-    if (!m_program) {
+    if (!m_filtProgram) {
         qDebug() << QString(reinterpret_cast<const char*>(glGetString(GL_VERSION)));
 
-        m_program = new QOpenGLShaderProgram();
         if (!m_doublePrecision) {
-        m_program->addShaderFromSourceCode(QOpenGLShader::Vertex,
+        fp32vshader = new QOpenGLShader(QOpenGLShader::Vertex, m_filtProgram);
+        fp32vshader->compileSourceCode(
                 "#version 140\n"
                 "in vec2 vertex;\n"
                 "uniform usamplerBuffer texXH;\n"
@@ -232,8 +332,9 @@ void BarGraphRenderer::render() {
                 "   gl_Position = vec4(positioned,0,1);\n"
                 "}");
         } else {
-        m_program->addShaderFromSourceCode(QOpenGLShader::Vertex,
-                "#version 430\n"
+        fp64vshader = new QOpenGLShader(QOpenGLShader::Vertex, m_filtProgram);
+        fp64vshader->compileSourceCode(
+                "#version 140\n"
                 "#extension GL_ARB_gpu_shader_fp64 : enable\n"
                 "in vec2 vertex;\n"
                 "uniform usamplerBuffer texXH;\n"
@@ -262,7 +363,8 @@ void BarGraphRenderer::render() {
                 "   gl_Position = vec4(positioned,0,1);\n"
                 "}");
         }
-        m_program->addShaderFromSourceCode(QOpenGLShader::Fragment,
+        filtfshader = new QOpenGLShader(QOpenGLShader::Fragment, m_filtProgram);
+        filtfshader->compileSourceCode(
                 "#version 140\n"
                 "uniform vec4 color;\n"
                 "uniform usamplerBuffer texFilter;\n"
@@ -275,8 +377,31 @@ void BarGraphRenderer::render() {
                 "		discard;\n"
                 "   outColor = color;\n"
                 "}");
+        nofiltfshader = new QOpenGLShader(QOpenGLShader::Fragment, m_filtProgram);
+        nofiltfshader->compileSourceCode(
+                "#version 140\n"
+                "uniform vec4 color;\n"
+                "flat in int index;\n"
+                "out vec4 outColor;\n"
+                "void main(void)\n"
+                "{\n"
+                "   outColor = color;\n"
+                "}");
 
-        m_program->link();
+        m_filtProgram = new QOpenGLShaderProgram();
+        m_nofiltProgram = new QOpenGLShaderProgram();
+        if (m_doublePrecision) {
+            m_filtProgram->addShader(fp64vshader);
+            m_nofiltProgram->addShader(fp64vshader);
+        } else {
+            m_filtProgram->addShader(fp32vshader);
+            m_nofiltProgram->addShader(fp32vshader);
+        }
+        m_filtProgram->addShader(filtfshader);
+        m_nofiltProgram->addShader(nofiltfshader);
+
+        m_filtProgram->link();
+        m_nofiltProgram->link();
 
         static GLfloat const quad[] = {
             -1.0f,  -1.0f,
@@ -292,88 +417,79 @@ void BarGraphRenderer::render() {
 
         m_vertexBuffer.bind();
         m_vertexBuffer.allocate(quad, 4 * 2 * sizeof(float));
-        m_program->setAttributeBuffer("vertex", GL_FLOAT, 0, 2);
-        m_program->enableAttributeArray("vertex");
+        m_filtProgram->setAttributeBuffer("vertex", GL_FLOAT, 0, 2);
+        m_nofiltProgram->setAttributeBuffer("vertex", GL_FLOAT, 0, 2);
+        m_filtProgram->enableAttributeArray("vertex");
+        m_nofiltProgram->enableAttributeArray("vertex");
         m_vertexBuffer.release();
 
         glBindVertexArray(0);
+        m_program = m_nofiltProgram;
     }
-    auto t1 = std::chrono::high_resolution_clock::now();
+    if (m_filteredCopy) {
+        m_program = m_filtProgram;
+    } else {
+        m_program = m_nofiltProgram;
+    }
 
     if (!m_item->m_needsUpdating) return;
-    QPointF sceneCoord = m_item->parentItem()->mapToScene(QPointF(m_item->x(), m_item->y()));
-    if ((sceneCoord.y() + m_item->height() < 0) ||
-        (sceneCoord.y() > m_item->window()->size().height())) return;
+    if (m_item->m_offscreen) return;
 
     m_program->bind();
     glBindVertexArray(m_vao);
     glActiveTexture(GL_TEXTURE0);
-    m_item->m_axis->xH->bindTexture();
+    m_axisCopy->xH->bindTexture();
     glActiveTexture(GL_TEXTURE1);
-    m_item->m_axis->xL->bindTexture();
+    m_axisCopy->xL->bindTexture();
     glActiveTexture(GL_TEXTURE2);
-    m_item->m_axis->xW->bindTexture();
+    m_axisCopy->xW->bindTexture();
     glActiveTexture(GL_TEXTURE3);
     m_item->data()->dataY()->bindTexture();
-    glActiveTexture(GL_TEXTURE4);
-    m_item->data()->dataFilter()->bindTexture();
+    if (m_filteredCopy) {
+        glActiveTexture(GL_TEXTURE4);
+        m_item->data()->dataFilter()->bindTexture();
+    }
 
     int colorLocation = m_program->uniformLocation("color");
     QColor color(255, 124, 124, 255);
 
-    uint firstDispItemId = m_item->m_axis->m_dispFirstEvent;
-    uint lastDispItemId  = m_item->m_axis->m_dispLastEvent;
-    int numEvents = std::min(m_item->numElements(), lastDispItemId-firstDispItemId+1);
+    uint firstDispItemId = m_dispFirstEventCopy;
+    uint lastDispItemId  = m_dispLastEventCopy;
+    int numEvents = std::min(m_numElementsCopy, lastDispItemId-firstDispItemId+1);
     numEvents = std::max(numEvents, 2);
-    //float maxY = max_element_strided(m_item->data()->dataY()->data, firstDispItemId,
-                                     //lastDispItemId, numEvents);
-    float maxY = m_item->maxVisibleEvent();
-    if (std::abs(maxY) < std::numeric_limits<float>::epsilon())
-        maxY = 1.;
-    m_item->setMaxY(maxY);
 
     m_program->setUniformValue(colorLocation, color);
     m_program->setUniformValue("texXH", 0);
     m_program->setUniformValue("texXL", 1);
     m_program->setUniformValue("texW", 2);
     m_program->setUniformValue("texY", 3);
-    m_program->setUniformValue("texFilter", 4);
-    m_program->setUniformValue("filterId", (GLint)m_item->m_filter);
+    if (m_filteredCopy) {
+        m_program->setUniformValue("texFilter", 4);
+        m_program->setUniformValue("filterId", (GLint)m_filterCopy);
+    }
     if (!m_doublePrecision) {
-    m_program->setUniformValue("scaleInv", (m_item->m_axis->dispEndTime() - m_item->m_axis->dispStartTime()) * (float)1e-9);
+    m_program->setUniformValue("scaleInv", (m_dispEndTimeCopy - m_dispStartTimeCopy) * (float)1e-9);
     m_program->setUniformValue("relStartTime",
-        (float) (m_item->m_axis->dispStartTime() / (double)(m_item->m_axis->dispEndTime() - m_item->m_axis->dispStartTime())) );
+        (float) (m_dispStartTimeCopy / (double)(m_dispEndTimeCopy - m_dispStartTimeCopy)) );
     } else {
     glUniform1d(m_program->uniformLocation("scaleInv"),
-               1.e9 / (m_item->m_axis->dispEndTime() - m_item->m_axis->dispStartTime()) );
+               1.e9 / (m_dispEndTimeCopy - m_dispStartTimeCopy) );
     glUniform1d(m_program->uniformLocation("relStartTime"),
-        (double)m_item->m_axis->dispStartTime() / (double)(m_item->m_axis->dispEndTime() - m_item->m_axis->dispStartTime()) );
+        (double)m_dispStartTimeCopy / (double)(m_dispEndTimeCopy - m_dispStartTimeCopy) );
     }
     m_program->setUniformValue("eventWindow", firstDispItemId, lastDispItemId);
     m_program->setUniformValue("numEvents", numEvents);
-    m_program->setUniformValue("maxY", maxY );
-    m_program->setUniformValue("windowSize", (GLint)m_item->width());
-
-    //std::cout << "Draw operation!" << std::endl;
-    //std::cout << m_item->m_dispStartTime << " - " << firstDispItemId << std::endl;
-    //std::cout << m_item->m_dispEndTime << " - " << lastDispItemId  << std::endl;
-    //std::cout << numEvents << std::endl;
-    //std::cout << maxY << std::endl;
+    m_program->setUniformValue("maxY", m_maxYCopy );
+    m_program->setUniformValue("windowSize", (GLint)m_width);
 
     glDisable(GL_DEPTH_TEST);
 
-    glClearColor(m_item->m_bgcolor.redF(), m_item->m_bgcolor.greenF(),
-                 m_item->m_bgcolor.blueF(), m_item->m_bgcolor.alphaF());
+    glClearColor(m_bgcolorCopy.redF(), m_bgcolorCopy.greenF(),
+                 m_bgcolorCopy.blueF(), m_bgcolorCopy.alphaF());
     glClear(GL_COLOR_BUFFER_BIT);
     glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, numEvents);
 
     glBindVertexArray(0);
-
-
-    auto t2 = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::nano> fp_ms = t2 - t1;
-    m_item->setRendTime(fp_ms.count());
-
 
     m_program->release();
     m_item->m_needsUpdating = false;

@@ -74,6 +74,7 @@ set(qqapitrace_SRCS
 )
 
 qt5_add_resources(qapitrace_SRCS qapitrace.qrc)
+qt5_add_resources(qqapitrace_SRCS qqapitrace.qrc)
 
 set(qapitrace_UIS
    ui/androidfiledialog.ui
