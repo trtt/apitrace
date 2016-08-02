@@ -118,10 +118,10 @@ Component {
 }
 
 
-Item {
+ScrollView {
     id: scrollview
     y: axis.panelHeight
-    height: root.height - y
+    height: root.height - y - statspanel.height - scroll.height
     anchors.left: root.left
     anchors.right: root.right
 Flickable {
@@ -131,8 +131,14 @@ Flickable {
     clip: true
     contentHeight: column.height
     onContentYChanged: {
-        findGraph(vaxisWidth+10, contentY+1).update();
-        findGraph(vaxisWidth+10, contentY+height-1).update();
+        var first = findGraph(vaxisWidth+10, contentY+1)
+        var last = findGraph(vaxisWidth+10, contentY+height-1)
+        first.update()
+        var coord = first.parent.mapToItem(column, first.x, first.y)
+        for (var i=1; i < 10; i++) {
+            findGraph(coord.x+10, coord.y+20 + i * (3 + flick.height/10)).update()
+        }
+        last.update()
     }
     Column {
         id: column
@@ -161,8 +167,19 @@ Flickable {
                             anchors.verticalCenter: parent.verticalCenter
                             text: " " + bgcaption
                         }
+                        Text {
+                            anchors.bottom: parent.bottom
+                            anchors.bottomMargin: 1
+                            anchors.right: programSwitch.left
+                            font.pixelSize: 9
+                            text: "expanded: "
+                        }
                         Switch {
                             id: programSwitch
+                            anchors.bottom: parent.bottom
+                            anchors.bottomMargin: 1
+                            anchors.right: parent.right
+                            anchors.rightMargin: 1
                             checked: false
                         }
                     }
@@ -214,7 +231,7 @@ Flickable {
 MouseArea {
     id: view
     x: flick.x + flick.vaxisWidth
-    width: parent.width - x
+    width: flick.width - x
     anchors.top: scrollview.top
     anchors.bottom: scrollview.bottom
     property int oldX
@@ -238,10 +255,11 @@ MouseArea {
             stats.start = baraxis.dispStartTime + mouse.x / view.width * (baraxis.dispEndTime - baraxis.dispStartTime)
             statspanel.xtime = stats.start * 1e-9
             stats.duration = 1. / view.width * (baraxis.dispEndTime - baraxis.dispStartTime)
+            statspanel.resolution = stats.duration * 1e-9
             stats.collect()
 
-            tooltip.x = mouse.x + ((mouse.x > view.width/2)?-1.5:0.5)*tooltip.width
-            tooltip.y = mouse.y + ((mouse.y > view.height/2)?-1.5:0.5)*tooltip.height
+            tooltip.x = view.x + mouse.x + ((mouse.x > view.width/2)?-1.5:0.5)*tooltip.width
+            tooltip.y = view.y + mouse.y + ((mouse.y > view.height/2)?-1.5:0.5)*tooltip.height
             tooltip_event.visible = false
             tooltip_stats.visible = false
             tooltip.visible = false
@@ -276,6 +294,8 @@ MouseArea {
             if (scroll.position < 0) scroll.position = 0
             scroll.size -= scroll.size*wheel.angleDelta.y/120/16
             if (scroll.size > 1 - scroll.position) scroll.size = 1 - scroll.position
+        } else {
+            wheel.accepted = false
         }
     }
 }
@@ -287,6 +307,7 @@ Row {
     anchors.bottom: scrollview.bottom
     width: parent.width
     spacing: 100
+    visible: false // !
     Slider {
         width: parent.width / 3 - 200/3
         id: coarse
@@ -301,14 +322,6 @@ Row {
         maximumValue: 100000
         value: 1000
     }
-    /*Slider {*/
-    /*width: parent.width / 3 - 200/3*/
-    /*id: zoom*/
-    /*value: 0*/
-    /*minimumValue: 0*/
-    /*maximumValue: 20*/
-    /*onValueChanged: setCoarsed()*/
-    /*}*/
 }
 
 Timer {
@@ -317,29 +330,12 @@ Timer {
     onTriggered: {coarsed = false;}
 }
 
-Text {
-    anchors.bottom: toprow.bottom
-    text: "coarse: " + Math.round(coarse.value) + "*width"
-}
-
-Text {
-    anchors.bottom: toprow.bottom
-    anchors.horizontalCenter: parent.horizontalCenter
-    text: "fine: " + Math.round(fine.value) + "*width"
-}
-
-/*Text {*/
-/*anchors.top: toprow.bottom*/
-/*anchors.right: parent.right*/
-/*text: "zoom: " + zoom.value*/
-/*}*/
-
 Item {
     id: scroll
     anchors.left: view.left
     anchors.right: view.right
-    anchors.bottom: view.bottom
-    height: 10
+    anchors.top: view.bottom
+    height: 12
     property double position: 0
     property double size: 1
     onPositionChanged: setCoarsed()
@@ -348,9 +344,10 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: height/2 - 1
-        color: "white"
+        color: "lightgray"
     }
     Rectangle {
+        id: handle
         x: parent.position * (parent.width-2)+1
         y: 1
         width: parent.size * (parent.width-2)
@@ -359,20 +356,22 @@ Item {
         color: "gray"
         opacity: 0.7
     }
-
-
 }
 
 
 Item {
     id: statspanel
     property double xtime: 0
-    anchors.top: scroll.top
+    property double resolution: 0
+    anchors.top: scroll.bottom
+    height: childrenRect.height
+    anchors.left: view.left
+    anchors.right: view.right
     Text {
-        width: view.width
+        width: parent.width
         horizontalAlignment: Text.AlignHCenter
         font.pixelSize: 10
-        text: "time: " + parent.xtime + "s., events: " + stats.numEvents + ", max: " + stats.max + ", mean: " + stats.mean + ", min: " + stats.min
+        text: "time: " + parent.xtime + "s, resolution (per 1 px):  " + parent.resolution + "s"
     }
 }
 
