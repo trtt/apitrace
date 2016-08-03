@@ -137,6 +137,7 @@ private:
     QList<BackendItem*> backends;
     QHash<void*, MetricSelectionItem> itemType;
     QSet<QModelIndex> selected;
+    QSet<QModelIndex> needed; // for CPU/GPU times
     QSet<QModelIndex> profiled;
     QHash<QModelIndex, int> childNodesSelected;
 };

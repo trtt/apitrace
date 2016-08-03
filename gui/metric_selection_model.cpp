@@ -143,12 +143,27 @@ void MetricSelectionModel::parseData(QIODevice &io) {
                                                   metricDesc, mNType, group);
                 group->appendChild(metric);
                 itemType[metric] = MSMetric;
+
+                // insert into needed metrics if necessary
+                if ((metric->getName() == QLatin1String("CPU Start")) ||
+                    (metric->getName() == QLatin1String("CPU Duration")) ||
+                    (metric->getName() == QLatin1String("GPU Start")) ||
+                    (metric->getName() == QLatin1String("GPU Duration")))
+                {
+                    auto index = createIndex(group->childCount() - 1, 2, metric);
+                    needed.insert(index);
+                }
+
                 line = stream.readLine();
                 match = reMetric.match(line);
             }
             line = stream.readLine(); // blank line
             match = reGroup.match(line);
         }
+    }
+
+    for (auto& i : needed) {
+        checkItem(i, Qt::Checked);
     }
 }
 
@@ -188,11 +203,9 @@ void MetricSelectionModel::checkUpdateParent(const QModelIndex & index, Qt::Chec
         QModelIndex pparent = parentColumn(parent);
         if (childNodesSelected[parent] == rowCount(parent)-1 && state == Qt::Unchecked) {
             childNodesSelected[pparent]--;
-            checkUpdateParent(parent, state);
         }
-        if (childNodesSelected[parent] == rowCount(parent)) {
+        if (childNodesSelected[parent] == rowCount(parent) && state == Qt::Checked) {
             childNodesSelected[pparent]++;
-            checkUpdateParent(parent, state);
         }
         emit dataChanged(pparent, pparent, {Qt::CheckStateRole});
     }
@@ -201,18 +214,25 @@ void MetricSelectionModel::checkUpdateParent(const QModelIndex & index, Qt::Chec
 void MetricSelectionModel::checkItem(const QModelIndex & index, Qt::CheckState state) {
     int numChild = rowCount(index);
     if (!numChild && !profiled.contains(index)) {
+        bool changed = true;
         QModelIndex parent = parentColumn(index);
-        if (!selected.contains(index) && state == Qt::Checked) {
+        if (!selected.contains(index) && state == Qt::Checked)
+        {
             selected.insert(index);
             childNodesSelected[parent]++;
         }
-        else if (selected.contains(index) && state == Qt::Unchecked) {
+        else if (selected.contains(index) && state == Qt::Unchecked &&
+                 !needed.contains(index))
+        {
             selected.remove(index);
             childNodesSelected[parent]--;
         }
-        emit dataChanged(index, index, {Qt::CheckStateRole});
-        emit dataChanged(parent, parent, {Qt::CheckStateRole});
-        checkUpdateParent(index, state);
+        else changed = false;
+        if (changed) {
+            emit dataChanged(index, index, {Qt::CheckStateRole});
+            emit dataChanged(parent, parent, {Qt::CheckStateRole});
+            checkUpdateParent(index, state);
+        }
     } else {
         for (int i = 0; i < numChild; i++) {
             checkItem(this->index(i, index.column(), index), state);
@@ -321,6 +341,7 @@ Qt::ItemFlags MetricSelectionModel::flags(const QModelIndex &index) const
 
     Qt::ItemFlags flags = QAbstractItemModel::flags(index) | Qt::ItemIsUserCheckable | Qt::ItemIsTristate;
     if (profiled.contains(index)) flags ^= Qt::ItemIsEnabled;
+    if (needed.contains(index)) flags ^= Qt::ItemIsEnabled;
     if (index.column() == 1) flags ^= Qt::ItemIsEnabled; // FIX (currently disable frames)
     return flags;
 }
@@ -400,6 +421,7 @@ void MetricSelectionModel::generateMetricList(QString& cliOptionFrame,
         profiled.insert(p);
     }
     selected.clear();
+    needed.clear();
     cliOptionFrame = "--pframes=" + stringFromHashGenerateLookup(mFramePts, mFrame);
     cliOptionCall = "--pdrawcalls=" + stringFromHashGenerateLookup(mCallPts, mCall);
 }
