@@ -44,12 +44,12 @@ static int upper_bound64(int begin, int end, const std::vector<GLuint>& dataH,
 }
 
 void TimelineAxis::mapEvents() {
-    m_dispFirstEvent = upper_bound64(m_firstEvent, m_lastEvent,
+    m_dispFirstEvent = std::max(upper_bound64(m_firstEvent, m_lastEvent,
                                          xH->data, xL->data,
-                                         1, m_dispStartTime) - 1;
-    m_dispLastEvent  = upper_bound64(m_firstEvent, m_lastEvent,
+                                         1, m_dispStartTime) - 1, 0);
+    m_dispLastEvent  = std::max(upper_bound64(m_firstEvent, m_lastEvent,
                                          xH->data, xL->data,
-                                         1, m_dispEndTime) - 1;
+                                         1, m_dispEndTime) - 1, 0);
 }
 
 int TimelineAxis::findEventAtTime(qlonglong time) const {

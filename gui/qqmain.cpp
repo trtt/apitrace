@@ -12,6 +12,7 @@
 #include "metric_graph_data.hpp"
 #include "graphing/histogramview.h"
 #include "bargraph.h"
+#include "timelinegraph.h"
 #include "rangestats.h"
 #include "metric_graphs.h"
 
@@ -23,8 +24,10 @@ Ui::MainWindow winui;
 //MetricFrameDataModel modelFrame;
 MetricCallDataModel modelCall;
 
-TimelineAxis* axis;
+TimelineAxis* axisCPU;
+TimelineAxis* axisGPU;
 RangeStats* stats;
+TimelineGraphData* timelineData;
 QStringList dataFilterUnique;
 
 void addMetrics(MetricSelectionModel& model, const char* target) {
@@ -105,9 +108,16 @@ int main(int argc, char *argv[])
     //histCall->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     //winui.graphsLayoutCall->addWidget(histCall);
 
-    axis = new TimelineAxis(std::make_shared<TextureBufferData<GLuint>>(*modelCall.calls().timestampHData()),
-            std::make_shared<TextureBufferData<GLuint>>(*modelCall.calls().timestampLData()),
-            std::make_shared<TextureBufferData<GLfloat>>(*modelCall.durationData()));
+    axisCPU = new TimelineAxis(std::make_shared<TextureBufferData<GLuint>>(
+                *modelCall.calls().timestampHData(DrawcallStorage::TimestampCPU)),
+            std::make_shared<TextureBufferData<GLuint>>(
+                *modelCall.calls().timestampLData(DrawcallStorage::TimestampCPU)),
+            std::make_shared<TextureBufferData<GLfloat>>(*modelCall.durationDataCPU()));
+    axisGPU = new TimelineAxis(std::make_shared<TextureBufferData<GLuint>>(
+                *modelCall.calls().timestampHData(DrawcallStorage::TimestampGPU)),
+            std::make_shared<TextureBufferData<GLuint>>(
+                *modelCall.calls().timestampLData(DrawcallStorage::TimestampGPU)),
+            std::make_shared<TextureBufferData<GLfloat>>(*modelCall.durationDataGPU()));
 
     for (auto& i : *modelCall.calls().programData()) {
         auto str = QString::number(i);
@@ -115,15 +125,21 @@ int main(int argc, char *argv[])
     }
 
     MetricGraphs graphs(modelCall);
+    timelineData = new TimelineGraphData(std::make_shared<TextureBufferData<GLuint>>(*modelCall.calls().nameHashData()),
+                                            modelCall.calls().nameHashNumEntries(),
+                                            graphs.filter());
     stats = new RangeStats();
 
     qmlRegisterType<BarGraph>("DataVis", 1, 0, "BarGraph");
+    qmlRegisterType<TimelineGraph>("DataVis", 1, 0, "TimelineGraph");
     QQuickWidget view;
     QQmlContext *ctxt = view.rootContext();
-    ctxt->setContextProperty("baraxis", axis);
+    ctxt->setContextProperty("axisCPU", axisCPU);
+    ctxt->setContextProperty("axisGPU", axisGPU);
     ctxt->setContextProperty("stats", stats);
     ctxt->setContextProperty("programs", QVariant::fromValue(dataFilterUnique));
     ctxt->setContextProperty("graphs", &graphs);
+    ctxt->setContextProperty("timelinedata", timelineData);
     QSurfaceFormat format(view.format());
     format.setVersion(3,1);
     view.setFormat(format);

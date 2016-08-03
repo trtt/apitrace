@@ -15,6 +15,9 @@ public:
     explicit MetricGraphs(MetricCallDataModel& model);
     ~MetricGraphs();
 
+    std::shared_ptr<TextureBufferData<GLuint>> filter() { return m_filter; }
+
+
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const Q_DECL_OVERRIDE;
     int rowCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE;
     QHash<int, QByteArray> roleNames() const;

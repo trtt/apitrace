@@ -11,7 +11,7 @@ function setCoarsed() {
     finetimer.restart();
 }
 
-function findGraph(x, y) {
+function findBarGraph(x, y) {
     var index = column.childAt(x, y)
     var coord = column.mapToItem(index, x, y)
     var oldIndex = index
@@ -20,18 +20,37 @@ function findGraph(x, y) {
     coord = oldIndex.mapToItem(index, coord.x, coord.y)
     return index.item.childAt(coord.x, coord.y).graph
 }
+function findTimelineGraph(x, y) {
+    var index = columnTimeline.childAt(x, y)
+    var coord = columnTimeline.mapToItem(index, x, y)
+    var oldIndex = index
+    index = index.childAt(coord.x, coord.y)
+    if (index.graph) return index.graph
+    coord = oldIndex.mapToItem(index, coord.x, coord.y)
+    return index.item.childAt(coord.x, coord.y).graph
+}
 
 Binding {
-    target: baraxis
+    target: axisCPU
     property: "dispStartTime"
-    /*value: baraxis.startTime + x.value*(baraxis.endTime-baraxis.startTime) - Math.min(Math.exp(-zoom.value) * (baraxis.endTime-baraxis.startTime), x.value*(baraxis.endTime-baraxis.startTime))*/
-    value: baraxis.startTime + scroll.position * (baraxis.endTime-baraxis.startTime)
+    value: axisCPU.startTime + scroll.position * (axisGPU.endTime-axisCPU.startTime)
 }
 Binding {
-    target: baraxis
+    target: axisCPU
     property: "dispEndTime"
-    /*value: baraxis.startTime + x.value*(baraxis.endTime-baraxis.startTime) + Math.min(Math.exp(-zoom.value) * (baraxis.endTime-baraxis.startTime), (1-x.value)*(baraxis.endTime-baraxis.startTime))*/
-    value: baraxis.dispStartTime + scroll.size * (baraxis.endTime-baraxis.startTime)
+    value: axisCPU.dispStartTime + scroll.size * (axisGPU.endTime-axisCPU.startTime)
+}
+
+Binding {
+    target: axisGPU
+    property: "dispStartTime"
+    value: axisCPU.dispStartTime
+}
+
+Binding {
+    target: axisGPU
+    property: "dispEndTime"
+    value: axisCPU.dispEndTime
 }
 
 
@@ -45,6 +64,7 @@ Keys.onPressed: {
     }
 }
 
+
 TimelineAxis {
     id: axis
     x: flick.x + flick.vaxisWidth
@@ -52,9 +72,10 @@ TimelineAxis {
     anchors.top: parent.top
     anchors.bottom: scrollview.bottom
     panelHeight: 20
-    startTime: baraxis.dispStartTime * 1e-9
-    endTime: baraxis.dispEndTime * 1e-9
+    startTime: axisCPU.dispStartTime * 1e-9
+    endTime: axisCPU.dispEndTime * 1e-9
 }
+
 Rectangle {
     anchors.left: parent.left
     anchors.right: parent.right
@@ -63,8 +84,9 @@ Rectangle {
     color: "black"
 }
 
+
 Component {
-    id: programComponent
+    id: programBarGraphComponent
 
     Column {
         width: flick.width
@@ -102,8 +124,61 @@ Component {
 
                 bgcolor: index % 2 == 1 ? Qt.rgba(0,0,0,0) : Qt.tint("transparent", "#10FF0000")
                 filter: modelData
-                axis: baraxis
+                axis: axisGPU
                 data: graphData
+                numElements: Math.max(width * (coarsed ? coarse.value : fine.value), 0)
+            }
+            Rectangle {
+                color: "gray"
+                width: parent.width
+                anchors.bottom: parent.bottom
+                height: (index == programs.length-1) ? 3:1
+            }
+        }
+    }
+    }
+}
+
+Component {
+    id: programTimelineGraphComponent
+
+    Column {
+        width: flickTimeline.width
+    Repeater {
+        model: programs
+        Item {
+            width: parent.width
+            height: 1. * flickTimeline.height/2 + ((index == programs.length-1)?3:1)
+            property var graph: graphElement
+            Item {
+                id: vaxisheader
+                anchors.left: parent.left
+                width: flick.vaxisWidth - 100
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                Text {
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: " (" + modelData + ")"
+                }
+            }
+            Item {
+                id: vaxis
+                anchors.left: vaxisheader.right
+                width: 100
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+            }
+            TimelineGraph {
+                id: graphElement
+                anchors.left: vaxis.right
+                anchors.right: parent.right
+                height: parent.height
+
+                bgcolor: index % 2 == 1 ? Qt.rgba(0,0,0,0) : Qt.tint("transparent", "#10FF0000")
+                filter: modelData
+                axis: graphAxis
+                data: timelinedata
                 numElements: Math.max(width * (coarsed ? coarse.value : fine.value), 0)
             }
             Rectangle {
@@ -119,11 +194,143 @@ Component {
 
 
 ScrollView {
+    id: scrollviewTimeline
+    y: axis.panelHeight + 1
+    height: (root.height - y - statspanel.height - scroll.height) / 5
+    anchors.left: root.left
+    anchors.right: root.right
+
+    verticalScrollBarPolicy: Qt.ScrollBarAlwaysOn
+Flickable {
+    id: flickTimeline
+    anchors.fill: parent
+    property int vaxisWidth: 240
+    clip: true
+    contentHeight: columnTimeline.height
+    onContentYChanged: {
+        var first = findTimelineGraph(vaxisWidth+10, contentY+1)
+        var last = findTimelineGraph(vaxisWidth+10, contentY+height-1)
+        first.update()
+        var coord = first.parent.mapToItem(columnTimeline, first.x, first.y)
+        for (var i=1; i < 2; i++) {
+            findTimelineGraph(coord.x+10, coord.y+20 + i * (3 + flickTimeline.height/2)).update()
+        }
+        last.update()
+    }
+    Column {
+        id: columnTimeline
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        Repeater {
+            model: ListModel {
+                ListElement {
+                    caption: "CPU Timeline"
+                    axisType: 0
+                }
+                ListElement {
+                    caption: "GPU Timeline"
+                    axisType: 1
+                }
+            }
+            Column {
+                property bool programFiltered: programSwitch.checked
+                anchors.left: parent.left
+                anchors.right: parent.right
+                Item {
+                    width: parent.width
+                    height: 1. * flickTimeline.height/2 + 1
+                    property var graph: graphElement
+                    Rectangle {
+                        id: vaxisheader
+                        anchors.left: parent.left
+                        width: flick.vaxisWidth - 100
+                        anchors.top: parent.top
+                        anchors.bottom: parent.bottom
+                        color: "oldlace"
+                        Text {
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: " " + caption
+                        }
+                        Text {
+                            anchors.bottom: parent.bottom
+                            anchors.bottomMargin: 1
+                            anchors.right: programSwitch.left
+                            font.pixelSize: 9
+                            text: "expanded: "
+                        }
+                        Switch {
+                            id: programSwitch
+                            anchors.bottom: parent.bottom
+                            anchors.bottomMargin: 1
+                            anchors.right: parent.right
+                            anchors.rightMargin: 1
+                            checked: false
+                        }
+                    }
+                    Item {
+                        id: vaxis
+                        anchors.left: vaxisheader.right
+                        width: 100
+                        anchors.top: parent.top
+                        anchors.bottom: parent.bottom
+                    }
+                    TimelineGraph {
+                        id: graphElement
+                        anchors.left: vaxis.right
+                        anchors.right: parent.right
+                        height: parent.height
+
+                        bgcolor: index % 2 == 1 ? Qt.rgba(0,0,0,0) : Qt.tint("transparent", "#10FF0000")
+                        filtered: false
+                        axis: axisType ? axisGPU : axisCPU
+                        data: timelinedata
+                        numElements: Math.max(width * (coarsed ? coarse.value : fine.value), 0)
+                    }
+                    Rectangle {
+                        color: "gray"
+                        width: parent.width
+                        anchors.bottom: parent.bottom
+                        height: 1
+                    }
+                }
+
+                Loader {
+                    sourceComponent: programFiltered?programTimelineGraphComponent:undefined
+                    property var graphAxis: graphElement.axis
+                    onSourceComponentChanged: {
+                        setCoarsed()
+                        if (item) height = item.childrenRect.height
+                        else height = 0
+                    }
+                }
+
+            }
+
+        }
+    }
+}
+}
+
+Rectangle {
+    id: scrollviewDelim
+    anchors.top: scrollviewTimeline.bottom
+    height: 5
+    anchors.left: root.left
+    anchors.right: root.right
+
+    color: "black"
+}
+
+ScrollView {
     id: scrollview
-    y: axis.panelHeight
+    anchors.top: scrollviewDelim.bottom
     height: root.height - y - statspanel.height - scroll.height
     anchors.left: root.left
     anchors.right: root.right
+
+    verticalScrollBarPolicy: Qt.ScrollBarAlwaysOn
 Flickable {
     id: flick
     anchors.fill: parent
@@ -131,12 +338,12 @@ Flickable {
     clip: true
     contentHeight: column.height
     onContentYChanged: {
-        var first = findGraph(vaxisWidth+10, contentY+1)
-        var last = findGraph(vaxisWidth+10, contentY+height-1)
+        var first = findBarGraph(vaxisWidth+10, contentY+1)
+        var last = findBarGraph(vaxisWidth+10, contentY+height-1)
         first.update()
         var coord = first.parent.mapToItem(column, first.x, first.y)
         for (var i=1; i < 10; i++) {
-            findGraph(coord.x+10, coord.y+20 + i * (3 + flick.height/10)).update()
+            findBarGraph(coord.x+10, coord.y+20 + i * (3 + flick.height/10)).update()
         }
         last.update()
     }
@@ -199,7 +406,7 @@ Flickable {
 
                         bgcolor: index % 2 == 1 ? Qt.rgba(0,0,0,0) : Qt.tint("transparent", "#10FF0000")
                         filtered: false
-                        axis: baraxis
+                        axis: axisGPU
                         data: bgdata
                         numElements: Math.max(width * (coarsed ? coarse.value : fine.value), 0)
                     }
@@ -212,7 +419,7 @@ Flickable {
                 }
 
                 Loader {
-                    sourceComponent: programFiltered?programComponent:undefined
+                    sourceComponent: programFiltered?programBarGraphComponent:undefined
                     property var graphData: bgdata
                     onSourceComponentChanged: {
                         setCoarsed()
@@ -226,6 +433,45 @@ Flickable {
         }
     }
 }
+}
+
+MouseArea {
+    id: viewTimeline
+    x: flickTimeline.x + flickTimeline.vaxisWidth
+    width: flickTimeline.width - x
+    anchors.top: scrollviewTimeline.top
+    anchors.bottom: scrollviewTimeline.bottom
+    property int oldX
+    property bool dragged: false
+    hoverEnabled: true
+    onPressed: {
+        oldX = mouse.x
+        dragged = true
+    }
+    onPositionChanged: {
+        if (dragged) {
+            scroll.position -= (mouse.x-oldX) / view.width * (axisCPU.dispEndTime-axisCPU.dispStartTime)/(axisGPU.endTime-axisCPU.startTime)
+            if (scroll.position < 0) scroll.position = 0
+            if (scroll.position + scroll.size > 1) scroll.position = 1 - scroll.size
+            oldX = mouse.x
+            if (!coarsed) setCoarsed()
+        } else {
+            vertcursor.x = view.x + mouse.x
+        }
+    }
+    onReleased: {
+        dragged = false;
+    }
+    onWheel: {
+        if (wheel.modifiers & Qt.ControlModifier) {
+            scroll.position += scroll.size*wheel.angleDelta.y/120/16 * wheel.x / view.width
+            if (scroll.position < 0) scroll.position = 0
+            scroll.size -= scroll.size*wheel.angleDelta.y/120/16
+            if (scroll.size > 1 - scroll.position) scroll.size = 1 - scroll.position
+        } else {
+            wheel.accepted = false
+        }
+    }
 }
 
 MouseArea {
@@ -243,7 +489,7 @@ MouseArea {
     }
     onPositionChanged: {
         if (dragged) {
-            scroll.position -= (mouse.x-oldX) / view.width * (baraxis.dispEndTime-baraxis.dispStartTime)/(baraxis.endTime-baraxis.startTime)
+            scroll.position -= (mouse.x-oldX) / view.width * (axisCPU.dispEndTime-axisCPU.dispStartTime)/(axisGPU.endTime-axisCPU.startTime)
             if (scroll.position < 0) scroll.position = 0
             if (scroll.position + scroll.size > 1) scroll.position = 1 - scroll.size
             oldX = mouse.x
@@ -251,10 +497,10 @@ MouseArea {
         } else {
 
             vertcursor.x = view.x + mouse.x
-            stats.graph = findGraph(mouse.x, flick.contentY + mouse.y)
-            stats.start = baraxis.dispStartTime + mouse.x / view.width * (baraxis.dispEndTime - baraxis.dispStartTime)
+            stats.graph = findBarGraph(mouse.x, flick.contentY + mouse.y)
+            stats.start = axisCPU.dispStartTime + mouse.x / view.width * (axisCPU.dispEndTime - axisCPU.dispStartTime)
             statspanel.xtime = stats.start * 1e-9
-            stats.duration = 1. / view.width * (baraxis.dispEndTime - baraxis.dispStartTime)
+            stats.duration = 1. / view.width * (axisCPU.dispEndTime - axisCPU.dispStartTime)
             statspanel.resolution = stats.duration * 1e-9
             stats.collect()
 
@@ -264,9 +510,9 @@ MouseArea {
             tooltip_stats.visible = false
             tooltip.visible = false
             if (stats.numEvents == 0) {
-                var id = baraxis.findEventAtTime(stats.start)
-                var start = baraxis.eventStartTime(id)
-                var duration = baraxis.eventDurationTime(id)
+                var id = axisGPU.findEventAtTime(stats.start)
+                var start = axisGPU.eventStartTime(id)
+                var duration = axisGPU.eventDurationTime(id)
                 if (start <= stats.start && stats.start <= start+duration &&
                     !stats.graph.isEventFiltered(id)) {
                     tooltip_event.eventId = id
@@ -377,7 +623,7 @@ Item {
 
 Rectangle {
     id: vertcursor
-    anchors.top: view.top
+    anchors.top: viewTimeline.top
     anchors.bottom: view.bottom
     width: 1
     color: "red"

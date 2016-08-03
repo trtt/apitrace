@@ -47,6 +47,12 @@ private:
 class DrawcallStorage
 {
 public:
+    enum TimestampType {
+        TimestampCPU,
+        TimestampGPU,
+        TimestampSize
+    };
+
     DrawcallStorage() {}
 
     std::string name(unsigned index) const { return nameTable.getString(nameHash[index]); }
@@ -58,11 +64,13 @@ public:
 
     void addDrawcall(unsigned no, unsigned program, unsigned frame, QString name);
 
-    void addTimestamp(qlonglong time);
+    void addTimestamp(qlonglong time, TimestampType type);
 
-    std::vector<unsigned>* timestampHData() { return &s_timestampH; }
-    std::vector<unsigned>* timestampLData() { return &s_timestampL; }
+    std::vector<unsigned>* timestampHData(TimestampType t) { return &s_timestampH[t]; }
+    std::vector<unsigned>* timestampLData(TimestampType t) { return &s_timestampL[t]; }
     std::vector<unsigned>* programData() { return &s_program; }
+    std::vector<unsigned>* nameHashData() { return &nameHash; }
+    unsigned nameHashNumEntries() const { return nameTable.size(); }
 
 private:
     template<typename T>
@@ -88,6 +96,9 @@ private:
         std::string getString(T id) const {
             return strings[static_cast<typename decltype(stringLookupTable)::size_type>(id)];
         }
+        T size() const {
+            return static_cast<T>(strings.size());
+        }
     };
     StringTable<unsigned> nameTable;
 
@@ -96,8 +107,9 @@ private:
     std::vector<unsigned> s_program;
     std::vector<unsigned> s_frame;
 
-    std::vector<unsigned> s_timestampH;
-    std::vector<unsigned> s_timestampL;
+    // 64 bit timestamp's 32 bit High and Low for shaders
+    std::vector<unsigned> s_timestampH[TimestampSize];
+    std::vector<unsigned> s_timestampL[TimestampSize];
 };
 
 class MetricCallDataModel : public QAbstractTableModel
@@ -105,7 +117,8 @@ class MetricCallDataModel : public QAbstractTableModel
     Q_OBJECT
 
 public:
-    explicit MetricCallDataModel(QObject *parent = 0) : init(false), durationIndexInMetrics(0) {}
+    explicit MetricCallDataModel(QObject *parent = 0)
+        : init(false), durationCPUIndexInMetrics(0), durationGPUIndexInMetrics(0) {}
 
     QVariant data(const QModelIndex &index, int role) const Q_DECL_OVERRIDE;
     QVariant headerData(int section, Qt::Orientation orientation,
@@ -115,7 +128,8 @@ public:
 
     void addMetricsData(QTextStream &stream, MetricOutputLookup &lookup);
 
-    const std::vector<float>* durationData() const;
+    const std::vector<float>* durationDataCPU() const;
+    const std::vector<float>* durationDataGPU() const;
 
     DrawcallStorage& calls() { return m_calls; }
     std::vector<MetricStorage>& metrics() { return m_metrics; }
@@ -132,5 +146,6 @@ private:
     std::vector<MetricStorage> m_metrics;
     DrawcallStorage m_calls;
     bool init;
-    unsigned durationIndexInMetrics;
+    unsigned durationCPUIndexInMetrics;
+    unsigned durationGPUIndexInMetrics;
 };

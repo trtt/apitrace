@@ -68,6 +68,7 @@ set(qqapitrace_SRCS
    metric_data_model.cpp
    abstractgraph.cpp
    bargraph.cpp
+   timelinegraph.cpp
    rangestats.cpp
    metric_graphs.cpp
    graphing/graphview.cpp
