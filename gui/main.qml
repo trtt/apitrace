@@ -251,7 +251,7 @@ MouseArea {
         } else {
 
             vertcursor.x = view.x + mouse.x
-            stats.graph = findGraph(mouse.x, mouse.y)
+            stats.graph = findGraph(mouse.x, flick.contentY + mouse.y)
             stats.start = baraxis.dispStartTime + mouse.x / view.width * (baraxis.dispEndTime - baraxis.dispStartTime)
             statspanel.xtime = stats.start * 1e-9
             stats.duration = 1. / view.width * (baraxis.dispEndTime - baraxis.dispStartTime)
@@ -313,7 +313,7 @@ Row {
         id: coarse
         minimumValue: 1
         maximumValue: 10
-        value: 3
+        value: 5
     }
     Slider {
         width: parent.width / 3 - 200/3
