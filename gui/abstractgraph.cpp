@@ -87,6 +87,8 @@ AbstractGraph::AbstractGraph(QQuickItem *parent)
       m_axis(nullptr), m_data(nullptr), m_numElements(0)
 {
     setMirrorVertically(true);
+    connect(this, &AbstractGraph::numElementsChanged, this, &AbstractGraph::forceupdate);
+    connect(this, &QQuickItem::heightChanged, this, &AbstractGraph::forceupdate);
 }
 
 void AbstractGraph::forceupdate() {
@@ -98,7 +100,6 @@ void AbstractGraph::setAxis(TimelineAxis* axis) {
     m_axis = axis;
     connect(m_axis, &TimelineAxis::dispStartTimeChanged, this, &AbstractGraph::forceupdate);
     connect(m_axis, &TimelineAxis::dispEndTimeChanged, this, &AbstractGraph::forceupdate);
-    connect(this, &AbstractGraph::numElementsChanged, this, &AbstractGraph::forceupdate);
 }
 
 bool AbstractGraph::isEventFiltered(int id) const {
@@ -140,10 +141,16 @@ int AbstractGraph::range_iterator::operator++() {
 
 AbstractGraphRenderer::AbstractGraphRenderer(AbstractGraph* item)
     : m_item(item),
-      m_axisCopy(nullptr), m_dataCopy(nullptr), m_numElementsCopy(0),
-      m_filterCopy(0), m_bgcolorCopy("white")
+      m_axisCopy(item->m_axis), m_dataCopy(item->m_data),
+      m_win(item->window())
 {
-
+    if (m_axisCopy) {
+        m_axisCopy->acquireResHandle();
+    }
+    if (m_dataCopy) {
+        m_dataCopy->acquireResHandle();
+    }
+    item->m_needsUpdating = true;
 }
 
 AbstractGraphRenderer::~AbstractGraphRenderer() {
@@ -167,7 +174,6 @@ void AbstractGraphRenderer::synchronize(QQuickFramebufferObject* item) {
         m_dataCopy->acquireResHandle();
     }
 
-    m_win = i->window();
     QPointF sceneCoord = i->parentItem()->mapToScene(QPointF(i->x(), i->y()));
     m_width = i->width();
     m_height = i->height();

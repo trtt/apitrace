@@ -34,6 +34,8 @@ public:
         if (buffer) {
             glDeleteBuffers(1, &buffer);
             glDeleteTextures(1, &texture);
+            buffer = 0;
+            texture = 0;
         }
     }
 
@@ -73,6 +75,8 @@ public:
         m_endTime = (((uint64_t)xH->data[m_lastEvent] << 32) + xL->data[m_lastEvent]);
         m_dispStartTime = m_startTime;
         m_dispEndTime = m_endTime;
+        m_dispFirstEvent = m_firstEvent;
+        m_dispLastEvent = m_lastEvent;
     }
 
     void acquireResHandle();
@@ -185,6 +189,7 @@ class AbstractGraph : public QQuickFramebufferObject
     Q_PROPERTY(uint filter MEMBER m_filter)
     Q_PROPERTY(QColor bgcolor MEMBER m_bgcolor)
     Q_PROPERTY(bool filtered MEMBER m_filtered)
+    Q_PROPERTY(bool needsUpdating MEMBER m_needsUpdating)
 
     friend class AbstractGraphRenderer;
 
