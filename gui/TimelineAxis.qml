@@ -22,20 +22,17 @@ function printTime(t) {
 
 Item {
     id: inner
-    x: -Math.round((startTime % blockTime) * timeline.scale)
+    x: -((startTime % blockTime) * timeline.scale)
     y: 0
     Repeater {
         model: Math.ceil(timeline.width / blockStartingWidth) * 2 + 2
         Item {
-            property int cindex: timeline.offset > index ? index : index
-            property int rindex: -1
-            property double time: index * blockTime + startTime - (startTime % blockTime)
-            onCindexChanged: rindex = cindex
+            property double time: index * blockTime + inner.x / timeline.scale + startTime
 
             width: blockWidth
             height: timeline.height
             y: 0
-            x: width * cindex
+            x: width * index
 
             Rectangle {
                 anchors.top: parent.top
@@ -46,15 +43,8 @@ Item {
                 Text {
                     text: printTime(time)
                     anchors.fill: parent
-                    font.pixelSize: 11
+                    font.pointSize: 8
                 }
-            }
-            Rectangle {
-                color: "gray"
-                width: 1
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                anchors.right: parent.right
             }
             Row {
                 height: timeline.height - timeline.panelHeight*3/4
@@ -62,16 +52,16 @@ Item {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 Repeater {
-                    model: 4
+                    model: 5
                     Item {
                         width: blockWidth / 5
                         anchors.top: parent.top
                         anchors.bottom: parent.bottom
                         Rectangle {
                             width: 1
-                            color: "lightgray"
+                            color: index ? "lightgray" : "gray"
                             anchors.top: parent.top
-                            anchors.right: parent.right
+                            anchors.left: parent.left
                             anchors.bottom: parent.bottom
                         }
                     }

@@ -3,5 +3,8 @@
         <file>main.qml</file>
         <file>VerticalAxis.qml</file>
         <file>TimelineAxis.qml</file>
+        <file>BarGraphView.qml</file>
+        <file>TimelineGraphView.qml</file>
+        <file>resources/arrow.png</file>
     </qresource>
 </RCC>

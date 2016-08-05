@@ -5,25 +5,35 @@ id: root
 
 property double maxY: 1
 property int numTicks: 3
+property real tickWidth: 5
+
+implicitWidth: column.childrenRect.width
 
 Column {
-    anchors.fill: parent
+    id: column
+    anchors.right: parent.right
+    anchors.top: parent.top
     Repeater {
         model: numTicks
         Item {
-            width: parent.width
+            anchors.right: parent.right
+            width: text.width + tick.width
             height: root.height / numTicks
             Text {
+                id: text
                 anchors.right: tick.left
-                text: (maxY * (numTicks - index) / numTicks).toFixed(3) + " "
-                font.pixelSize: 7
+                text: {
+                    var n = maxY * (numTicks - index) / numTicks;
+                    (n > 1e-3) ? parseFloat(n.toFixed(3)) : n.toExponential(3)
+                }
+                font.pointSize: 7
             }
             Rectangle {
                 id: tick
                 anchors.top: parent.top
                 height: 1
                 anchors.right: parent.right
-                width: 5
+                width: tickWidth
                 color: "black"
             }
         }
