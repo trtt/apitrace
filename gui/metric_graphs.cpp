@@ -13,12 +13,18 @@ MetricGraphs::~MetricGraphs() {
 }
 
 void MetricGraphs::addGraphsData() {
-    beginInsertRows(QModelIndex(), m_data.size(), m_model.metrics().size()-1);
-    for (int i = m_data.size(); i < m_model.metrics().size(); i++) {
+    auto oldSize = m_data.size();
+    for (int i = (!oldSize) ? 0 : oldSize+2; i < m_model.metrics().size(); i++) {
         auto& m = m_model.metrics()[i];
-        m_textureData.push_back(std::make_shared<TextureBufferData<GLfloat>>(*m.vector()));
-        m_data.push_back(new BarGraphData(m_textureData.back(), m_filter));
+        if ((m.metric()->getName() != QLatin1String("CPU Start")) &&
+            (m.metric()->getName() != QLatin1String("GPU Start")))
+        {
+            m_textureData.push_back(std::make_shared<TextureBufferData<GLfloat>>(*m.vector()));
+            m_data.push_back(new BarGraphData(m_textureData.back(), m_filter));
+            m_metrics.push_back(m.metric());
+        }
     }
+    beginInsertRows(QModelIndex(), oldSize, m_data.size()-1);
     endInsertRows();
 }
 
@@ -30,7 +36,7 @@ int MetricGraphs::rowCount(const QModelIndex &parent) const
 QVariant MetricGraphs::data(const QModelIndex &index, int role) const
 {
     if (role == CaptionRole) {
-        return name(index.row());
+        return m_metrics[index.row()]->getName();
     } else if (role == DataRole) {
         return QVariant::fromValue(m_data[index.row()]);
     } else {

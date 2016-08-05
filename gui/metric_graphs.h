@@ -30,4 +30,5 @@ private:
     std::shared_ptr<TextureBufferData<GLuint>> m_filter;
     std::vector<std::shared_ptr<TextureBufferData<GLfloat>>> m_textureData;
     std::vector<BarGraphData*> m_data;
+    std::vector<MetricItem*> m_metrics;
 };
