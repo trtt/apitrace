@@ -95,6 +95,7 @@ ScrollView {
                     anchors.right: parent.right
                     height: parent.height
 
+                    ignoreUpdates: !inView
                     bgcolor: (color % 2) ? (useFullHeader ? "#00000000" : "#10000010") :
                         (useFullHeader ? "#10100000" : "#00000000")
                     filtered: useFullHeader ? false : true

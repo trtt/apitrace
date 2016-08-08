@@ -190,6 +190,7 @@ class AbstractGraph : public QQuickFramebufferObject
     Q_PROPERTY(QColor bgcolor MEMBER m_bgcolor)
     Q_PROPERTY(bool filtered MEMBER m_filtered)
     Q_PROPERTY(bool needsUpdating MEMBER m_needsUpdating)
+    Q_PROPERTY(bool ignoreUpdates MEMBER m_ignoreUpdates)
 
     friend class AbstractGraphRenderer;
 
@@ -233,12 +234,12 @@ public slots:
 private:
     AbstractGraphRenderer* m_renderer;
     bool m_filtered;
-    bool m_needsUpdating;
+    bool m_needsUpdating = true;
     GLuint m_filter;
     QColor m_bgcolor;
 
 protected:
-    bool m_offscreen = false;
+    bool m_ignoreUpdates = false;
     TimelineAxis* m_axis;
     AbstractGraphData*  m_data;
     uint m_numElements;

@@ -65,7 +65,7 @@ float BarGraph::maxVisibleEvent() const {
 
 void BarGraph::updateMaxY() {
     if (!m_numElements || !m_axis || !m_data) return;
-    if (m_offscreen) {
+    if (m_ignoreUpdates) {
         m_needsUpdatingMaxY = true;
         return;
     }

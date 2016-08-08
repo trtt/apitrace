@@ -83,7 +83,7 @@ void AbstractGraphData::freeResHandle() {
 
 AbstractGraph::AbstractGraph(QQuickItem *parent)
     : QQuickFramebufferObject(parent),  m_renderer(0), m_filtered(true),
-      m_needsUpdating(true), m_filter(0), m_bgcolor("white"),
+      m_filter(0), m_bgcolor("white"),
       m_axis(nullptr), m_data(nullptr), m_numElements(0)
 {
     setMirrorVertically(true);
@@ -160,6 +160,7 @@ AbstractGraphRenderer::~AbstractGraphRenderer() {
 
 void AbstractGraphRenderer::synchronize(QQuickFramebufferObject* item) {
     AbstractGraph* i = static_cast<AbstractGraph*>(item);
+    if (i->m_ignoreUpdates) return;
     if (!i->m_needsUpdating || !i->m_axis || !i->m_data) return;
 
     // Prepare texture buffers if needed
@@ -174,23 +175,8 @@ void AbstractGraphRenderer::synchronize(QQuickFramebufferObject* item) {
         m_dataCopy->acquireResHandle();
     }
 
-    QPointF sceneCoord = i->parentItem()->mapToScene(QPointF(i->x(), i->y()));
     m_width = i->width();
     m_height = i->height();
-    int winHeight = i->window()->size().height();
-
-    if ((sceneCoord.y() + i->height() < 0) ||
-        (sceneCoord.y() > winHeight))
-    {
-        i->m_offscreen = true;
-    } else {
-        i->m_offscreen = false;
-    }
-
-    // Not shown on screen = no reason to update
-    if (i->m_offscreen) return;
-
-    m_needsUpdating = true;
 
     m_filteredCopy = i->m_filtered;
     m_numElementsCopy = i->m_numElements;
@@ -203,5 +189,6 @@ void AbstractGraphRenderer::synchronize(QQuickFramebufferObject* item) {
     m_dispLastEventCopy = i->m_axis->m_dispLastEvent;
 
     synchronizeAfter(item);
+    m_needsUpdating = true;
     i->m_needsUpdating = false;
 }
