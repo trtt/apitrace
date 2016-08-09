@@ -1,6 +1,9 @@
 #include "abstractgraph.h"
 
 #include <QQuickWindow>
+#if (QT_VERSION < QT_VERSION_CHECK(5, 6, 0))
+#include <QSGSimpleTextureNode>
+#endif
 
 #include <cmath>
 
@@ -86,10 +89,26 @@ AbstractGraph::AbstractGraph(QQuickItem *parent)
       m_filter(0), m_bgcolor("white"),
       m_axis(nullptr), m_data(nullptr), m_numElements(0)
 {
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 6, 0))
     setMirrorVertically(true);
+#endif
     connect(this, &AbstractGraph::numElementsChanged, this, &AbstractGraph::forceupdate);
     connect(this, &QQuickItem::heightChanged, this, &AbstractGraph::forceupdate);
 }
+
+#if (QT_VERSION < QT_VERSION_CHECK(5, 6, 0))
+QSGNode* AbstractGraph::updatePaintNode(QSGNode *node, QQuickItem::UpdatePaintNodeData *nodeData)
+{
+    if (!node) {
+        node = QQuickFramebufferObject::updatePaintNode(node, nodeData);
+        QSGSimpleTextureNode *n = static_cast<QSGSimpleTextureNode *>(node);
+        if (n)
+            n->setTextureCoordinatesTransform(QSGSimpleTextureNode::MirrorVertically);
+        return node;
+    }
+    return QQuickFramebufferObject::updatePaintNode(node, nodeData);
+}
+#endif
 
 void AbstractGraph::forceupdate() {
     m_needsUpdating = true;

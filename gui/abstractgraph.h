@@ -239,6 +239,10 @@ private:
     QColor m_bgcolor;
 
 protected:
+#if (QT_VERSION < QT_VERSION_CHECK(5, 6, 0))
+    QSGNode* updatePaintNode(QSGNode *node, QQuickItem::UpdatePaintNodeData *nodeData);
+#endif
+
     bool m_ignoreUpdates = false;
     TimelineAxis* m_axis;
     AbstractGraphData*  m_data;
