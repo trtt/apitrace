@@ -3,6 +3,8 @@
 #include "trace_api.hpp"
 #include "apitrace.h"
 #include "apitracecall.h"
+#include "metric_selection_model.hpp"
+#include "metric_data_model.hpp"
 
 #include <QThread>
 #include <QProcess>
@@ -16,6 +18,7 @@ class Retracer : public QThread
     Q_OBJECT
 public:
     Retracer(QObject *parent=0);
+    ~Retracer();
 
     QString fileName() const;
     void setFileName(const QString &name);
@@ -44,6 +47,12 @@ public:
     bool isProfiling() const;
     void setProfiling(bool gpu, bool cpu, bool pixels, bool memory);
 
+    bool isProfilingWithBackends() const;
+    void setProfilingWithBackends();
+    bool isListingMetrics() const;
+    void setListingMetrics();
+    MetricSelectionModel* backendMetrics() const;
+
     void setCaptureAtCallNumber(qlonglong num);
     qlonglong captureAtCallNumber() const;
 
@@ -63,6 +72,8 @@ signals:
     void finished(const QString &output);
     void foundState(ApiTraceState *state);
     void foundProfile(trace::Profile *profile);
+    void foundMetrics();
+    void foundBackendProfile(MetricCallDataModel* calls);
     void foundThumbnails(const ImageHash &thumbnails);
     void error(const QString &msg);
     void retraceErrors(const QList<ApiTraceError> &errors);
@@ -85,6 +96,11 @@ private:
     bool m_profileCpu;
     bool m_profilePixels;
     bool m_profileMemory;
+
+    bool m_listingMetrics;
+    MetricSelectionModel* m_backendMetrics;
+    bool m_profileWithBackends;
+    MetricCallDataModel m_callMetricsModel;
 
     QProcessEnvironment m_processEnvironment;
 

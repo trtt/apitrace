@@ -126,7 +126,7 @@ public:
     int rowCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE;
     int columnCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE;
 
-    void addMetricsData(QTextStream &stream, MetricOutputLookup &lookup);
+    void addMetricsData(QTextStream &stream, const MetricOutputLookup &lookup);
 
     const std::vector<float>* durationDataCPU() const;
     const std::vector<float>* durationDataGPU() const;

@@ -1,3 +1,5 @@
+#pragma once
+
 #include "metric_data_model.hpp"
 #include "bargraph.h"
 

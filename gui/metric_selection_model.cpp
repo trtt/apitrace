@@ -405,9 +405,7 @@ stringFromHashGenerateLookup(const QHash<QString, QList<MetricItem*>>& hash,
 }
 
 void MetricSelectionModel::generateMetricList(QString& cliOptionFrame,
-                            QString& cliOptionCall,
-                            MetricOutputLookup& mFrame,
-                            MetricOutputLookup& mCall)
+                            QString& cliOptionCall)
 {
     QHash<QString, QList<MetricItem*>> mFramePts;
     QHash<QString, QList<MetricItem*>> mCallPts;
@@ -422,8 +420,18 @@ void MetricSelectionModel::generateMetricList(QString& cliOptionFrame,
     }
     selected.clear();
     needed.clear();
-    cliOptionFrame = "--pframes=" + stringFromHashGenerateLookup(mFramePts, mFrame);
-    cliOptionCall = "--pdrawcalls=" + stringFromHashGenerateLookup(mCallPts, mCall);
+    toBeProfiledCalls.clear();
+    toBeProfiledFrames.clear();
+    cliOptionFrame = "--pframes=" + stringFromHashGenerateLookup(mFramePts, toBeProfiledFrames);
+    cliOptionCall = "--pdrawcalls=" + stringFromHashGenerateLookup(mCallPts, toBeProfiledCalls);
+}
+
+const MetricOutputLookup& MetricSelectionModel::selectedForCalls() const {
+    return toBeProfiledCalls;
+}
+
+const MetricOutputLookup& MetricSelectionModel::selectedForFrames() const {
+    return toBeProfiledFrames;
 }
 
 #include "metric_selection_model.moc"

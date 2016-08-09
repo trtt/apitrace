@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>Dialog</class>
- <widget class="QDialog" name="Dialog">
+ <class>MetricSelection</class>
+ <widget class="QDialog" name="MetricSelection">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -52,25 +52,6 @@
           </property>
           <property name="text">
            <string>Generate Passes</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLabel" name="label">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="text">
-           <string>Passes: 0 </string>
-          </property>
-          <property name="scaledContents">
-           <bool>false</bool>
-          </property>
-          <property name="alignment">
-           <set>Qt::AlignCenter</set>
           </property>
          </widget>
         </item>
@@ -190,7 +171,7 @@
   <connection>
    <sender>pushButton_9</sender>
    <signal>clicked()</signal>
-   <receiver>Dialog</receiver>
+   <receiver>MetricSelection</receiver>
    <slot>reject()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -206,7 +187,7 @@
   <connection>
    <sender>pushButton_8</sender>
    <signal>clicked()</signal>
-   <receiver>Dialog</receiver>
+   <receiver>MetricSelection</receiver>
    <slot>accept()</slot>
    <hints>
     <hint type="sourcelabel">

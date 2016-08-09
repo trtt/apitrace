@@ -88,6 +88,7 @@
     </property>
     <addaction name="actionReplay"/>
     <addaction name="actionProfile"/>
+    <addaction name="actionProfileWithBackends"/>
     <addaction name="actionStop"/>
     <addaction name="actionLookupState"/>
     <addaction name="actionShowThumbnails"/>
@@ -776,6 +777,11 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+P</string>
+   </property>
+  </action>
+  <action name="actionProfileWithBackends">
+   <property name="text">
+    <string>Profile with &amp;backends</string>
    </property>
   </action>
   <action name="actionPullTrace">

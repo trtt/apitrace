@@ -31,6 +31,9 @@ class TraceProcess;
 class TrimProcess;
 class ProfileDialog;
 class VertexDataInterpreter;
+class BackendProfileWindow;
+class MetricSelectionModel;
+class MetricCallDataModel;
 
 namespace trace { struct Profile; }
 
@@ -56,8 +59,11 @@ private slots:
     void pushTrace();
     void linkTrace();
     void retraceOnAndroid(bool android);
+    void metricSelectionDialog();
     void replayStart();
     void replayProfile();
+    void replayProfileWithBackends();
+    void replayProfileWithBackendsFound(MetricCallDataModel* model);
     void replayStop();
     void replayFinished(const QString &message);
     void replayStateFound(ApiTraceState *state);
@@ -175,4 +181,6 @@ private:
 
     ProfileDialog* m_profileDialog;
     QString m_androidFilePath;
+
+    BackendProfileWindow* m_backendProfileWin;
 };

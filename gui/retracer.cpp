@@ -139,9 +139,17 @@ Retracer::Retracer(QObject *parent)
       m_profileGpu(false),
       m_profileCpu(false),
       m_profilePixels(false),
-      m_profileMemory(false)
+      m_profileMemory(false),
+      m_listingMetrics(false),
+      m_backendMetrics(nullptr),
+      m_profileWithBackends(false)
 {
     qRegisterMetaType<QList<ApiTraceError> >();
+}
+
+Retracer::~Retracer()
+{
+    delete m_backendMetrics;
 }
 
 QString Retracer::fileName() const
@@ -234,12 +242,37 @@ bool Retracer::isProfiling() const
     return m_profileGpu || m_profileCpu || m_profilePixels | m_profileMemory;
 }
 
+bool Retracer::isProfilingWithBackends() const
+{
+    return m_profileWithBackends;
+}
+
+bool Retracer::isListingMetrics() const
+{
+    return m_listingMetrics;
+}
+
 void Retracer::setProfiling(bool gpu, bool cpu, bool pixels, bool memory)
 {
     m_profileGpu = gpu;
     m_profileCpu = cpu;
     m_profilePixels = pixels;
     m_profileMemory = memory;
+}
+
+void Retracer::setProfilingWithBackends()
+{
+    m_profileWithBackends = true;
+}
+
+void Retracer::setListingMetrics()
+{
+    m_listingMetrics = true;
+}
+
+MetricSelectionModel* Retracer::backendMetrics() const
+{
+    return m_backendMetrics;
 }
 
 void Retracer::setCaptureAtCallNumber(qlonglong num)
@@ -346,6 +379,15 @@ QStringList Retracer::retraceArguments() const
         if (m_profileMemory) {
             arguments << QLatin1String("--pmem");
         }
+    }
+    else if (m_profileWithBackends) {
+        QString cliOptionFrame, cliOptionCall;
+        m_backendMetrics->generateMetricList(cliOptionFrame, cliOptionCall);
+        arguments << cliOptionFrame;
+        arguments << cliOptionCall;
+    }
+    else if (m_listingMetrics) {
+        arguments << QLatin1String("--list-metrics");
     } else {
         if (!m_doubleBuffered) {
             arguments << QLatin1String("--sb");
@@ -515,6 +557,18 @@ void Retracer::run()
 
                 trace::Profiler::parseLine(line, profile);
             }
+        } else if (isListingMetrics()) {
+            if (!m_backendMetrics) {
+                process.waitForFinished(-1);
+                m_backendMetrics = new MetricSelectionModel(process);
+            }
+        } else if (isProfilingWithBackends()) {
+            process.waitForFinished(-1);
+            QTextStream stream(&process);
+            auto m_callMetrics = m_backendMetrics->selectedForCalls();
+            if (!m_callMetrics.empty()) {
+                m_callMetricsModel.addMetricsData(stream, m_callMetrics);
+            }
         } else {
             QByteArray output;
             output = process.readAllStandardOutput();
@@ -577,6 +631,18 @@ void Retracer::run()
 
     if (isProfiling() && profile) {
         emit foundProfile(profile);
+    }
+
+    if (isListingMetrics()) {
+        emit foundMetrics();
+        m_listingMetrics = false;
+    }
+
+    if (isProfilingWithBackends() &&
+        !m_backendMetrics->selectedForCalls().empty())
+    {
+        emit foundBackendProfile(&m_callMetricsModel);
+        m_profileWithBackends = false;
     }
 
     if (!errors.isEmpty()) {

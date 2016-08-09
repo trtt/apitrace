@@ -119,9 +119,9 @@ public:
     int columnCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE;
 
     void generateMetricList(QString& cliOptionFrame,
-                            QString& cliOptionCall,
-                            MetricOutputLookup& mFrame,
-                            MetricOutputLookup& mCall);
+                            QString& cliOptionCall);
+    const MetricOutputLookup& selectedForCalls() const;
+    const MetricOutputLookup& selectedForFrames() const;
 
 private:
     enum MetricSelectionItem {
@@ -140,4 +140,6 @@ private:
     QSet<QModelIndex> needed; // for CPU/GPU times
     QSet<QModelIndex> profiled;
     QHash<QModelIndex, int> childNodesSelected;
+    MetricOutputLookup toBeProfiledCalls;
+    MetricOutputLookup toBeProfiledFrames;
 };

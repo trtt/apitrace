@@ -17,10 +17,10 @@
 #include "metric_graphs.h"
 
 #include "ui_metric_selection.h"
-#include "ui_qqmain.h"
+#include "ui_backendprofile.h"
 
-Ui::Dialog ui;
-Ui::MainWindow winui;
+Ui::MetricSelection ui;
+Ui::BackendProfileWindow winui;
 //MetricFrameDataModel modelFrame;
 MetricCallDataModel modelCall;
 
@@ -38,9 +38,7 @@ void addMetrics(MetricSelectionModel& model, const char* target) {
     if (!widget->exec()) return;
 
     QString cliOptionFrame, cliOptionCall;
-    QHash<QString, QHash<QString, MetricItem*>> mFrame;
-    QHash<QString, QHash<QString, MetricItem*>> mCall;
-    model.generateMetricList(cliOptionFrame, cliOptionCall, mFrame, mCall);
+    model.generateMetricList(cliOptionFrame, cliOptionCall);
 
     QProcess process;
     QString prog = QLatin1String("./glretrace");
@@ -57,8 +55,8 @@ void addMetrics(MetricSelectionModel& model, const char* target) {
     //if (!mFrame.empty()) {
         //modelFrame.addMetricsData(stream, mFrame);
     //}
-    if (!mCall.empty()) {
-        modelCall.addMetricsData(stream, mCall);
+    if (!model.selectedForCalls().empty()) {
+        modelCall.addMetricsData(stream, model.selectedForCalls());
     }
 }
 

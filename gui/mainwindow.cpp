@@ -21,10 +21,12 @@
 #include "androidfiledialog.h"
 #include "ui_retracerdialog.h"
 #include "ui_profilereplaydialog.h"
+#include "ui_metric_selection.h"
 #include "vertexdatainterpreter.h"
 #include "trace_profiler.hpp"
 #include "image.hpp"
 #include "leaktracethread.h"
+#include "backendprofilewindow.h"
 
 #include <QAction>
 #include <QApplication>
@@ -354,10 +356,54 @@ void MainWindow::replayProfile()
     }
 }
 
+void MainWindow::replayProfileWithBackends()
+{
+    if (m_trace->isSaving()) {
+        QMessageBox::warning(
+            this,
+            tr("Trace Saving"),
+            tr("QApiTrace is currently saving the edited trace file. "
+               "Please wait until it finishes and try again."));
+        return;
+    }
+
+    if (m_backendProfileWin->isSetuped()) {
+        if (!m_backendProfileWin->isVisible())
+            m_backendProfileWin->show();
+        m_backendProfileWin->activateWindow();
+        m_backendProfileWin->setFocus();
+    } else {
+        metricSelectionDialog();
+    }
+}
+
 void MainWindow::replayStop()
 {
     m_retracer->quit();
     updateActionsState(true, true);
+}
+
+void MainWindow::metricSelectionDialog()
+{
+    auto model = m_retracer->backendMetrics();
+
+    if (!model) {
+        m_retracer->setListingMetrics();
+        replayTrace(false, false);
+        return;
+    }
+
+    QDialog dlg;
+    Ui_MetricSelection dlgUi;
+    dlgUi.setupUi(&dlg);
+
+    dlgUi.treeView->setModel(model);
+    dlgUi.treeView->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
+
+    if (dlg.exec() == QDialog::Accepted) {
+        m_retracer->setProfilingWithBackends();
+        replayTrace(false, false);
+    }
 }
 
 void MainWindow::newTraceFile(const QString &fileName)
@@ -444,6 +490,7 @@ void MainWindow::finishedLoadingTrace()
     m_ui.actionPushTrace->setEnabled(m_api == trace::API_EGL);
     m_ui.actionLinkTrace->setEnabled(m_api == trace::API_EGL);
     m_ui.actionRetraceOnAndroid->setEnabled(m_api == trace::API_EGL);
+    m_ui.actionProfileWithBackends->setEnabled(m_api == trace::API_GL);
 }
 
 void MainWindow::replayTrace(bool dumpState, bool dumpThumbnails)
@@ -1143,6 +1190,8 @@ void MainWindow::initObjects()
     m_trimProcess = new TrimProcess(this);
 
     m_profileDialog = new ProfileDialog();
+
+    m_backendProfileWin = new BackendProfileWindow(this);
 }
 
 void MainWindow::initConnections()
@@ -1217,6 +1266,8 @@ void MainWindow::initConnections()
             this, SLOT(replayStart()));
     connect(m_ui.actionProfile, SIGNAL(triggered()),
             this, SLOT(replayProfile()));
+    connect(m_ui.actionProfileWithBackends, SIGNAL(triggered()),
+            this, SLOT(replayProfileWithBackends()));
     connect(m_ui.actionStop, SIGNAL(triggered()),
             this, SLOT(replayStop()));
     connect(m_ui.actionLookupState, SIGNAL(triggered()),
@@ -1296,6 +1347,10 @@ void MainWindow::initRetraceConnections()
             this, SLOT(replayStateFound(ApiTraceState*)));
     connect(m_retracer, SIGNAL(foundProfile(trace::Profile*)),
             this, SLOT(replayProfileFound(trace::Profile*)));
+    connect(m_retracer, SIGNAL(foundMetrics()),
+            this, SLOT(replayProfileWithBackends()));
+    connect(m_retracer, SIGNAL(foundBackendProfile(MetricCallDataModel*)),
+            this, SLOT(replayProfileWithBackendsFound(MetricCallDataModel*)));
     connect(m_retracer, SIGNAL(foundThumbnails(const ImageHash&)),
             this, SLOT(replayThumbnailsFound(const ImageHash&)));
     connect(m_retracer, SIGNAL(retraceErrors(const QList<ApiTraceError>&)),
@@ -1349,12 +1404,15 @@ void MainWindow::updateActionsState(bool traceLoaded, bool stopped)
         m_ui.actionLookupState   ->setEnabled(false);
         m_ui.actionShowThumbnails->setEnabled(false);
         m_ui.actionTrim          ->setEnabled(false);
+
+        m_ui.actionProfileWithBackends->setEnabled(false);
     }
 }
 
 void MainWindow::closeEvent(QCloseEvent * event)
 {
     m_profileDialog->close();
+    m_backendProfileWin->close();
     QMainWindow::closeEvent(event);
 }
 
@@ -1365,6 +1423,18 @@ void MainWindow::replayProfileFound(trace::Profile *profile)
     m_profileDialog->show();
     m_profileDialog->activateWindow();
     m_profileDialog->setFocus();
+}
+
+void MainWindow::replayProfileWithBackendsFound(MetricCallDataModel* model)
+{
+    if (!m_backendProfileWin->isSetuped()) {
+        m_backendProfileWin->setup(model);
+        connect(m_backendProfileWin->callAddMetrics, SIGNAL(clicked()),
+                this, SLOT(metricSelectionDialog()));
+    }
+    m_backendProfileWin->show();
+    m_backendProfileWin->activateWindow();
+    m_backendProfileWin->setFocus();
 }
 
 void MainWindow::replayStateFound(ApiTraceState *state)

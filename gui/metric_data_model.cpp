@@ -81,7 +81,7 @@ QVariant MetricCallDataModel::data(const QModelIndex &index, int role) const
 }
 
 void MetricCallDataModel::addMetricsData(QTextStream &stream,
-                                          MetricOutputLookup &lookup)
+                                         const MetricOutputLookup &lookup)
 {
     QString line;
     unsigned oldMetricsSize = m_metrics.size();

@@ -62,8 +62,7 @@ set(qapitrace_SRCS
    graphing/timeaxiswidget.cpp
  )
 
-set(qqapitrace_SRCS
-   qqmain.cpp
+set(qapitrace_profiling_SRCS
    metric_selection_model.cpp
    metric_data_model.cpp
    abstractgraph.cpp
@@ -71,12 +70,15 @@ set(qqapitrace_SRCS
    timelinegraph.cpp
    rangestats.cpp
    metric_graphs.cpp
-   graphing/graphview.cpp
-   graphing/histogramview.cpp
+   backendprofilewindow.cpp
 )
 
-qt5_add_resources(qapitrace_SRCS qapitrace.qrc)
-qt5_add_resources(qqapitrace_SRCS qqapitrace.qrc)
+set(qqapitrace_SRCS
+    qqmain.cpp
+)
+
+qt5_add_resources(qapitrace_SRCS qapitrace.qrc profiling.qrc)
+qt5_add_resources(qqapitrace_SRCS profiling.qrc)
 
 set(qapitrace_UIS
    ui/androidfiledialog.ui
@@ -94,9 +96,9 @@ set(qapitrace_UIS
    ui/shaderssourcewidget.ui
    )
 
-set(qqapitrace_UIS
+set(qapitrace_profiling_UIS
    ui/metric_selection.ui
-   ui/qqmain.ui
+   ui/backendprofile.ui
    )
 
 
@@ -104,8 +106,8 @@ set (CMAKE_AUTOMOC ON)
 # Silence `Note: No relevant classes found. No output generated.`
 set (CMAKE_AUTOMOC_MOC_OPTIONS "-nn")
 
-QT5_WRAP_UI(qapitrace_UIS_H ${qapitrace_UIS})
-QT5_WRAP_UI(qqapitrace_UIS_H ${qqapitrace_UIS})
+QT5_WRAP_UI(qapitrace_UIS_H ${qapitrace_UIS} ${qapitrace_profiling_UIS})
+QT5_WRAP_UI(qqapitrace_UIS_H ${qapitrace_profiling_UIS})
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 #add_app_icon(qapitrace_SRCS ../icons/hi*-qapitrace.png)
@@ -114,8 +116,8 @@ include_directories (
     ${CMAKE_SOURCE_DIR}/lib/ubjson
 )
 
-add_executable (qapitrace ${qapitrace_SRCS} ${qapitrace_UIS_H})
-add_executable (qqapitrace ${qqapitrace_SRCS} ${qqapitrace_UIS_H})
+add_executable (qapitrace ${qapitrace_SRCS} ${qapitrace_profiling_SRCS} ${qapitrace_UIS_H})
+add_executable (qqapitrace ${qqapitrace_SRCS} ${qapitrace_profiling_SRCS} ${qqapitrace_UIS_H})
 
 # Avoid qt5_use_modules. See also:
 # - https://bugreports.qt.io/browse/QTBUG-39457
@@ -128,7 +130,7 @@ if (Qt5Core_VERSION_STRING VERSION_LESS 5.2.0)
 else ()
     target_link_libraries (qubjson Qt5::Widgets)
     target_link_libraries (qubjson_test Qt5::Widgets)
-    target_link_libraries (qapitrace Qt5::Widgets Qt5::Network)
+    target_link_libraries (qapitrace Qt5::Widgets Qt5::Network Qt5::Quick Qt5::OpenGL Qt5::QuickWidgets)
     target_link_libraries (qqapitrace Qt5::Widgets Qt5::Quick Qt5::OpenGL Qt5::QuickWidgets)
 endif ()
 
