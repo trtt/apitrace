@@ -65,6 +65,7 @@ public:
     void addDrawcall(unsigned no, unsigned program, unsigned frame, QString name);
 
     void addTimestamp(qlonglong time, TimestampType type);
+    qlonglong getTimestamp(unsigned index, TimestampType type) const;
 
     std::vector<unsigned>* timestampHData(TimestampType t) { return &s_timestampH[t]; }
     std::vector<unsigned>* timestampLData(TimestampType t) { return &s_timestampL[t]; }

@@ -26,6 +26,10 @@ void DrawcallStorage::addTimestamp(qlonglong time, TimestampType type) {
     s_timestampL[type].push_back(time - first); // GPU Start (32 bit low)
 }
 
+qlonglong DrawcallStorage::getTimestamp(unsigned index, TimestampType type) const {
+    return ((qlonglong)s_timestampH[type][index] << 32) + s_timestampL[type][index];
+}
+
 
 int MetricCallDataModel::rowCount(const QModelIndex &parent) const
 {
@@ -73,7 +77,14 @@ QVariant MetricCallDataModel::data(const QModelIndex &index, int role) const
         case COLUMN_NAME:
             return QString::fromStdString(m_calls.name(index.row()));
         default:
-            return m_metrics[index.column() - COLUMN_METRICS_BEGIN].getMetricData(index.row());
+            auto name = m_metrics[index.column() - COLUMN_METRICS_BEGIN].metric()->getName();
+            if (name == QLatin1String("CPU Start")) {
+                return 1e-9 * m_calls.getTimestamp(index.row(), DrawcallStorage::TimestampCPU);
+            } else if (name == QLatin1String("GPU Start")) {
+                return 1e-9 * m_calls.getTimestamp(index.row(), DrawcallStorage::TimestampGPU);
+            } else {
+                return m_metrics[index.column() - COLUMN_METRICS_BEGIN].getMetricData(index.row());
+            }
         }
     } else {
         return QVariant();
@@ -131,7 +142,7 @@ void MetricCallDataModel::addMetricsData(QTextStream &stream,
                 } else if (m_metrics[i-4].metric()->getName() == QLatin1String("GPU Start")) {
                     m_calls.addTimestamp(token.toLongLong(), DrawcallStorage::TimestampGPU);
                 }
-                if (token == QString("-")) {
+                else if (token == QString("-")) {
                     m_metrics[i-4].addMetricData(0);
                 } else {
                     MetricNumType nType = m_metrics[i-4].metric()->getNumType();

@@ -26,7 +26,8 @@ MetricCallDataModel modelCall;
 
 TimelineAxis* axisCPU;
 TimelineAxis* axisGPU;
-RangeStats* stats;
+RangeStatsMinMax* statsBar;
+RangeStats* statsTimeline;
 TimelineGraphData* timelineData;
 QStringList dataFilterUnique;
 
@@ -126,7 +127,9 @@ int main(int argc, char *argv[])
     timelineData = new TimelineGraphData(std::make_shared<TextureBufferData<GLuint>>(*modelCall.calls().nameHashData()),
                                             modelCall.calls().nameHashNumEntries(),
                                             graphs.filter());
-    stats = new RangeStats();
+    statsBar = new RangeStatsMinMax();
+    statsTimeline = new RangeStats();
+    TimelineHelper helper(&modelCall);
 
     qmlRegisterType<BarGraph>("DataVis", 1, 0, "BarGraph");
     qmlRegisterType<TimelineGraph>("DataVis", 1, 0, "TimelineGraph");
@@ -134,7 +137,9 @@ int main(int argc, char *argv[])
     QQmlContext *ctxt = view.rootContext();
     ctxt->setContextProperty("axisCPU", axisCPU);
     ctxt->setContextProperty("axisGPU", axisGPU);
-    ctxt->setContextProperty("stats", stats);
+    ctxt->setContextProperty("statsBar", statsBar);
+    ctxt->setContextProperty("statsTimeline", statsTimeline);
+    ctxt->setContextProperty("timelineHelper", &helper);
     ctxt->setContextProperty("programs", QVariant::fromValue(dataFilterUnique));
     ctxt->setContextProperty("graphs", &graphs);
     ctxt->setContextProperty("timelinedata", timelineData);

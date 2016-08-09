@@ -13,8 +13,8 @@ ScrollView {
             x = coord.x
             y = coord.y
             parent = child
-        } while (!child.graph)
-        return child.graph
+        } while (child && !child.graph)
+        return (child ? child.graph : undefined)
     }
 
     property real headerWidthMax: 1/4 * width

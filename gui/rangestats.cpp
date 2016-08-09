@@ -2,7 +2,20 @@
 
 #include <iostream>
 void RangeStats::collect() {
-    BarGraph::range_iterator it(m_ptr, m_start, m_duration);
+    AbstractGraph::range_iterator it(m_ptr, m_start, m_duration);
+    int index = it.index();
+
+    m_numEvents = 0;
+    while (index != -1) {
+        ++m_numEvents;
+        index = ++it;
+    }
+    emit numEventsChanged();
+}
+
+
+void RangeStatsMinMax::collect() {
+    AbstractGraph::range_iterator it(m_ptr, m_start, m_duration);
     int index = it.index();
 
     m_numEvents = 0;

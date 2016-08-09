@@ -15,7 +15,9 @@ BackendProfileWindow::~BackendProfileWindow()
     delete m_axisCPU;
     delete m_graphs;
     delete m_timelineData;
-    delete m_stats;
+    delete m_statsTimeline;
+    delete m_statsBar;
+    delete m_timelineHelper;
 }
 
 void BackendProfileWindow::setup(MetricCallDataModel* model)
@@ -44,7 +46,9 @@ void BackendProfileWindow::setup(MetricCallDataModel* model)
     m_timelineData = new TimelineGraphData(std::make_shared<TextureBufferData<GLuint>>(*model->calls().nameHashData()),
                                             model->calls().nameHashNumEntries(),
                                             m_graphs->filter());
-    m_stats = new RangeStats();
+    m_statsTimeline = new RangeStats();
+    m_statsBar = new RangeStatsMinMax();
+    m_timelineHelper = new TimelineHelper(model);
 
     qmlRegisterType<BarGraph>("DataVis", 1, 0, "BarGraph");
     qmlRegisterType<TimelineGraph>("DataVis", 1, 0, "TimelineGraph");
@@ -52,7 +56,9 @@ void BackendProfileWindow::setup(MetricCallDataModel* model)
     QQmlContext *ctxt = view->rootContext();
     ctxt->setContextProperty("axisCPU", m_axisCPU);
     ctxt->setContextProperty("axisGPU", m_axisGPU);
-    ctxt->setContextProperty("stats", m_stats);
+    ctxt->setContextProperty("statsBar", m_statsBar);
+    ctxt->setContextProperty("statsTimeline", m_statsTimeline);
+    ctxt->setContextProperty("timelineHelper", m_timelineHelper);
     ctxt->setContextProperty("programs", QVariant::fromValue(m_dataFilterUnique));
     ctxt->setContextProperty("graphs", m_graphs);
     ctxt->setContextProperty("timelinedata", m_timelineData);

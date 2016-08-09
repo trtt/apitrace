@@ -28,6 +28,8 @@ private:
     TimelineAxis* m_axisGPU;
     MetricGraphs* m_graphs;
     TimelineGraphData* m_timelineData;
-    RangeStats* m_stats;
+    RangeStats* m_statsTimeline;
+    RangeStatsMinMax* m_statsBar;
+    TimelineHelper* m_timelineHelper;
     QStringList m_dataFilterUnique;
 };
