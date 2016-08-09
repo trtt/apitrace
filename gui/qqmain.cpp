@@ -143,9 +143,11 @@ int main(int argc, char *argv[])
     ctxt->setContextProperty("programs", QVariant::fromValue(dataFilterUnique));
     ctxt->setContextProperty("graphs", &graphs);
     ctxt->setContextProperty("timelinedata", timelineData);
-    QSurfaceFormat format(view.format());
-    format.setVersion(3,1);
-    view.setFormat(format);
+    if (view.format().version() < qMakePair(3, 1)) {
+        QSurfaceFormat format(view.format());
+        format.setVersion(3,1);
+        view.setFormat(format);
+    }
     view.setResizeMode(QQuickWidget::SizeRootObjectToView);
     view.setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     view.setSource(QUrl("../gui/main.qml"));

@@ -62,9 +62,11 @@ void BackendProfileWindow::setup(MetricCallDataModel* model)
     ctxt->setContextProperty("programs", QVariant::fromValue(m_dataFilterUnique));
     ctxt->setContextProperty("graphs", m_graphs);
     ctxt->setContextProperty("timelinedata", m_timelineData);
-    QSurfaceFormat format(view->format());
-    format.setVersion(3,1);
-    view->setFormat(format);
+    if (view->format().version() < qMakePair(3, 1)) {
+        QSurfaceFormat format(view->format());
+        format.setVersion(3,1);
+        view->setFormat(format);
+    }
     view->setResizeMode(QQuickWidget::SizeRootObjectToView);
     view->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     view->setSource(QUrl("qrc:/main.qml"));
