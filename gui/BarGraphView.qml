@@ -68,7 +68,7 @@ ScrollView {
                 }
 
 
-                height: 1 * flick.height/numGraphs + 1
+                height: Math.max(1 * flick.height/numGraphs + 1, 21)
 
                 Timer {
                     id: finetimer
@@ -236,6 +236,7 @@ ScrollView {
                     Component {
                         id: programsComponent
                         Column {
+                            height: childrenRect.height
                             Repeater {
                                 model: programs
                                 Loader {
@@ -257,11 +258,7 @@ ScrollView {
 
                         anchors.left: parent.left
                         anchors.right: parent.right
-
-                        onSourceComponentChanged: {
-                            if (item) height = item.childrenRect.height
-                            else height = 0
-                        }
+                        height: item ? item.childrenRect.height : 0
                     }
                 }
             }
