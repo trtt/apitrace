@@ -24,6 +24,8 @@ void BackendProfileWindow::setup(MetricCallDataModel* model)
 {
     if (m_setup) return;
 
+    tabWidget->setTabEnabled(0, false);
+
     callTableView->setModel(model);
 
     m_axisCPU = new TimelineAxis(std::make_shared<TextureBufferData<GLuint>>(

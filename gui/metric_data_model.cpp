@@ -47,7 +47,7 @@ QVariant MetricCallDataModel::headerData(int section, Qt::Orientation orientatio
     if (orientation == Qt::Horizontal && role == Qt::DisplayRole) {
         switch(section) {
         case COLUMN_ID:
-            return "Id";
+            return "Call ID";
         case COLUMN_PROGRAM:
             return "Program";
         case COLUMN_FRAME:
