@@ -71,7 +71,7 @@ public:
                  const std::shared_ptr<TextureBufferData<GLfloat>>& xW)
         : xH(xH), xL(xL), xW(xW), m_firstEvent(0), m_lastEvent(xH->data.size()-1)
     {
-        m_startTime = (((uint64_t)xH->data[0] << 32) + xL->data[0] );
+        m_startTime = 0;
         m_endTime = (((uint64_t)xH->data[m_lastEvent] << 32) + xL->data[m_lastEvent]);
         m_dispStartTime = m_startTime;
         m_dispEndTime = m_endTime;

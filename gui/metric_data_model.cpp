@@ -20,10 +20,8 @@ void DrawcallStorage::addDrawcall(unsigned no, unsigned program, unsigned frame,
 }
 
 void DrawcallStorage::addTimestamp(qlonglong time, TimestampType type) {
-    static qlonglong first;
-    if (!first && type == TimestampCPU) first = time;
-    s_timestampH[type].push_back((time - first) >> 32); // GPU Start (32 bit high)
-    s_timestampL[type].push_back(time - first); // GPU Start (32 bit low)
+    s_timestampH[type].push_back(time >> 32); // timestamp (32 bit high)
+    s_timestampL[type].push_back(time); // timestamp (32 bit low)
 }
 
 qlonglong DrawcallStorage::getTimestamp(unsigned index, TimestampType type) const {
