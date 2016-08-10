@@ -16,7 +16,7 @@ void DrawcallStorage::addDrawcall(unsigned no, unsigned program, unsigned frame,
     s_no.push_back(no);
     s_program.push_back(program);
     s_frame.push_back(frame);
-    nameHash.push_back(nameTable.getId(name.toStdString()));
+    nameHash.push_back(nameTable.getId(name.toLatin1().data()));
 }
 
 void DrawcallStorage::addTimestamp(qlonglong time, TimestampType type) {

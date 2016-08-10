@@ -205,7 +205,6 @@ ScrollView {
 
             Repeater {
                 model: axesModel
-                onItemAdded: headerWidth = Math.max(item.mainGraph.header.implWidth, headerWidth)
 
                 Column {
                     id: mainColumn

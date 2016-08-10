@@ -138,6 +138,7 @@ AbstractGraph::range_iterator::range_iterator(AbstractGraph* bg, uint64_t begin,
                                ptr->m_axis->xH->data, ptr->m_axis->xL->data,
                                1, begin) - 1;
     operator++();
+	curElement = std::max(curElement, 0);
     if ( ((uint64_t)ptr->m_axis->xH->data[curElement] << 32) \
          + ptr->m_axis->xL->data[curElement] < begin) curElement = -1;
 }
@@ -145,6 +146,10 @@ AbstractGraph::range_iterator::range_iterator(AbstractGraph* bg, uint64_t begin,
 int AbstractGraph::range_iterator::operator++() {
     if (curElement == -1) return -1;
     do {
+		if (curElement == ptr->m_axis->m_dispLastEvent) {
+			curElement = -1;
+			break;
+		}
         ++curElement;
         uint64_t elementEnd = ((uint64_t)ptr->m_axis->xH->data[curElement] << 32) \
                               + ptr->m_axis->xL->data[curElement] \
