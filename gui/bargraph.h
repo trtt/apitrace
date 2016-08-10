@@ -1,5 +1,7 @@
 #include "abstractgraph.h"
 
+#include <QRunnable>
+
 #pragma once
 
 class BarGraphData : public AbstractGraphData
@@ -21,6 +23,28 @@ private:
     std::shared_ptr<TextureBufferData<GLfloat>> m_dataY;
 };
 
+
+class BarGraph;
+class MaxYUpdater : public QObject, public QRunnable
+{
+    Q_OBJECT
+
+public:
+    MaxYUpdater(BarGraph& bg, int first, int last, unsigned numElements)
+        : m_graph(bg), m_firstEvent(first), m_lastEvent(last),
+          m_numElements(numElements) {}
+
+public:
+    void run();
+
+signals:
+    void maxYObtained(float maxY);
+
+private:
+    BarGraph& m_graph;
+    int m_firstEvent, m_lastEvent;
+    unsigned m_numElements;
+};
 
 
 class BarGraph;
@@ -57,6 +81,7 @@ class BarGraph : public AbstractGraph
 
 public:
     BarGraph(QQuickItem *parent = 0);
+    ~BarGraph();
 
     float maxY() const { return m_maxY; }
     void setMaxY(float maxy) { m_maxY = maxy; emit maxYChanged(); }
@@ -71,6 +96,7 @@ signals:
 public slots:
     void forceupdate();
     void updateMaxY();
+    void initAxisConnections() const;
 
 private:
     bool m_needsUpdatingMaxY = false;

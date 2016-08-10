@@ -1,6 +1,7 @@
 #include "bargraph.h"
 
 #include <QQuickWindow>
+#include <QThreadPool>
 
 #include <cmath>
 
@@ -25,9 +26,49 @@ float BarGraphData::eventYValue(int id) const {
 }
 
 
+void MaxYUpdater::run() {
+    const std::vector<GLfloat>& v = static_cast<BarGraphData*>(m_graph.data())->dataY()->data;
+
+    double stride = (m_lastEvent - m_firstEvent) / (double)(m_numElements-1);
+    if (m_firstEvent == m_lastEvent) {
+        emit maxYObtained((!m_graph.isEventFiltered(m_lastEvent)) ? v[m_lastEvent] : 0);
+    } else if (m_firstEvent > m_lastEvent) {
+        emit maxYObtained(0);
+    } else {
+
+        GLfloat largest = (!m_graph.isEventFiltered(m_firstEvent)) ? v[m_firstEvent] : 0;
+        for (uint i=1; i < m_numElements; ++i) {
+            int index = round(m_firstEvent + i * stride);
+            if (m_graph.isEventFiltered(index)) continue;
+            float tested = v[index];
+            if (largest < tested) {
+                largest = tested;
+            }
+        }
+        emit maxYObtained(largest);
+    }
+}
+
+
 BarGraph::BarGraph(QQuickItem *parent)
-    : m_maxY(1.f)
+    : AbstractGraph(parent), m_maxY(1.f)
 {
+    connect(this, &BarGraph::maxYChanged, this, &AbstractGraph::forceupdate);
+    connect(this, &AbstractGraph::numElementsChanged, this, &BarGraph::updateMaxY);
+    connect(this, &AbstractGraph::axisChanged, this, &BarGraph::initAxisConnections);
+    auto numThreads = QThreadPool::globalInstance()->maxThreadCount();
+    if (numThreads != QThread::idealThreadCount() - 2) {
+        QThreadPool::globalInstance()->setMaxThreadCount(QThread::idealThreadCount() - 2);
+    }
+}
+
+BarGraph::~BarGraph() {
+    QThreadPool::globalInstance()->waitForDone();
+}
+
+void BarGraph::initAxisConnections() const {
+    connect(m_axis, &TimelineAxis::dispStartTimeChanged, this, &BarGraph::updateMaxY);
+    connect(m_axis, &TimelineAxis::dispEndTimeChanged, this, &BarGraph::updateMaxY);
 }
 
 QQuickFramebufferObject::Renderer* BarGraph::createRenderer() const {
@@ -35,7 +76,6 @@ QQuickFramebufferObject::Renderer* BarGraph::createRenderer() const {
 }
 
 void BarGraph::forceupdate() {
-    updateMaxY();
     AbstractGraph::forceupdate();
 }
 
@@ -69,10 +109,10 @@ void BarGraph::updateMaxY() {
         m_needsUpdatingMaxY = true;
         return;
     }
-    float maxY = maxVisibleEvent();
-    if (std::abs(maxY) < std::numeric_limits<float>::epsilon())
-        maxY = 1.;
-    setMaxY(maxY);
+    MaxYUpdater* task = new MaxYUpdater(*this, m_axis->m_dispFirstEvent,
+                        m_axis->m_dispLastEvent, m_numElements);
+    connect(task, &MaxYUpdater::maxYObtained, this, &BarGraph::setMaxY);
+    QThreadPool::globalInstance()->start(task);
 }
 
 
