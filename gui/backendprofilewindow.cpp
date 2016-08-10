@@ -14,6 +14,7 @@ BackendProfileWindow::~BackendProfileWindow()
 {
 	if (!m_setup) return;
     delete m_axisCPU;
+    delete m_axisGPU;
     delete m_graphs;
     delete m_timelineData;
     delete m_statsTimeline;

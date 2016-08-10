@@ -116,9 +116,11 @@ void AbstractGraph::forceupdate() {
 }
 
 void AbstractGraph::setAxis(TimelineAxis* axis) {
-    m_axis = axis;
-    connect(m_axis, &TimelineAxis::dispStartTimeChanged, this, &AbstractGraph::forceupdate);
-    connect(m_axis, &TimelineAxis::dispEndTimeChanged, this, &AbstractGraph::forceupdate);
+    if (axis) {
+        m_axis = axis;
+        connect(m_axis, &TimelineAxis::dispStartTimeChanged, this, &AbstractGraph::forceupdate);
+        connect(m_axis, &TimelineAxis::dispEndTimeChanged, this, &AbstractGraph::forceupdate);
+    }
 }
 
 bool AbstractGraph::isEventFiltered(int id) const {

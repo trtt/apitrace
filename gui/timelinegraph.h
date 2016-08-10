@@ -55,7 +55,8 @@ class TimelineGraph : public AbstractGraph
     friend class TimelineGraphRenderer;
 
 public:
-    TimelineGraph(QQuickItem *parent = 0) {}
+    TimelineGraph(QQuickItem *parent = 0) : AbstractGraph(parent) {}
+    ~TimelineGraph() {}
 
     QQuickFramebufferObject::Renderer* createRenderer() const;
 };
