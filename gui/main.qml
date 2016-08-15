@@ -255,6 +255,9 @@ MouseArea {
             if (scroll.position < 0) scroll.position = 0
             scroll.size -= scroll.size*wheel.angleDelta.y/120/16
             if (scroll.size > 1 - scroll.position) scroll.size = 1 - scroll.position
+        } else if (wheel.modifiers & Qt.ShiftModifier) {
+            scroll.position += scroll.size*wheel.angleDelta.y/120/16
+            scroll.position = Math.min(Math.max(scroll.position, 0), 1-scroll.size)
         } else {
             wheel.accepted = false
         }
@@ -320,6 +323,40 @@ Item {
         radius: height/2 - 1
         color: "gray"
         opacity: 0.7
+    }
+    MouseArea {
+        anchors.fill: parent
+
+        onPressed: {
+            scroll.position = Math.min(Math.max(mouse.x / (parent.width-2) - scroll.size / 2,
+                0), 1-scroll.size)
+        }
+    }
+    MouseArea {
+        property real oldX
+        property bool dragged
+        hoverEnabled: true
+        anchors.fill: handle
+
+        onPressed: {
+            var x = mapToItem(parent, mouse.x, 0).x
+            oldX = x
+            dragged = true
+        }
+
+        onPositionChanged: {
+            if (dragged) {
+                var x = mapToItem(parent, mouse.x, 0).x
+                scroll.position += (x - oldX) / (parent.width-2)
+                if (scroll.position < 0) scroll.position = 0
+                if (scroll.position + scroll.size > 1) scroll.position = 1 - scroll.size
+                oldX = x
+            }
+        }
+
+        onReleased: {
+            dragged = false;
+        }
     }
 }
 
