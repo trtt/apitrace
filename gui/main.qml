@@ -58,6 +58,102 @@ TimelineAxis {
     endTime: axisCPU.dispEndTime * 1e-9
 }
 
+MouseArea {
+    property bool direction: true
+
+    anchors.top: axis.top
+    height: axis.panelHeight
+    anchors.left: axis.left
+    anchors.right: axis.right
+
+    hoverEnabled: true
+
+    onPressed: {
+        rangeselection.start = axisCPU.dispStartTime + mouse.x * (axisCPU.dispEndTime - axisCPU.dispStartTime) / axis.width
+        rangeselection.end = rangeselection.start
+    }
+
+    onPositionChanged: {
+        if (pressed) {
+            var end = axisCPU.dispStartTime + mouse.x * (axisCPU.dispEndTime - axisCPU.dispStartTime) / axis.width
+
+            if ((end > rangeselection.end && !direction) ||
+                (end < rangeselection.start && direction))
+            {
+                rangeselection.end = rangeselection.start
+                direction = !direction
+            }
+
+            if (direction) rangeselection.end = end
+            else rangeselection.start = end
+        }
+    }
+}
+
+Rectangle {
+    property double start: 0
+    property double end: 0
+    id: rangeselection
+
+    anchors.top: sep.bottom
+    anchors.bottom: scroll.top
+    x: axis.x + axis.width * (start - axisCPU.dispStartTime) / (axisCPU.dispEndTime - axisCPU.dispStartTime)
+    width: axis.width * (end - start) / (axisCPU.dispEndTime - axisCPU.dispStartTime)
+
+    color: "#300000FF"
+    visible: false
+    z: 1
+
+    onEndChanged: {
+        if (end == start) visible = false
+        else visible = true
+    }
+
+    Rectangle {
+        anchors.left: parent.left
+        width: 1
+        anchors.top: parent.top
+        anchors.topMargin: -15
+        anchors.bottom: parent.bottom
+
+        color: "navy"
+    }
+
+    Rectangle {
+        anchors.right: parent.right
+        width: 1
+        anchors.top: parent.top
+        anchors.topMargin: -15
+        anchors.bottom: parent.bottom
+
+        color: "navy"
+    }
+
+    MouseArea {
+        anchors.fill: parent
+
+        onPressed: {
+            if (timer.running) {
+                timer.stop()
+                zoomIn()
+            } else {
+                timer.restart()
+                mouse.accepted = false
+            }
+        }
+
+        function zoomIn() {
+            scroll.position = rangeselection.start / (axisGPU.endTime-axisCPU.startTime)
+            scroll.size = (rangeselection.end - rangeselection.start) / (axisGPU.endTime-axisCPU.startTime)
+        }
+
+        Timer {
+            id: timer
+            interval: 200
+        }
+    }
+}
+
 Rectangle {
     id: sep
 
