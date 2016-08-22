@@ -1,7 +1,9 @@
 #include "backendprofilewindow.h"
+#include "groupproxymodel.h"
 
 #include <QQuickWidget>
 #include <QQmlContext>
+#include <QSortFilterProxyModel>
 
 
 BackendProfileWindow::BackendProfileWindow(QWidget *parent)
@@ -28,7 +30,22 @@ void BackendProfileWindow::setup(MetricCallDataModel* model)
 
     tabWidget->setTabEnabled(0, false);
 
-    callTableView->setModel(model);
+    auto proxy = new GroupProxyModel(model);
+    proxy->setSourceModel(model);
+    auto sortProxy = new QSortFilterProxyModel(proxy);
+    sortProxy->setSourceModel(proxy);
+    callTreeView->setModel(sortProxy);
+    callTreeView->sortByColumn(0, Qt::AscendingOrder);
+
+    connect(call_radio, &QRadioButton::toggled, [=](bool b) {
+            if (b) proxy->setGroupBy(GroupProxyModel::GROUP_BY_CALL);
+            });
+    connect(frame_radio, &QRadioButton::toggled, [=](bool b) {
+            if (b) proxy->setGroupBy(GroupProxyModel::GROUP_BY_FRAME);
+            });
+    connect(program_radio, &QRadioButton::toggled, [=](bool b) {
+            if (b) proxy->setGroupBy(GroupProxyModel::GROUP_BY_PROGRAM);
+            });
 
     m_axisCPU = new TimelineAxis(std::make_shared<TextureBufferData<GLuint>>(
                 *model->calls().timestampHData(DrawcallStorage::TimestampCPU)),

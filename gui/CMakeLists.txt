@@ -71,6 +71,7 @@ set(qapitrace_profiling_SRCS
    rangestats.cpp
    metric_graphs.cpp
    backendprofilewindow.cpp
+   groupproxymodel.cpp
 )
 
 set(qqapitrace_SRCS

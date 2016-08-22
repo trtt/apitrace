@@ -131,7 +131,7 @@
             <item>
              <widget class="QGroupBox" name="groupBox">
               <property name="enabled">
-               <bool>false</bool>
+               <bool>true</bool>
               </property>
               <property name="sizePolicy">
                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
@@ -171,21 +171,27 @@
                 <number>1</number>
                </property>
                <item>
-                <widget class="QRadioButton" name="radioButton">
+                <widget class="QRadioButton" name="program_radio">
                  <property name="text">
                   <string>Program</string>
                  </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QRadioButton" name="radioButton_2">
-                 <property name="text">
-                  <string>Frame</string>
+                 <property name="checked">
+                  <bool>false</bool>
                  </property>
                 </widget>
                </item>
                <item>
-                <widget class="QRadioButton" name="radioButton_3">
+                <widget class="QRadioButton" name="frame_radio">
+                 <property name="text">
+                  <string>Frame</string>
+                 </property>
+                 <property name="checked">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QRadioButton" name="call_radio">
                  <property name="text">
                   <string>Call</string>
                  </property>
@@ -223,7 +229,14 @@
            </layout>
           </item>
           <item>
-           <widget class="QTableView" name="callTableView"/>
+           <widget class="QTreeView" name="callTreeView">
+            <property name="itemsExpandable">
+             <bool>true</bool>
+            </property>
+            <property name="sortingEnabled">
+             <bool>true</bool>
+            </property>
+           </widget>
           </item>
          </layout>
         </widget>
