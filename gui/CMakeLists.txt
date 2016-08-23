@@ -63,15 +63,15 @@ set(qapitrace_SRCS
  )
 
 set(qapitrace_profiling_SRCS
-   metric_selection_model.cpp
-   metric_data_model.cpp
-   abstractgraph.cpp
-   bargraph.cpp
-   timelinegraph.cpp
-   rangestats.cpp
-   metric_graphs.cpp
-   backendprofilewindow.cpp
-   groupproxymodel.cpp
+   profiling/metric_selection_model.cpp
+   profiling/metric_data_model.cpp
+   profiling/abstractgraph.cpp
+   profiling/bargraph.cpp
+   profiling/timelinegraph.cpp
+   profiling/rangestats.cpp
+   profiling/metric_graphs.cpp
+   profiling/backendprofilewindow.cpp
+   profiling/groupproxymodel.cpp
 )
 
 set(qqapitrace_SRCS

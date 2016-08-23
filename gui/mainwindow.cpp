@@ -26,7 +26,7 @@
 #include "trace_profiler.hpp"
 #include "image.hpp"
 #include "leaktracethread.h"
-#include "backendprofilewindow.h"
+#include "profiling/backendprofilewindow.h"
 
 #include <QAction>
 #include <QApplication>

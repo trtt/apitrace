@@ -14,6 +14,9 @@
 
 #include "qubjson.h"
 
+#include "profiling/metric_selection_model.hpp"
+#include "profiling/metric_data_model.hpp"
+
 
 /**
  * Wrapper around a QProcess which enforces IO to block .

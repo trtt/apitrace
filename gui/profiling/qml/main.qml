@@ -109,6 +109,11 @@ Rectangle {
         else visible = true
     }
 
+    onStartChanged: {
+        if (end == start) visible = false
+        else visible = true
+    }
+
     Rectangle {
         anchors.left: parent.left
         width: 1
@@ -176,9 +181,10 @@ SplitView {
     TimelineGraphView {
         id: timelineView
 
-        height: root.height/3
+        height: root.height/8
         onHeightChanged: setCoarsed()
 
+        numGraphs: height / (root.height/16)
         headerWidth: barview.headerWidth
         coarsed: root.coarsed
         coarse: coarse.value
@@ -191,6 +197,7 @@ SplitView {
         Layout.fillHeight: true
         onHeightChanged: setCoarsed()
 
+        numGraphs: 8
         graphAxis: axisGPU
         coarsed: root.coarsed
         coarse: coarse.value

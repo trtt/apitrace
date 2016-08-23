@@ -132,7 +132,7 @@ void BackendProfileWindow::setup(MetricCallDataModel* callModel,
     view->setFormat(format);
     view->setResizeMode(QQuickWidget::SizeRootObjectToView);
     view->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    view->setSource(QUrl("qrc:/main.qml"));
+    view->setSource(QUrl("qrc:/profiling/qml/main.qml"));
     graphsLayoutCall->addWidget(view);
     view->show();
 

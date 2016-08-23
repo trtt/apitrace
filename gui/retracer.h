@@ -3,8 +3,8 @@
 #include "trace_api.hpp"
 #include "apitrace.h"
 #include "apitracecall.h"
-#include "metric_selection_model.hpp"
-#include "metric_data_model.hpp"
+#include "profiling/metric_selection_model.hpp"
+#include "profiling/metric_data_model.hpp"
 
 #include <QThread>
 #include <QProcess>

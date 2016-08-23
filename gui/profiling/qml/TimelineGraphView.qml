@@ -14,17 +14,30 @@ ScrollView {
             y = coord.y
             parent = child
         } while (child && !child.graph)
-        return (child ? child.graph : undefined)
+        return (child? child.graph : undefined)
     }
 
     property real headerWidthMax: 1/4 * width
     property real headerWidth: 0
     property int numGraphs: 10
-    property var graphAxis
+    property var graphData: timelinedata
     property var coarsed
     property var coarse
     property var fine
     property var flickable: flick
+    property var axes: [axisCPU, axisGPU]
+    property var axesModel:
+        ListModel {
+            ListElement {
+                caption: "CPU Timeline"
+                axisIndex: 0
+            }
+            ListElement {
+                caption: "GPU Timeline"
+                axisIndex: 1
+            }
+        }
+
 
     verticalScrollBarPolicy: Qt.ScrollBarAlwaysOn
 
@@ -68,7 +81,7 @@ ScrollView {
                 }
 
 
-                height: Math.max(1 * flick.height/numGraphs + 1, 21)
+                height: Math.max(1 * flick.height/numGraphs + 1, 11)
 
                 Timer {
                     id: finetimer
@@ -89,7 +102,7 @@ ScrollView {
                     anchors.bottom: parent.bottom
 
                 }
-                BarGraph {
+                TimelineGraph {
                     id: graphElement
                     anchors.left: headerLoader.right
                     anchors.right: parent.right
@@ -101,7 +114,7 @@ ScrollView {
                     filtered: useFullHeader ? false : true
                     filter: useFullHeader ? 0 : graphCaption
                     axis: graphAxis
-                    data: graphData
+                    data: timelinedata
                     numElements: Math.max(width * (coarsed ? coarse : (localCoarsed ? coarse : fine)), 0)
                 }
                 Rectangle {
@@ -113,16 +126,18 @@ ScrollView {
 
                 Component {
                     id: fullHeaderComponent
-                    Item {
+                    Rectangle {
                         id: header
                         property real implWidth: caption.implicitWidth +
-                        expandSwitch.implicitWidth + vaxis.implicitWidth*4
+                        expandSwitch.implicitWidth
                         property alias expand: expandSwitch.checked
+
+                        color: "white"
 
                         Text {
                             id: caption
                             anchors.left: parent.left
-                            width: (parent.width - expandSwitch.implicitWidth)/2
+                            width: parent.width - expandSwitch.implicitWidth
                             anchors.verticalCenter: parent.verticalCenter
 
                             clip: true
@@ -147,8 +162,8 @@ ScrollView {
                                 id: arrow
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 anchors.verticalCenter: parent.verticalCenter
-                                source: "resources/arrow.png"
-                                rotation: expandSwitch.checked ? 180 : 0
+                                source: "../resources/arrow.png"
+                                rotation: expandSwitch.checked ? 180 : 90
                                 transformOrigin: Item.Center
                             }
 
@@ -159,17 +174,6 @@ ScrollView {
                                 onExited: parent.hovered = false
                                 onClicked: parent.checked = !parent.checked
                             }
-                        }
-                        VerticalAxis {
-                            id: vaxis
-
-                            anchors.right: parent.right
-                            width: (parent.width - expandSwitch.implicitWidth)/2
-                            anchors.top: parent.top
-                            anchors.bottom: parent.bottom
-
-                            clip: true
-                            maxY: graphElement.maxY
                         }
                     }
                 }
@@ -183,20 +187,11 @@ ScrollView {
 
                         Text {
                             anchors.left: parent.left
-                            width: parent.width/2
+                            width: parent.width
                             anchors.verticalCenter: parent.verticalCenter
 
                             clip: true
-                            text: " (" + graphCaption + ")"
-                        }
-                        VerticalAxis {
-                            anchors.right: parent.right
-                            width: parent.width/2
-                            anchors.top: parent.top
-                            anchors.bottom: parent.bottom
-
-                            clip: true
-                            maxY: graphElement.maxY
+                            text: "pipeline (" + graphCaption + ")"
                         }
                     }
                 }
@@ -211,8 +206,7 @@ ScrollView {
             anchors.right: parent.right
 
             Repeater {
-                model: graphs
-                onItemAdded: headerWidth = Math.max(item.mainGraph.header.implWidth, headerWidth)
+                model: axesModel
 
                 Column {
                     id: mainColumn
@@ -224,8 +218,8 @@ ScrollView {
                     Loader {
                         id: componentLoader
                         sourceComponent: columnComponent
-                        property var graphData: bgdata
-                        property var graphCaption: bgcaption
+                        property var graphCaption: caption
+                        property var graphAxis: axes[axisIndex]
                         property var color: index
                         property bool useFullHeader: true
                         property alias trackingColumn: mainColumn
@@ -241,8 +235,8 @@ ScrollView {
                                 model: programs
                                 Loader {
                                     sourceComponent: columnComponent
-                                    property var graphData: bgdata
                                     property var graphCaption: modelData
+                                    property var graphAxis: axes[axisIndex]
                                     property var color: index
                                     property bool useFullHeader: false
                                     property var trackingColumn: mainColumn
