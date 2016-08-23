@@ -44,6 +44,34 @@ private:
 };
 
 
+class FrameStorage
+{
+public:
+    enum TimestampType {
+        TimestampCPU,
+        TimestampGPU,
+        TimestampSize
+    };
+
+    FrameStorage() {}
+
+    unsigned size() const { return m_numFrames; }
+
+    void addFrame() { m_numFrames++; }
+    void addTimestamp(qlonglong time, TimestampType type);
+    qlonglong getTimestamp(unsigned index, TimestampType type) const;
+
+    std::vector<unsigned>* timestampHData(TimestampType t) { return &s_timestampH[t]; }
+    std::vector<unsigned>* timestampLData(TimestampType t) { return &s_timestampL[t]; }
+
+private:
+    unsigned m_numFrames = 0;
+    // 64 bit timestamp's 32 bit High and Low for shaders
+    std::vector<unsigned> s_timestampH[TimestampSize];
+    std::vector<unsigned> s_timestampL[TimestampSize];
+};
+
+
 class DrawcallStorage
 {
 public:
@@ -113,6 +141,44 @@ private:
     std::vector<unsigned> s_timestampL[TimestampSize];
 };
 
+
+class MetricFrameDataModel : public QAbstractTableModel
+{
+    Q_OBJECT
+
+public:
+    explicit MetricFrameDataModel(QObject *parent = 0)
+        : init(false), durationCPUIndexInMetrics(0), durationGPUIndexInMetrics(0) {}
+
+    QVariant data(const QModelIndex &index, int role) const Q_DECL_OVERRIDE;
+    QVariant headerData(int section, Qt::Orientation orientation,
+                        int role = Qt::DisplayRole) const Q_DECL_OVERRIDE;
+    int rowCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE;
+    int columnCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE;
+
+    void addMetricsData(QTextStream &stream, const MetricOutputLookup &lookup);
+
+    const std::vector<float>* durationDataCPU() const;
+    const std::vector<float>* durationDataGPU() const;
+
+    FrameStorage& frames() { return m_frames; }
+    std::vector<MetricStorage>& metrics() { return m_metrics; }
+    bool hasData() const { return m_frames.size() > 0; }
+
+private:
+    enum PreColumns {
+        COLUMN_ID = 0,
+        COLUMN_METRICS_BEGIN
+    };
+
+    std::vector<MetricStorage> m_metrics;
+    FrameStorage m_frames;
+    bool init;
+    unsigned durationCPUIndexInMetrics;
+    unsigned durationGPUIndexInMetrics;
+};
+
+
 class MetricCallDataModel : public QAbstractTableModel
 {
     Q_OBJECT
@@ -134,6 +200,7 @@ public:
 
     DrawcallStorage& calls() { return m_calls; }
     std::vector<MetricStorage>& metrics() { return m_metrics; }
+    bool hasData() const { return m_calls.size() > 0; }
 
 private:
     enum PreColumns {

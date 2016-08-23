@@ -34,6 +34,7 @@ class VertexDataInterpreter;
 class BackendProfileWindow;
 class MetricSelectionModel;
 class MetricCallDataModel;
+class MetricFrameDataModel;
 
 namespace trace { struct Profile; }
 
@@ -63,7 +64,8 @@ private slots:
     void replayStart();
     void replayProfile();
     void replayProfileWithBackends();
-    void replayProfileWithBackendsFound(MetricCallDataModel* model);
+    void replayProfileWithBackendsFound(MetricCallDataModel* callModel,
+                                        MetricFrameDataModel* frameModel);
     void replayStop();
     void replayFinished(const QString &message);
     void replayStateFound(ApiTraceState *state);

@@ -39,19 +39,20 @@ void BackendProfileWindow::restoreCallTableSelection(bool grouped) {
         callTreeView->scrollTo(m_callTableSelection.indexes()[0]);
 }
 
-void BackendProfileWindow::setup(MetricCallDataModel* model)
+void BackendProfileWindow::setup(MetricCallDataModel* callModel,
+                                 MetricFrameDataModel* frameModel)
 {
     if (m_setup) return;
 
     tabWidget->setTabEnabled(0, false);
 
     // Proxy model for grouping
-    m_callTableGroupProxy = new GroupProxyModel(model);
-    m_callTableGroupProxy->setSourceModel(model);
+    m_callTableGroupProxy = new GroupProxyModel(callModel);
+    m_callTableGroupProxy->setSourceModel(callModel);
     // Proxy model for sorting
     // Initially disable grouping
     m_callTableSortProxy = new QSortFilterProxyModel(m_callTableGroupProxy);
-    m_callTableSortProxy->setSourceModel(model);
+    m_callTableSortProxy->setSourceModel(callModel);
     callTreeView->setModel(m_callTableSortProxy);
     callTreeView->sortByColumn(0, Qt::AscendingOrder);
 
@@ -82,7 +83,7 @@ void BackendProfileWindow::setup(MetricCallDataModel* model)
             });
     connect(none_radio, &QRadioButton::toggled, [=](bool b) {
                 if (b) {
-                    m_callTableSortProxy->setSourceModel(model);
+                    m_callTableSortProxy->setSourceModel(callModel);
                     restoreCallTableSelection(false);
                 } else {
                     saveCallTableSelection(false);
@@ -91,28 +92,28 @@ void BackendProfileWindow::setup(MetricCallDataModel* model)
             });
 
     m_axisCPU = new TimelineAxis(std::make_shared<TextureBufferData<GLuint>>(
-                *model->calls().timestampHData(DrawcallStorage::TimestampCPU)),
+                *callModel->calls().timestampHData(DrawcallStorage::TimestampCPU)),
             std::make_shared<TextureBufferData<GLuint>>(
-                *model->calls().timestampLData(DrawcallStorage::TimestampCPU)),
-            std::make_shared<TextureBufferData<GLfloat>>(*model->durationDataCPU()));
+                *callModel->calls().timestampLData(DrawcallStorage::TimestampCPU)),
+            std::make_shared<TextureBufferData<GLfloat>>(*callModel->durationDataCPU()));
     m_axisGPU = new TimelineAxis(std::make_shared<TextureBufferData<GLuint>>(
-                *model->calls().timestampHData(DrawcallStorage::TimestampGPU)),
+                *callModel->calls().timestampHData(DrawcallStorage::TimestampGPU)),
             std::make_shared<TextureBufferData<GLuint>>(
-                *model->calls().timestampLData(DrawcallStorage::TimestampGPU)),
-            std::make_shared<TextureBufferData<GLfloat>>(*model->durationDataGPU()));
+                *callModel->calls().timestampLData(DrawcallStorage::TimestampGPU)),
+            std::make_shared<TextureBufferData<GLfloat>>(*callModel->durationDataGPU()));
 
-    for (auto& i : *model->calls().programData()) {
+    for (auto& i : *callModel->calls().programData()) {
         auto str = QString::number(i);
         if (!m_dataFilterUnique.contains(str)) m_dataFilterUnique.append(str);
     }
 
-    m_graphs = new MetricGraphs(*model);
-    m_timelineData = new TimelineGraphData(std::make_shared<TextureBufferData<GLuint>>(*model->calls().nameHashData()),
-                                            model->calls().nameHashNumEntries(),
+    m_graphs = new MetricGraphs(*callModel);
+    m_timelineData = new TimelineGraphData(std::make_shared<TextureBufferData<GLuint>>(*callModel->calls().nameHashData()),
+                                            callModel->calls().nameHashNumEntries(),
                                             m_graphs->filter());
     m_statsTimeline = new RangeStats();
     m_statsBar = new RangeStatsMinMax();
-    m_timelineHelper = new TimelineHelper(model);
+    m_timelineHelper = new TimelineHelper(callModel);
 
     qmlRegisterType<BarGraph>("DataVis", 1, 0, "BarGraph");
     qmlRegisterType<TimelineGraph>("DataVis", 1, 0, "TimelineGraph");

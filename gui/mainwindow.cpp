@@ -397,6 +397,23 @@ void MainWindow::metricSelectionDialog()
     Ui_MetricSelection dlgUi;
     dlgUi.setupUi(&dlg);
 
+    // drawcalls/frames checkboxes
+    dlgUi.check_frames->setEnabled(false); // !FIX: remove when frames are ready
+    dlgUi.check_drawcalls->setEnabled(false); // !FIX: remove when frames are ready
+    if (model->isProfilingCalls()) dlgUi.check_drawcalls->setChecked(true);
+    if (model->isProfilingFrames()) dlgUi.check_frames->setChecked(true);
+    connect(dlgUi.check_drawcalls, &QAbstractButton::toggled, [model](bool b) {
+                if (b) model->enableCalls();
+                else model->disableCalls();
+            });
+    connect(dlgUi.check_frames, &QAbstractButton::toggled, [model](bool b) {
+                if (b) model->enableFrames();
+                else model->disableFrames();
+            });
+    if (model->callsProfiled()) dlgUi.check_drawcalls->setEnabled(false);
+    if (model->framesProfiled()) dlgUi.check_frames->setEnabled(false);
+    dlgUi.check_drawcalls->setChecked(true);
+
     dlgUi.treeView->setModel(model);
     dlgUi.treeView->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
 
@@ -1349,8 +1366,10 @@ void MainWindow::initRetraceConnections()
             this, SLOT(replayProfileFound(trace::Profile*)));
     connect(m_retracer, SIGNAL(foundMetrics()),
             this, SLOT(replayProfileWithBackends()));
-    connect(m_retracer, SIGNAL(foundBackendProfile(MetricCallDataModel*)),
-            this, SLOT(replayProfileWithBackendsFound(MetricCallDataModel*)));
+    connect(m_retracer, SIGNAL(foundBackendProfile(MetricCallDataModel*,
+                                                   MetricFrameDataModel*)),
+            this, SLOT(replayProfileWithBackendsFound(MetricCallDataModel*,
+                                                      MetricFrameDataModel*)));
     connect(m_retracer, SIGNAL(foundThumbnails(const ImageHash&)),
             this, SLOT(replayThumbnailsFound(const ImageHash&)));
     connect(m_retracer, SIGNAL(retraceErrors(const QList<ApiTraceError>&)),
@@ -1425,10 +1444,11 @@ void MainWindow::replayProfileFound(trace::Profile *profile)
     m_profileDialog->setFocus();
 }
 
-void MainWindow::replayProfileWithBackendsFound(MetricCallDataModel* model)
+void MainWindow::replayProfileWithBackendsFound(MetricCallDataModel* callModel,
+                                                MetricFrameDataModel* frameModel)
 {
     if (!m_backendProfileWin->isSetuped()) {
-        m_backendProfileWin->setup(model);
+        m_backendProfileWin->setup(callModel, frameModel);
         connect(m_backendProfileWin->callAddMetrics, SIGNAL(clicked()),
                 this, SLOT(metricSelectionDialog()));
     }

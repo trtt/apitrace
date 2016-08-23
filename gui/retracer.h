@@ -73,7 +73,8 @@ signals:
     void foundState(ApiTraceState *state);
     void foundProfile(trace::Profile *profile);
     void foundMetrics();
-    void foundBackendProfile(MetricCallDataModel* calls);
+    void foundBackendProfile(MetricCallDataModel* calls,
+                             MetricFrameDataModel* frames);
     void foundThumbnails(const ImageHash &thumbnails);
     void error(const QString &msg);
     void retraceErrors(const QList<ApiTraceError> &errors);
@@ -101,6 +102,7 @@ private:
     MetricSelectionModel* m_backendMetrics;
     bool m_profileWithBackends;
     MetricCallDataModel m_callMetricsModel;
+    MetricFrameDataModel m_frameMetricsModel;
 
     QProcessEnvironment m_processEnvironment;
 

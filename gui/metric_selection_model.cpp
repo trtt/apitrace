@@ -152,6 +152,8 @@ void MetricSelectionModel::parseData(QIODevice &io) {
                 {
                     auto index = createIndex(group->childCount() - 1, 2, metric);
                     needed.insert(index);
+                    index = createIndex(group->childCount() - 1, 1, metric);
+                    needed.insert(index);
                 }
 
                 line = stream.readLine();
@@ -162,9 +164,42 @@ void MetricSelectionModel::parseData(QIODevice &io) {
         }
     }
 
-    for (auto& i : needed) {
-        checkItem(i, Qt::Checked);
+}
+
+void MetricSelectionModel::enableCalls() {
+    foreach (auto& i, needed) {
+        if (i.column() == 2)
+            checkItem(i, Qt::Checked);
     }
+    profilingCalls = true;
+    layoutChanged();
+}
+
+void MetricSelectionModel::disableCalls() {
+    foreach (auto& i, selected) {
+        if (i.column() == 2)
+            checkItem(i, Qt::Unchecked);
+    }
+    profilingCalls = false;
+    layoutChanged();
+}
+
+void MetricSelectionModel::enableFrames() {
+    foreach (auto& i, needed) {
+        if (i.column() == 1)
+            checkItem(i, Qt::Checked);
+    }
+    profilingFrames = true;
+    layoutChanged();
+}
+
+void MetricSelectionModel::disableFrames() {
+    foreach (auto& i, selected) {
+        if (i.column() == 1)
+            checkItem(i, Qt::Unchecked);
+    }
+    profilingFrames = false;
+    layoutChanged();
 }
 
 int MetricSelectionModel::columnCount(const QModelIndex &parent) const {
@@ -221,8 +256,7 @@ void MetricSelectionModel::checkItem(const QModelIndex & index, Qt::CheckState s
             selected.insert(index);
             childNodesSelected[parent]++;
         }
-        else if (selected.contains(index) && state == Qt::Unchecked &&
-                 !needed.contains(index))
+        else if (selected.contains(index) && state == Qt::Unchecked)
         {
             selected.remove(index);
             childNodesSelected[parent]--;
@@ -340,9 +374,10 @@ Qt::ItemFlags MetricSelectionModel::flags(const QModelIndex &index) const
         return 0;
 
     Qt::ItemFlags flags = QAbstractItemModel::flags(index) | Qt::ItemIsUserCheckable | Qt::ItemIsTristate;
-    if (profiled.contains(index)) flags ^= Qt::ItemIsEnabled;
-    if (needed.contains(index)) flags ^= Qt::ItemIsEnabled;
-    if (index.column() == 1) flags ^= Qt::ItemIsEnabled; // FIX (currently disable frames)
+    if (profiled.contains(index)) flags &= ~Qt::ItemIsEnabled;
+    if (needed.contains(index)) flags &= ~Qt::ItemIsEnabled;
+    if (!profilingCalls && index.column() == 2) flags &= ~Qt::ItemIsEnabled;
+    if (!profilingFrames && index.column() == 1) flags &= ~Qt::ItemIsEnabled;
     return flags;
 }
 
@@ -419,11 +454,12 @@ void MetricSelectionModel::generateMetricList(QString& cliOptionFrame,
         profiled.insert(p);
     }
     selected.clear();
-    needed.clear();
     toBeProfiledCalls.clear();
     toBeProfiledFrames.clear();
     cliOptionFrame = "--pframes=" + stringFromHashGenerateLookup(mFramePts, toBeProfiledFrames);
+    if (!toBeProfiledFrames.empty()) m_framesProfiled = true;
     cliOptionCall = "--pdrawcalls=" + stringFromHashGenerateLookup(mCallPts, toBeProfiledCalls);
+    if (!toBeProfiledCalls.empty()) m_callsProfiled = true;
 }
 
 const MetricOutputLookup& MetricSelectionModel::selectedForCalls() const {

@@ -565,6 +565,10 @@ void Retracer::run()
         } else if (isProfilingWithBackends()) {
             process.waitForFinished(-1);
             QTextStream stream(&process);
+            auto m_frameMetrics = m_backendMetrics->selectedForFrames();
+            if (!m_frameMetrics.empty()) {
+                m_frameMetricsModel.addMetricsData(stream, m_frameMetrics);
+            }
             auto m_callMetrics = m_backendMetrics->selectedForCalls();
             if (!m_callMetrics.empty()) {
                 m_callMetricsModel.addMetricsData(stream, m_callMetrics);
@@ -641,7 +645,7 @@ void Retracer::run()
     if (isProfilingWithBackends() &&
         !m_backendMetrics->selectedForCalls().empty())
     {
-        emit foundBackendProfile(&m_callMetricsModel);
+        emit foundBackendProfile(&m_callMetricsModel, &m_frameMetricsModel);
         m_profileWithBackends = false;
     }
 

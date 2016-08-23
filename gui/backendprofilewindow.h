@@ -19,10 +19,14 @@ class BackendProfileWindow : public QMainWindow, public Ui_BackendProfileWindow
 public:
     BackendProfileWindow(QWidget* parent = 0);
     ~BackendProfileWindow();
-    void setup(MetricCallDataModel* model);
+    void setup(MetricCallDataModel* callModel, MetricFrameDataModel* frameModel);
     bool isSetuped() const { return m_setup; }
+    void updateViews();
 
 private:
+    void setupCallView();
+    void setupFrameView();
+
     void saveCallTableSelection(bool grouped = true);
     void restoreCallTableSelection(bool grouped = true);
 

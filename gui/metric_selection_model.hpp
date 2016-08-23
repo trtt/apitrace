@@ -123,6 +123,16 @@ public:
     const MetricOutputLookup& selectedForCalls() const;
     const MetricOutputLookup& selectedForFrames() const;
 
+    void enableCalls();
+    void disableCalls();
+    void enableFrames();
+    void disableFrames();
+
+    bool isProfilingCalls() const { return profilingCalls; }
+    bool isProfilingFrames() const { return profilingFrames; }
+    bool callsProfiled() const { return m_callsProfiled; }
+    bool framesProfiled() const { return m_framesProfiled; }
+
 private:
     enum MetricSelectionItem {
         MSBackend = 0,
@@ -134,6 +144,7 @@ private:
     void checkUpdateParent(const QModelIndex & index, Qt::CheckState state);
     bool isPartiallyChecked(const QModelIndex & index) const;
     void parseData(QIODevice &io);
+
     QList<BackendItem*> backends;
     QHash<void*, MetricSelectionItem> itemType;
     QSet<QModelIndex> selected;
@@ -142,4 +153,8 @@ private:
     QHash<QModelIndex, int> childNodesSelected;
     MetricOutputLookup toBeProfiledCalls;
     MetricOutputLookup toBeProfiledFrames;
+    bool profilingCalls = false;
+    bool profilingFrames = false;
+    bool m_callsProfiled = false;
+    bool m_framesProfiled = false;
 };
