@@ -26,7 +26,6 @@
 #include "timelinegraph.h"
 
 #include <QQuickWindow>
-#include <iostream>
 
 #include <cmath>
 
@@ -88,8 +87,6 @@ void TimelineGraphRenderer::render() {
         m_GLinit = true;
     }
     if (!m_filtProgram) {
-        qDebug() << QString(reinterpret_cast<const char*>(glGetString(GL_VERSION)));
-
         if (!m_doublePrecision) {
         fp32vshader = new QOpenGLShader(QOpenGLShader::Vertex, m_filtProgram);
         fp32vshader->compileSourceCode(

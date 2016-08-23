@@ -74,12 +74,7 @@ set(qapitrace_profiling_SRCS
    profiling/groupproxymodel.cpp
 )
 
-set(qqapitrace_SRCS
-    qqmain.cpp
-)
-
 qt5_add_resources(qapitrace_SRCS qapitrace.qrc profiling.qrc)
-qt5_add_resources(qqapitrace_SRCS profiling.qrc)
 
 set(qapitrace_UIS
    ui/androidfiledialog.ui
@@ -108,7 +103,6 @@ set (CMAKE_AUTOMOC ON)
 set (CMAKE_AUTOMOC_MOC_OPTIONS "-nn")
 
 QT5_WRAP_UI(qapitrace_UIS_H ${qapitrace_UIS} ${qapitrace_profiling_UIS})
-QT5_WRAP_UI(qqapitrace_UIS_H ${qapitrace_profiling_UIS})
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 #add_app_icon(qapitrace_SRCS ../icons/hi*-qapitrace.png)
@@ -118,7 +112,6 @@ include_directories (
 )
 
 add_executable (qapitrace ${qapitrace_SRCS} ${qapitrace_profiling_SRCS} ${qapitrace_UIS_H})
-add_executable (qqapitrace ${qqapitrace_SRCS} ${qapitrace_profiling_SRCS} ${qqapitrace_UIS_H})
 
 # Avoid qt5_use_modules. See also:
 # - https://bugreports.qt.io/browse/QTBUG-39457
@@ -132,7 +125,6 @@ else ()
     target_link_libraries (qubjson Qt5::Widgets)
     target_link_libraries (qubjson_test Qt5::Widgets)
     target_link_libraries (qapitrace Qt5::Widgets Qt5::Network Qt5::Quick Qt5::OpenGL Qt5::QuickWidgets)
-    target_link_libraries (qqapitrace Qt5::Widgets Qt5::Quick Qt5::OpenGL Qt5::QuickWidgets)
 endif ()
 
 target_link_libraries (qapitrace
