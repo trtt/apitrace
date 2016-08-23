@@ -28,6 +28,8 @@ public:
 
     QModelIndex index(int row, int column, const QModelIndex& parent) const;
 
+    QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const;
+
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const;
 
     QModelIndex parent(const QModelIndex& child) const;
@@ -37,6 +39,11 @@ public:
     Qt::ItemFlags flags(const QModelIndex &index) const;
 
     void setGroupBy(GroupBy field);
+
+public slots:
+    void beginInsertColumnsSlot(const QModelIndex &parent, int first, int last);
+
+    void endInsertColumnsSlot();
 
 private:
     GroupBy m_groupBy;

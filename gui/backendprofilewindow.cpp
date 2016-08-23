@@ -24,27 +24,70 @@ BackendProfileWindow::~BackendProfileWindow()
     delete m_timelineHelper;
 }
 
+void BackendProfileWindow::saveCallTableSelection(bool grouped) {
+    m_callTableSelection = m_callTableSortProxy->mapSelectionToSource(callTreeView->selectionModel()->selection());
+    if (grouped)
+            m_callTableSelection = m_callTableGroupProxy->mapSelectionToSource(m_callTableSelection);
+}
+
+void BackendProfileWindow::restoreCallTableSelection(bool grouped) {
+    if (grouped)
+        m_callTableSelection = m_callTableGroupProxy->mapSelectionFromSource(m_callTableSelection);
+    m_callTableSelection = m_callTableSortProxy->mapSelectionFromSource(m_callTableSelection);
+    callTreeView->selectionModel()->select(m_callTableSelection, QItemSelectionModel::Select);
+    if (!m_callTableSelection.indexes().empty())
+        callTreeView->scrollTo(m_callTableSelection.indexes()[0]);
+}
+
 void BackendProfileWindow::setup(MetricCallDataModel* model)
 {
     if (m_setup) return;
 
     tabWidget->setTabEnabled(0, false);
 
-    auto proxy = new GroupProxyModel(model);
-    proxy->setSourceModel(model);
-    auto sortProxy = new QSortFilterProxyModel(proxy);
-    sortProxy->setSourceModel(proxy);
-    callTreeView->setModel(sortProxy);
+    // Proxy model for grouping
+    m_callTableGroupProxy = new GroupProxyModel(model);
+    m_callTableGroupProxy->setSourceModel(model);
+    // Proxy model for sorting
+    // Initially disable grouping
+    m_callTableSortProxy = new QSortFilterProxyModel(m_callTableGroupProxy);
+    m_callTableSortProxy->setSourceModel(model);
+    callTreeView->setModel(m_callTableSortProxy);
     callTreeView->sortByColumn(0, Qt::AscendingOrder);
 
+    // Handle grouping mode switches (save/restore selection, change models)
     connect(call_radio, &QRadioButton::toggled, [=](bool b) {
-            if (b) proxy->setGroupBy(GroupProxyModel::GROUP_BY_CALL);
+                if (b) {
+                    m_callTableGroupProxy->setGroupBy(GroupProxyModel::GROUP_BY_CALL);
+                    restoreCallTableSelection(true);
+                } else {
+                    saveCallTableSelection(true);
+                }
             });
     connect(frame_radio, &QRadioButton::toggled, [=](bool b) {
-            if (b) proxy->setGroupBy(GroupProxyModel::GROUP_BY_FRAME);
+                if (b) {
+                    m_callTableGroupProxy->setGroupBy(GroupProxyModel::GROUP_BY_FRAME);
+                    restoreCallTableSelection(true);
+                } else {
+                    saveCallTableSelection(true);
+                }
             });
     connect(program_radio, &QRadioButton::toggled, [=](bool b) {
-            if (b) proxy->setGroupBy(GroupProxyModel::GROUP_BY_PROGRAM);
+                if (b) {
+                    m_callTableGroupProxy->setGroupBy(GroupProxyModel::GROUP_BY_PROGRAM);
+                    restoreCallTableSelection(true);
+                } else {
+                    saveCallTableSelection(true);
+                }
+            });
+    connect(none_radio, &QRadioButton::toggled, [=](bool b) {
+                if (b) {
+                    m_callTableSortProxy->setSourceModel(model);
+                    restoreCallTableSelection(false);
+                } else {
+                    saveCallTableSelection(false);
+                    m_callTableSortProxy->setSourceModel(m_callTableGroupProxy);
+                }
             });
 
     m_axisCPU = new TimelineAxis(std::make_shared<TextureBufferData<GLuint>>(

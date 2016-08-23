@@ -1,4 +1,5 @@
 #include "groupproxymodel.h"
+#include <algorithm>
 
 inline uint qHash(const QVariant& key) {
     switch (key.type())
@@ -24,16 +25,43 @@ GroupProxyModel::GroupProxyModel(QObject *parent)
 }
 
 void GroupProxyModel::setSourceModel(QAbstractItemModel *sourceModel) {
+    if (this->sourceModel())
+        this->sourceModel()->disconnect(this);
     QAbstractProxyModel::setSourceModel(sourceModel);
     setGroupBy(GROUP_BY_FRAME);
+    connect(sourceModel, &QAbstractItemModel::columnsAboutToBeInserted,
+            this, &GroupProxyModel::beginInsertColumnsSlot);
+    connect(sourceModel, &QAbstractItemModel::columnsInserted,
+            this, &GroupProxyModel::endInsertColumnsSlot);
+}
+
+void GroupProxyModel::beginInsertColumnsSlot(const QModelIndex &parent, int first, int last)
+{
+    layoutAboutToBeChanged();
+    beginInsertColumns(QModelIndex(), first, last);
+}
+
+void GroupProxyModel::endInsertColumnsSlot() {
+    endInsertColumns();
+    layoutChanged();
 }
 
 QModelIndex GroupProxyModel::mapFromSource(const QModelIndex &sourceIndex) const {
-    return QModelIndex();
+    QVariant group = sourceModel()->data(sourceModel()->index(sourceIndex.row(),
+                                         m_groupBy, QModelIndex()));
+    int parentRow = m_groupLookup[group];
+    const QModelIndex parent = index(parentRow, 0, QModelIndex());
+    const std::vector<int>& parentRows = m_groupedSourceRows[parentRow];
+    int rowInParent = std::distance(parentRows.begin(),
+                        std::equal_range(parentRows.begin(), parentRows.end(),
+                                         sourceIndex.row()).first);
+    return index(rowInParent, sourceIndex.column(), parent);
 }
 
 QModelIndex GroupProxyModel::mapToSource(const QModelIndex &proxyIndex) const {
     if (!sourceModel() || !proxyIndex.isValid())
+        return QModelIndex();
+    if (!proxyIndex.internalPointer())
         return QModelIndex();
 
     int sourceColumn = proxyIndex.column();
@@ -44,9 +72,7 @@ QModelIndex GroupProxyModel::mapToSource(const QModelIndex &proxyIndex) const {
     }
 
     int sourceRow = proxyIndex.row();
-    if (proxyIndex.internalPointer()) {
-        sourceRow = m_groupedSourceRows[(size_t)proxyIndex.internalPointer()-1][proxyIndex.row()];
-    }
+    sourceRow = m_groupedSourceRows[(size_t)proxyIndex.internalPointer()-1][proxyIndex.row()];
 
     return sourceModel()->index(sourceRow, sourceColumn);
 }
@@ -70,6 +96,18 @@ QModelIndex GroupProxyModel::index(int row, int column, const QModelIndex& paren
     } else {
         return createIndex(row, column, parent.row() + 1);
     }
+}
+
+QVariant GroupProxyModel::headerData(int section, Qt::Orientation orientation,
+                                     int role) const
+{
+    int sourceColumn = section;
+    if (section == 0) {
+        sourceColumn = m_groupBy;
+    } else if (section < m_groupBy + 1) {
+        sourceColumn--;
+    }
+    return sourceModel()->headerData(sourceColumn, orientation, role);
 }
 
 QVariant GroupProxyModel::data(const QModelIndex &index, int role) const {

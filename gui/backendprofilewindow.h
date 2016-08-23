@@ -9,6 +9,8 @@
 #include "rangestats.h"
 #include "metric_graphs.h"
 
+class GroupProxyModel;
+class QSortFilterProxyModel;
 
 class BackendProfileWindow : public QMainWindow, public Ui_BackendProfileWindow
 {
@@ -20,9 +22,10 @@ public:
     void setup(MetricCallDataModel* model);
     bool isSetuped() const { return m_setup; }
 
-public slots:
-
 private:
+    void saveCallTableSelection(bool grouped = true);
+    void restoreCallTableSelection(bool grouped = true);
+
     bool m_setup;
     TimelineAxis* m_axisCPU;
     TimelineAxis* m_axisGPU;
@@ -32,4 +35,7 @@ private:
     RangeStatsMinMax* m_statsBar;
     TimelineHelper* m_timelineHelper;
     QStringList m_dataFilterUnique;
+    GroupProxyModel* m_callTableGroupProxy;
+    QSortFilterProxyModel* m_callTableSortProxy;
+    QItemSelection m_callTableSelection;
 };
