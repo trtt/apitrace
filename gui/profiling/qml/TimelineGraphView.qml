@@ -50,6 +50,8 @@ ScrollView {
     property var coarse
     property var fine
     property var flickable: flick
+    property bool expandable: true
+    property bool colored: true
     property var axes: [axisCPU, axisGPU]
     property var axesModel:
         ListModel {
@@ -136,6 +138,7 @@ ScrollView {
                     ignoreUpdates: !inView
                     bgcolor: (color % 2) ? (useFullHeader ? "#00000000" : "#10000010") :
                         (useFullHeader ? "#10100000" : "#00000000")
+                    colored: scrollview.colored
                     filtered: useFullHeader ? false : true
                     filter: useFullHeader ? 0 : graphCaption
                     axis: graphAxis
@@ -177,6 +180,7 @@ ScrollView {
                             anchors.verticalCenter: parent.verticalCenter
                             width: arrow.implicitHeight + 7
                             height: width
+                            visible: expandable
 
                             radius: 2
                             border.width: 1

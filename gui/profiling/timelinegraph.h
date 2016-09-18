@@ -60,22 +60,37 @@ public:
 
 public:
     void render();
+    void synchronizeAfter(QQuickFramebufferObject* item);
 
 private:
+    enum ProgramType {
+        PROGRAM_NOFILTNOCOLOR_FP64,
+        PROGRAM_FILTNOCOLOR_FP64,
+        PROGRAM_NOFILTCOLOR_FP64,
+        PROGRAM_FILTCOLOR_FP64,
+        PROGRAM_NOFILTNOCOLOR_FP32,
+        PROGRAM_FILTNOCOLOR_FP32,
+        PROGRAM_NOFILTCOLOR_FP32,
+        PROGRAM_FILTCOLOR_FP32,
+        PROGRAM_SIZE
+    };
+
     bool m_GLinit = false;
     bool m_doublePrecision = false;
     QOpenGLShaderProgram* m_program;
-    static QOpenGLShaderProgram* m_filtProgram;
-    static QOpenGLShaderProgram* m_nofiltProgram;
+    static QOpenGLShaderProgram* m_programs[PROGRAM_SIZE];
     static QGLBuffer m_vertexBuffer;
     static GLuint m_vao;
     static unsigned m_numInstances;
+
+    bool m_coloredCopy;
 };
 
 
 class TimelineGraph : public AbstractGraph
 {
     Q_OBJECT
+    Q_PROPERTY(bool colored MEMBER m_colored)
 
     friend class TimelineGraphRenderer;
 
@@ -84,4 +99,7 @@ public:
     ~TimelineGraph() {}
 
     QQuickFramebufferObject::Renderer* createRenderer() const;
+
+private:
+    bool m_colored = true;
 };

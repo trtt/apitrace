@@ -32,7 +32,8 @@
 
 void TimelineGraphData::acquireResHandle() {
     if (!m_numHandles) {
-        m_dataColor->init();
+        if (m_dataColor)
+            m_dataColor->init();
     }
     AbstractGraphData::acquireResHandle();
 }
@@ -51,31 +52,39 @@ QQuickFramebufferObject::Renderer* TimelineGraph::createRenderer() const {
 }
 
 
-QOpenGLShaderProgram* TimelineGraphRenderer::m_filtProgram = nullptr;
-QOpenGLShaderProgram* TimelineGraphRenderer::m_nofiltProgram = nullptr;
+QOpenGLShaderProgram* TimelineGraphRenderer::m_programs[TimelineGraphRenderer::PROGRAM_SIZE] = { nullptr };
 QGLBuffer TimelineGraphRenderer::m_vertexBuffer = QGLBuffer(QGLBuffer::VertexBuffer);
 GLuint TimelineGraphRenderer::m_vao = 0;
 unsigned TimelineGraphRenderer::m_numInstances = 0;
 
-TimelineGraphRenderer::TimelineGraphRenderer(TimelineGraph* item) : AbstractGraphRenderer(item) {
+TimelineGraphRenderer::TimelineGraphRenderer(TimelineGraph* item)
+    : AbstractGraphRenderer(item), m_coloredCopy(item->m_colored)
+{
     m_numInstances++;
 }
 
 TimelineGraphRenderer::~TimelineGraphRenderer() {
     if (!(--m_numInstances)) {
         glDeleteVertexArrays(1, &m_vao);
-        delete m_filtProgram;
-        delete m_nofiltProgram;
-        m_filtProgram = nullptr;
-        m_nofiltProgram = nullptr;
+        for (auto& p : m_programs) {
+            if (p) delete p;
+            p = nullptr;
+        }
     }
+}
+
+
+void TimelineGraphRenderer::synchronizeAfter(QQuickFramebufferObject* item) {
+    TimelineGraph* i = static_cast<TimelineGraph*>(item);
+    m_coloredCopy = i->m_colored;
 }
 
 void TimelineGraphRenderer::render() {
     typedef void (*glUniform1dType)(int, double);
     static glUniform1dType glUniform1d = nullptr;
     static QOpenGLShader *fp32vshader = nullptr, *fp64vshader = nullptr,
-                          *filtfshader = nullptr, *nofiltfshader = nullptr;
+                         *filtcolorfshader = nullptr, *nofiltcolorfshader = nullptr,
+                         *filtnocolorfshader = nullptr, *nofiltnocolorfshader = nullptr;
     if (!m_GLinit) {
         initializeOpenGLFunctions();
         if (m_win->openglContext()->hasExtension("GL_ARB_gpu_shader_fp64")) {
@@ -86,9 +95,10 @@ void TimelineGraphRenderer::render() {
         }
         m_GLinit = true;
     }
-    if (!m_filtProgram) {
+    if (!m_programs[PROGRAM_NOFILTNOCOLOR_FP32]) {
         if (!m_doublePrecision) {
-        fp32vshader = new QOpenGLShader(QOpenGLShader::Vertex, m_filtProgram);
+        fp32vshader = new QOpenGLShader(QOpenGLShader::Vertex,
+                        m_programs[PROGRAM_NOFILTNOCOLOR_FP32]);
         fp32vshader->compileSourceCode(
                 "#version 140\n"
                 "in vec2 vertex;\n"
@@ -116,7 +126,8 @@ void TimelineGraphRenderer::render() {
                 "   gl_Position = vec4(positioned,0,1);\n"
                 "}");
         } else {
-        fp64vshader = new QOpenGLShader(QOpenGLShader::Vertex, m_filtProgram);
+        fp64vshader = new QOpenGLShader(QOpenGLShader::Vertex,
+                        m_programs[PROGRAM_NOFILTNOCOLOR_FP64]);
         fp64vshader->compileSourceCode(
                 "#version 140\n"
                 "#extension GL_ARB_gpu_shader_fp64 : enable\n"
@@ -144,8 +155,9 @@ void TimelineGraphRenderer::render() {
                 "   gl_Position = vec4(positioned,0,1);\n"
                 "}");
         }
-        filtfshader = new QOpenGLShader(QOpenGLShader::Fragment, m_filtProgram);
-        filtfshader->compileSourceCode(
+        filtcolorfshader = new QOpenGLShader(QOpenGLShader::Fragment,
+                            m_programs[PROGRAM_NOFILTNOCOLOR_FP32]);
+        filtcolorfshader->compileSourceCode(
                 "#version 140\n"
                 "uniform vec4 color;\n"
                 "uniform float invColorSize;\n"
@@ -162,8 +174,24 @@ void TimelineGraphRenderer::render() {
                 "   vec3 p = abs(fract(texelFetch(texColor,index).rrr * invColorSize + K.xyz) * 6.0 - K.www);\n"
                 "   outColor = vec4(color.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), color.y), 1.0);\n"
                 "}");
-        nofiltfshader = new QOpenGLShader(QOpenGLShader::Fragment, m_filtProgram);
-        nofiltfshader->compileSourceCode(
+        filtnocolorfshader = new QOpenGLShader(QOpenGLShader::Fragment,
+                            m_programs[PROGRAM_NOFILTNOCOLOR_FP32]);
+        filtnocolorfshader->compileSourceCode(
+                "#version 140\n"
+                "uniform vec4 color;\n"
+                "uniform usamplerBuffer texFilter;\n"
+                "uniform int filterId;\n"
+                "flat in int index;\n"
+                "out vec4 outColor;\n"
+                "void main(void)\n"
+                "{\n"
+                "	if (texelFetch(texFilter,index).r != uint(filterId))\n"
+                "		discard;\n"
+                "   outColor = color;\n"
+                "}");
+        nofiltcolorfshader = new QOpenGLShader(QOpenGLShader::Fragment,
+                            m_programs[PROGRAM_NOFILTNOCOLOR_FP32]);
+        nofiltcolorfshader->compileSourceCode(
                 "#version 140\n"
                 "uniform vec4 color;\n"
                 "uniform float invColorSize;\n"
@@ -176,21 +204,49 @@ void TimelineGraphRenderer::render() {
                 "   vec3 p = abs(fract(texelFetch(texColor,index).rrr * invColorSize + K.xyz) * 6.0 - K.www);\n"
                 "   outColor = vec4(color.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), color.y), 1.0);\n"
                 "}");
+        nofiltnocolorfshader = new QOpenGLShader(QOpenGLShader::Fragment,
+                            m_programs[PROGRAM_NOFILTNOCOLOR_FP32]);
+        nofiltnocolorfshader->compileSourceCode(
+                "#version 140\n"
+                "uniform vec4 color;\n"
+                "flat in int index;\n"
+                "out vec4 outColor;\n"
+                "void main(void)\n"
+                "{\n"
+                "   outColor = color;\n"
+                "}");
 
-        m_filtProgram = new QOpenGLShaderProgram();
-        m_nofiltProgram = new QOpenGLShaderProgram();
-        if (m_doublePrecision) {
-            m_filtProgram->addShader(fp64vshader);
-            m_nofiltProgram->addShader(fp64vshader);
-        } else {
-            m_filtProgram->addShader(fp32vshader);
-            m_nofiltProgram->addShader(fp32vshader);
+        for (int i = (m_doublePrecision?0:PROGRAM_SIZE/2); i < PROGRAM_SIZE; i++)
+        {
+            m_programs[i] = new QOpenGLShaderProgram();
         }
-        m_filtProgram->addShader(filtfshader);
-        m_nofiltProgram->addShader(nofiltfshader);
 
-        m_filtProgram->link();
-        m_nofiltProgram->link();
+        if (m_doublePrecision) {
+            m_programs[PROGRAM_NOFILTNOCOLOR_FP64]->addShader(fp64vshader);
+            m_programs[PROGRAM_FILTNOCOLOR_FP64]->addShader(fp64vshader);
+            m_programs[PROGRAM_NOFILTCOLOR_FP64]->addShader(fp64vshader);
+            m_programs[PROGRAM_FILTCOLOR_FP64]->addShader(fp64vshader);
+
+            m_programs[PROGRAM_NOFILTNOCOLOR_FP64]->addShader(nofiltnocolorfshader);
+            m_programs[PROGRAM_NOFILTCOLOR_FP64]->addShader(nofiltcolorfshader);
+            m_programs[PROGRAM_FILTNOCOLOR_FP64]->addShader(filtnocolorfshader);
+            m_programs[PROGRAM_FILTCOLOR_FP64]->addShader(filtcolorfshader);
+        }
+
+        m_programs[PROGRAM_NOFILTNOCOLOR_FP32]->addShader(fp32vshader);
+        m_programs[PROGRAM_FILTNOCOLOR_FP32]->addShader(fp32vshader);
+        m_programs[PROGRAM_NOFILTCOLOR_FP32]->addShader(fp32vshader);
+        m_programs[PROGRAM_FILTCOLOR_FP32]->addShader(fp32vshader);
+
+        m_programs[PROGRAM_NOFILTNOCOLOR_FP32]->addShader(nofiltnocolorfshader);
+        m_programs[PROGRAM_NOFILTCOLOR_FP32]->addShader(nofiltcolorfshader);
+        m_programs[PROGRAM_FILTNOCOLOR_FP32]->addShader(filtnocolorfshader);
+        m_programs[PROGRAM_FILTCOLOR_FP32]->addShader(filtcolorfshader);
+
+        for (int i = (m_doublePrecision?0:PROGRAM_SIZE/2); i < PROGRAM_SIZE; i++)
+        {
+            m_programs[i]->link();
+        }
 
         static GLfloat const quad[] = {
             -1.0f,  -1.0f,
@@ -206,20 +262,28 @@ void TimelineGraphRenderer::render() {
 
         m_vertexBuffer.bind();
         m_vertexBuffer.allocate(quad, 4 * 2 * sizeof(float));
-        m_filtProgram->setAttributeBuffer("vertex", GL_FLOAT, 0, 2);
-        m_nofiltProgram->setAttributeBuffer("vertex", GL_FLOAT, 0, 2);
-        m_filtProgram->enableAttributeArray("vertex");
-        m_nofiltProgram->enableAttributeArray("vertex");
+        for (int i = (m_doublePrecision?0:PROGRAM_SIZE/2); i < PROGRAM_SIZE; i++)
+        {
+            m_programs[i]->setAttributeBuffer("vertex", GL_FLOAT, 0, 2);
+            m_programs[i]->enableAttributeArray("vertex");
+        }
         m_vertexBuffer.release();
 
         glBindVertexArray(0);
-        m_program = m_nofiltProgram;
     }
-    if (m_filteredCopy) {
-        m_program = m_filtProgram;
+
+    int programNum;
+    if (m_filteredCopy && m_coloredCopy) {
+        programNum = PROGRAM_FILTCOLOR_FP64;
+    } else if (m_filteredCopy && !m_coloredCopy) {
+        programNum = PROGRAM_FILTNOCOLOR_FP64;
+    } else if (!m_filteredCopy && m_coloredCopy) {
+        programNum = PROGRAM_NOFILTCOLOR_FP64;
     } else {
-        m_program = m_nofiltProgram;
+        programNum = PROGRAM_NOFILTNOCOLOR_FP64;
     }
+    if (!m_doublePrecision) programNum += PROGRAM_SIZE / 2;
+    m_program = m_programs[programNum];
 
     if (!m_needsUpdating || !m_axisCopy || !m_dataCopy) return;
 
@@ -231,15 +295,22 @@ void TimelineGraphRenderer::render() {
     m_axisCopy->xL->bindTexture();
     glActiveTexture(GL_TEXTURE2);
     m_axisCopy->xW->bindTexture();
-    glActiveTexture(GL_TEXTURE3);
-    static_cast<TimelineGraphData*>(m_dataCopy)->dataColor()->bindTexture();
+    if (m_coloredCopy) {
+        glActiveTexture(GL_TEXTURE3);
+        static_cast<TimelineGraphData*>(m_dataCopy)->dataColor()->bindTexture();
+    }
     if (m_filteredCopy) {
         glActiveTexture(GL_TEXTURE4);
         m_dataCopy->dataFilter()->bindTexture();
     }
 
     int colorLocation = m_program->uniformLocation("color");
-    QColor color(0, 120, 255, 255); // HSV (hue is substituted)
+    QColor color;
+    if (m_coloredCopy) {
+        color = QColor(0, 120, 255, 255); // HSV (hue is substituted)
+    } else {
+        color = QColor(160, 160, 255, 255); // default bar color
+    }
 
     uint firstDispItemId = m_dispFirstEventCopy;
     uint lastDispItemId  = m_dispLastEventCopy;
@@ -250,7 +321,11 @@ void TimelineGraphRenderer::render() {
     m_program->setUniformValue("texXH", 0);
     m_program->setUniformValue("texXL", 1);
     m_program->setUniformValue("texW", 2);
-    m_program->setUniformValue("texColor", 3);
+    if (m_coloredCopy) {
+        m_program->setUniformValue("texColor", 3);
+        m_program->setUniformValue("invColorSize",
+            (GLfloat) (1. / static_cast<TimelineGraphData*>(m_dataCopy)->colorSize()) );
+    }
     if (m_filteredCopy) {
         m_program->setUniformValue("texFilter", 4);
         m_program->setUniformValue("filterId", (GLint)m_filterCopy);
@@ -268,8 +343,6 @@ void TimelineGraphRenderer::render() {
     m_program->setUniformValue("eventWindow", firstDispItemId, lastDispItemId);
     m_program->setUniformValue("numEvents", numEvents);
     m_program->setUniformValue("windowSize", (GLint)m_width);
-    m_program->setUniformValue("invColorSize",
-        (GLfloat) (1. / static_cast<TimelineGraphData*>(m_dataCopy)->colorSize()) );
 
     glDisable(GL_DEPTH_TEST);
 

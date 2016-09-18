@@ -96,7 +96,8 @@ qlonglong TimelineAxis::eventDurationTime(int id) const {
 
 void AbstractGraphData::acquireResHandle() {
     if (!m_numHandles) {
-        m_dataFilter->init();
+        if (m_dataFilter)
+            m_dataFilter->init();
     }
     m_numHandles++;
 }

@@ -50,6 +50,7 @@ ScrollView {
     property var coarse
     property var fine
     property var flickable: flick
+    property bool expandable: true
 
     verticalScrollBarPolicy: Qt.ScrollBarAlwaysOn
 
@@ -164,6 +165,7 @@ ScrollView {
                             anchors.verticalCenter: parent.verticalCenter
                             width: arrow.implicitHeight + 7
                             height: width
+                            visible: expandable
 
                             radius: 2
                             border.width: 1

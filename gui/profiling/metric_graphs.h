@@ -39,21 +39,22 @@ public:
         SizeRole
     };
 
-    explicit MetricGraphs(MetricCallDataModel& model);
+    explicit MetricGraphs(const std::vector<MetricStorage>& modelMetrics,
+                          std::shared_ptr<TextureBufferData<GLuint>> filter = nullptr);
     ~MetricGraphs();
 
     std::shared_ptr<TextureBufferData<GLuint>> filter() { return m_filter; }
 
 
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const Q_DECL_OVERRIDE;
+    void addGraphsData();
     int rowCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE;
     QHash<int, QByteArray> roleNames() const;
 
 private:
     QString name(unsigned index) const;
-    void addGraphsData();
 
-    MetricCallDataModel& m_model;
+    const std::vector<MetricStorage>& m_modelMetrics;
     std::shared_ptr<TextureBufferData<GLuint>> m_filter;
     std::vector<std::shared_ptr<TextureBufferData<GLfloat>>> m_textureData;
     std::vector<BarGraphData*> m_data;

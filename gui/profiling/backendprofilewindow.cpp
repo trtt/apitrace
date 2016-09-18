@@ -116,6 +116,8 @@ void BackendProfileWindow::setup(MetricCallDataModel* callModel,
                 }
             });
 
+    // Setup graph view for calls
+
     m_axisCPU = new TimelineAxis(std::make_shared<TextureBufferData<GLuint>>(
                 *callModel->calls().timestampHData(DrawcallStorage::TimestampCPU)),
             std::make_shared<TextureBufferData<GLuint>>(
@@ -132,7 +134,11 @@ void BackendProfileWindow::setup(MetricCallDataModel* callModel,
         if (!m_dataFilterUnique.contains(str)) m_dataFilterUnique.append(str);
     }
 
-    m_graphs = new MetricGraphs(*callModel);
+    m_graphs = new MetricGraphs(callModel->metrics(),
+        std::make_shared<TextureBufferData<GLuint>>(*callModel->calls().programData()));
+    connect(callModel, &QAbstractItemModel::columnsInserted,
+            m_graphs, &MetricGraphs::addGraphsData);
+
     m_timelineData = new TimelineGraphData(std::make_shared<TextureBufferData<GLuint>>(*callModel->calls().nameHashData()),
                                             callModel->calls().nameHashNumEntries(),
                                             m_graphs->filter());
@@ -144,6 +150,7 @@ void BackendProfileWindow::setup(MetricCallDataModel* callModel,
     qmlRegisterType<TimelineGraph>("DataVis", 1, 0, "TimelineGraph");
     auto view = new QQuickWidget(this);
     QQmlContext *ctxt = view->rootContext();
+    ctxt->setContextProperty("viewType", 1);
     ctxt->setContextProperty("axisCPU", m_axisCPU);
     ctxt->setContextProperty("axisGPU", m_axisGPU);
     ctxt->setContextProperty("statsBar", m_statsBar);

@@ -214,6 +214,8 @@ SplitView {
         coarsed: root.coarsed
         coarse: coarse.value
         fine: fine.value
+        expandable: viewType==1
+        colored: viewType==1
     }
 
     BarGraphView {
@@ -227,6 +229,7 @@ SplitView {
         coarsed: root.coarsed
         coarse: coarse.value
         fine: fine.value
+        expandable: viewType==1
     }
 }
 
@@ -272,11 +275,16 @@ MouseArea {
                 var start = axis.eventStartTime(id)
                 var duration = axis.eventDurationTime(id)
                 if (start <= statsTimeline.start && statsTimeline.start <= start+duration &&
-                    !statsTimeline.graph.isEventFiltered(id)) {
-                    tooltip_event.eventCallString = timelineHelper.name(id)
-                    tooltip_event.eventId = timelineHelper.no(id)
-                    tooltip_event.eventProgram = statsTimeline.graph.eventFilter(id)
-                    tooltip_event.eventFrame = timelineHelper.frame(id)
+                    !statsTimeline.graph.isEventFiltered(id))
+                {
+                    if (viewType == 1) {
+                        tooltip_event.eventCallString = timelineHelper.name(id)
+                        tooltip_event.eventId = timelineHelper.no(id)
+                        tooltip_event.eventProgram = statsTimeline.graph.eventFilter(id)
+                        tooltip_event.eventFrame = timelineHelper.frame(id)
+                    } else {
+                        tooltip_event.eventId = id
+                    }
                     tooltip_event.eventStart = start * 1e-9
                     tooltip_event.eventDuration = duration * 1e-9
                     tooltip_event.yAvailable = false
@@ -353,11 +361,16 @@ MouseArea {
                 var start = axisGPU.eventStartTime(id)
                 var duration = axisGPU.eventDurationTime(id)
                 if (start <= statsBar.start && statsBar.start <= start+duration &&
-                    !statsBar.graph.isEventFiltered(id)) {
-                    tooltip_event.eventCallString = timelineHelper.name(id)
-                    tooltip_event.eventId = timelineHelper.no(id)
-                    tooltip_event.eventProgram = statsBar.graph.eventFilter(id)
-                    tooltip_event.eventFrame = timelineHelper.frame(id)
+                    !statsBar.graph.isEventFiltered(id))
+                {
+                    if (viewType == 1) {
+                        tooltip_event.eventCallString = timelineHelper.name(id)
+                        tooltip_event.eventId = timelineHelper.no(id)
+                        tooltip_event.eventProgram = statsBar.graph.eventFilter(id)
+                        tooltip_event.eventFrame = timelineHelper.frame(id)
+                    } else {
+                        tooltip_event.eventId = id
+                    }
                     tooltip_event.eventStart = start * 1e-9
                     tooltip_event.eventDuration = duration * 1e-9
                     tooltip_event.eventValue = statsBar.graph.data.eventYValue(id)
@@ -550,9 +563,9 @@ Rectangle {
             y: 10
             spacing: 2
             Text {text: tooltip_event.eventCallString; font.bold: true}
-            Text {text: "call id: " + tooltip_event.eventId}
-            Text {text: "program: " + tooltip_event.eventProgram}
-            Text {text: "frame: " + tooltip_event.eventFrame}
+            Text {text: (viewType ? "call id: " : "frame id: ") + tooltip_event.eventId}
+            Text {text: "program: " + tooltip_event.eventProgram; visible: viewType==1}
+            Text {text: "frame: " + tooltip_event.eventFrame; visible: viewType==1}
             Text {text: "start: " + tooltip_event.eventStart + "s"}
             Text {text: "duration: " + tooltip_event.eventDuration + "s"}
             Text {text: "value: " + tooltip_event.eventValue;

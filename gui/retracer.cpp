@@ -645,10 +645,12 @@ void Retracer::run()
         m_listingMetrics = false;
     }
 
-    if (isProfilingWithBackends() &&
-        !m_backendMetrics->selectedForCalls().empty())
+    if (isProfilingWithBackends())
     {
-        emit foundBackendProfile(&m_callMetricsModel, &m_frameMetricsModel);
+        emit foundBackendProfile(
+            m_backendMetrics->selectedForCalls().empty() ? nullptr : &m_callMetricsModel,
+            m_backendMetrics->selectedForFrames().empty() ? nullptr : &m_frameMetricsModel
+        );
         m_profileWithBackends = false;
     }
 

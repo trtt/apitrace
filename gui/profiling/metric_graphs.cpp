@@ -25,10 +25,11 @@
 
 #include "metric_graphs.h"
 
-MetricGraphs::MetricGraphs(MetricCallDataModel& model) : m_model(model) {
-    m_filter = std::make_shared<TextureBufferData<GLuint>>(*model.calls().programData());
+MetricGraphs::MetricGraphs(const std::vector<MetricStorage>& modelMetrics,
+                           std::shared_ptr<TextureBufferData<GLuint>> filter)
+    : m_modelMetrics(modelMetrics), m_filter(filter)
+{
     addGraphsData();
-    connect(&model, &QAbstractItemModel::columnsInserted, this, &MetricGraphs::addGraphsData);
 }
 
 MetricGraphs::~MetricGraphs() {
@@ -39,8 +40,8 @@ MetricGraphs::~MetricGraphs() {
 
 void MetricGraphs::addGraphsData() {
     auto oldSize = m_data.size();
-    for (int i = (!oldSize) ? 0 : oldSize+2; i < m_model.metrics().size(); i++) {
-        auto& m = m_model.metrics()[i];
+    for (int i = (!oldSize) ? 0 : oldSize+2; i < m_modelMetrics.size(); i++) {
+        auto& m = m_modelMetrics[i];
         if ((m.metric()->getName() != QLatin1String("CPU Start")) &&
             (m.metric()->getName() != QLatin1String("GPU Start")))
         {
@@ -78,5 +79,5 @@ QHash<int, QByteArray> MetricGraphs::roleNames() const
 }
 
 QString MetricGraphs::name(unsigned index) const {
-    return m_model.metrics()[index].metric()->getName();
+    return m_modelMetrics[index].metric()->getName();
 }
