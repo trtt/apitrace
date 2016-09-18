@@ -49,22 +49,33 @@ public:
     void updateViews();
 
 private:
-    void setupCallView();
-    void setupFrameView();
+    enum ViewType {
+        FRAME_VIEW,
+        CALL_VIEW,
+        VIEWS_NUM
+    };
+
+    void setupCallView(MetricCallDataModel* callModel);
+    void setupFrameView(MetricFrameDataModel* frameModel);
 
     void saveCallTableSelection(bool grouped = true);
     void restoreCallTableSelection(bool grouped = true);
 
+    void tabChange(int tab);
+
     bool m_setup;
-    TimelineAxis* m_axisCPU;
-    TimelineAxis* m_axisGPU;
-    MetricGraphs* m_graphs;
-    TimelineGraphData* m_timelineData;
-    RangeStats* m_statsTimeline;
-    RangeStatsMinMax* m_statsBar;
+    TimelineAxis* m_axisCPU[VIEWS_NUM];
+    TimelineAxis* m_axisGPU[VIEWS_NUM];
+    MetricGraphs* m_graphs[VIEWS_NUM];
+    TimelineGraphData* m_timelineData[VIEWS_NUM];
+    RangeStats* m_statsTimeline[VIEWS_NUM];
+    RangeStatsMinMax* m_statsBar[VIEWS_NUM];
+    QObject* m_scroll[VIEWS_NUM];
     TimelineHelper* m_timelineHelper;
     QStringList m_dataFilterUnique;
     GroupProxyModel* m_callTableGroupProxy;
-    QSortFilterProxyModel* m_callTableSortProxy;
+    QSortFilterProxyModel* m_metricTableSortProxy;
     QItemSelection m_callTableSelection;
+    MetricCallDataModel* m_callModel;
+    MetricFrameDataModel* m_frameModel;
 };

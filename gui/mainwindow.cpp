@@ -398,8 +398,6 @@ void MainWindow::metricSelectionDialog()
     dlgUi.setupUi(&dlg);
 
     // drawcalls/frames checkboxes
-    dlgUi.check_frames->setEnabled(false); // !FIX: remove when frames are ready
-    dlgUi.check_drawcalls->setEnabled(false); // !FIX: remove when frames are ready
     if (model->isProfilingCalls()) dlgUi.check_drawcalls->setChecked(true);
     if (model->isProfilingFrames()) dlgUi.check_frames->setChecked(true);
     connect(dlgUi.check_drawcalls, &QAbstractButton::toggled, [model](bool b) {
@@ -412,7 +410,7 @@ void MainWindow::metricSelectionDialog()
             });
     if (model->callsProfiled()) dlgUi.check_drawcalls->setEnabled(false);
     if (model->framesProfiled()) dlgUi.check_frames->setEnabled(false);
-    dlgUi.check_drawcalls->setChecked(true);
+    dlgUi.check_frames->setChecked(true);
 
     dlgUi.treeView->setModel(model);
     dlgUi.treeView->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
@@ -1448,10 +1446,11 @@ void MainWindow::replayProfileWithBackendsFound(MetricCallDataModel* callModel,
                                                 MetricFrameDataModel* frameModel)
 {
     if (!m_backendProfileWin->isSetuped()) {
-        m_backendProfileWin->setup(callModel, frameModel);
         connect(m_backendProfileWin->callAddMetrics, SIGNAL(clicked()),
                 this, SLOT(metricSelectionDialog()));
     }
+    m_backendProfileWin->setup(callModel, frameModel);
+
     m_backendProfileWin->show();
     m_backendProfileWin->activateWindow();
     m_backendProfileWin->setFocus();

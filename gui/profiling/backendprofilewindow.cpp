@@ -32,25 +32,39 @@
 
 
 BackendProfileWindow::BackendProfileWindow(QWidget *parent)
-    : QMainWindow(parent), m_setup(false)
+    : QMainWindow(parent), m_setup(false), m_callModel(nullptr), m_frameModel(nullptr)
 {
     setupUi(this);
+    for (int i = 0; i < VIEWS_NUM; i++) {
+        m_axisCPU[i] = nullptr;
+        m_axisGPU[i] = nullptr;
+        m_graphs[i] = nullptr;
+        m_timelineData[i] = nullptr;
+        m_statsTimeline[i] = nullptr;
+        m_statsBar[i] = nullptr;
+        tabWidget->setTabEnabled(i, false);
+        m_scroll[i] = nullptr;
+    }
+    qmlRegisterType<BarGraph>("DataVis", 1, 0, "BarGraph");
+    qmlRegisterType<TimelineGraph>("DataVis", 1, 0, "TimelineGraph");
 }
 
 BackendProfileWindow::~BackendProfileWindow()
 {
 	if (!m_setup) return;
-    delete m_axisCPU;
-    delete m_axisGPU;
-    delete m_graphs;
-    delete m_timelineData;
-    delete m_statsTimeline;
-    delete m_statsBar;
+    for (int i = 0; i < VIEWS_NUM; i++) {
+        delete m_axisCPU[i];
+        delete m_axisGPU[i];
+        delete m_graphs[i];
+        delete m_timelineData[i];
+        delete m_statsTimeline[i];
+        delete m_statsBar[i];
+    }
     delete m_timelineHelper;
 }
 
 void BackendProfileWindow::saveCallTableSelection(bool grouped) {
-    m_callTableSelection = m_callTableSortProxy->mapSelectionToSource(callTreeView->selectionModel()->selection());
+    m_callTableSelection = m_metricTableSortProxy->mapSelectionToSource(metricTreeView->selectionModel()->selection());
     if (grouped)
             m_callTableSelection = m_callTableGroupProxy->mapSelectionToSource(m_callTableSelection);
 }
@@ -58,28 +72,61 @@ void BackendProfileWindow::saveCallTableSelection(bool grouped) {
 void BackendProfileWindow::restoreCallTableSelection(bool grouped) {
     if (grouped)
         m_callTableSelection = m_callTableGroupProxy->mapSelectionFromSource(m_callTableSelection);
-    m_callTableSelection = m_callTableSortProxy->mapSelectionFromSource(m_callTableSelection);
-    callTreeView->selectionModel()->select(m_callTableSelection, QItemSelectionModel::Select);
+    m_callTableSelection = m_metricTableSortProxy->mapSelectionFromSource(m_callTableSelection);
+    metricTreeView->selectionModel()->select(m_callTableSelection, QItemSelectionModel::Select);
     if (!m_callTableSelection.indexes().empty())
-        callTreeView->scrollTo(m_callTableSelection.indexes()[0]);
+        metricTreeView->scrollTo(m_callTableSelection.indexes()[0]);
+}
+
+void BackendProfileWindow::tabChange(int tab) {
+    bool floating = dockWidget->isFloating();
+    if (tab == 0) { // Change to frame tab
+        frameGraphTab->addDockWidget(Qt::BottomDockWidgetArea, dockWidget);
+        groupBox->setEnabled(false);
+        m_metricTableSortProxy->setSourceModel(m_frameModel);
+        // sync displayed time range
+        if (m_axisCPU[CALL_VIEW]) {
+            m_scroll[FRAME_VIEW]->setProperty("position",
+                        m_scroll[CALL_VIEW]->property("position"));
+            m_scroll[FRAME_VIEW]->setProperty("size",
+                        m_scroll[CALL_VIEW]->property("size"));
+        }
+    } else { // Change to call tab
+        callGraphTab->addDockWidget(Qt::BottomDockWidgetArea, dockWidget);
+        groupBox->setEnabled(true);
+        if (none_radio->isChecked()) {
+            m_metricTableSortProxy->setSourceModel(m_callModel);
+        } else {
+            m_metricTableSortProxy->setSourceModel(m_callTableGroupProxy);
+        }
+        // sync displayed time range
+        if (m_axisCPU[FRAME_VIEW]) {
+            m_scroll[CALL_VIEW]->setProperty("position",
+                        m_scroll[FRAME_VIEW]->property("position"));
+            m_scroll[CALL_VIEW]->setProperty("size",
+                        m_scroll[FRAME_VIEW]->property("size"));
+        }
+    }
+    if (floating) dockWidget->setFloating(true);
 }
 
 void BackendProfileWindow::setup(MetricCallDataModel* callModel,
                                  MetricFrameDataModel* frameModel)
 {
+    if (!m_callModel && callModel) setupCallView(callModel);
+    if (!m_frameModel && frameModel) setupFrameView(frameModel);
     if (m_setup) return;
 
-    tabWidget->setTabEnabled(0, false);
-
-    // Proxy model for grouping
-    m_callTableGroupProxy = new GroupProxyModel(callModel);
-    m_callTableGroupProxy->setSourceModel(callModel);
     // Proxy model for sorting
-    // Initially disable grouping
-    m_callTableSortProxy = new QSortFilterProxyModel(m_callTableGroupProxy);
-    m_callTableSortProxy->setSourceModel(callModel);
-    callTreeView->setModel(m_callTableSortProxy);
-    callTreeView->sortByColumn(0, Qt::AscendingOrder);
+    m_metricTableSortProxy = new QSortFilterProxyModel(this);
+    metricTreeView->setModel(m_metricTableSortProxy);
+    metricTreeView->sortByColumn(0, Qt::AscendingOrder);
+
+    connect(tabWidget, &QTabWidget::currentChanged,
+            this, &BackendProfileWindow::tabChange);
+
+    tabWidget->setCurrentIndex(m_frameModel ? FRAME_VIEW : CALL_VIEW);
+    tabChange(tabWidget->currentIndex()); //force
 
     // Handle grouping mode switches (save/restore selection, change models)
     connect(call_radio, &QRadioButton::toggled, [=](bool b) {
@@ -108,22 +155,27 @@ void BackendProfileWindow::setup(MetricCallDataModel* callModel,
             });
     connect(none_radio, &QRadioButton::toggled, [=](bool b) {
                 if (b) {
-                    m_callTableSortProxy->setSourceModel(callModel);
+                    m_metricTableSortProxy->setSourceModel(callModel);
                     restoreCallTableSelection(false);
                 } else {
                     saveCallTableSelection(false);
-                    m_callTableSortProxy->setSourceModel(m_callTableGroupProxy);
+                    m_metricTableSortProxy->setSourceModel(m_callTableGroupProxy);
                 }
             });
 
-    // Setup graph view for calls
+    m_setup = true;
+}
 
-    m_axisCPU = new TimelineAxis(std::make_shared<TextureBufferData<GLuint>>(
+void BackendProfileWindow::setupCallView(MetricCallDataModel* callModel)
+{
+    m_callModel = callModel;
+
+    m_axisCPU[CALL_VIEW] = new TimelineAxis(std::make_shared<TextureBufferData<GLuint>>(
                 *callModel->calls().timestampHData(DrawcallStorage::TimestampCPU)),
             std::make_shared<TextureBufferData<GLuint>>(
                 *callModel->calls().timestampLData(DrawcallStorage::TimestampCPU)),
             std::make_shared<TextureBufferData<GLfloat>>(*callModel->durationDataCPU()));
-    m_axisGPU = new TimelineAxis(std::make_shared<TextureBufferData<GLuint>>(
+    m_axisGPU[CALL_VIEW] = new TimelineAxis(std::make_shared<TextureBufferData<GLuint>>(
                 *callModel->calls().timestampHData(DrawcallStorage::TimestampGPU)),
             std::make_shared<TextureBufferData<GLuint>>(
                 *callModel->calls().timestampLData(DrawcallStorage::TimestampGPU)),
@@ -134,39 +186,94 @@ void BackendProfileWindow::setup(MetricCallDataModel* callModel,
         if (!m_dataFilterUnique.contains(str)) m_dataFilterUnique.append(str);
     }
 
-    m_graphs = new MetricGraphs(callModel->metrics(),
+    m_graphs[CALL_VIEW] = new MetricGraphs(callModel->metrics(),
         std::make_shared<TextureBufferData<GLuint>>(*callModel->calls().programData()));
     connect(callModel, &QAbstractItemModel::columnsInserted,
-            m_graphs, &MetricGraphs::addGraphsData);
+            m_graphs[CALL_VIEW], &MetricGraphs::addGraphsData);
 
-    m_timelineData = new TimelineGraphData(std::make_shared<TextureBufferData<GLuint>>(*callModel->calls().nameHashData()),
+    m_timelineData[CALL_VIEW] = new TimelineGraphData(std::make_shared<TextureBufferData<GLuint>>(*callModel->calls().nameHashData()),
                                             callModel->calls().nameHashNumEntries(),
-                                            m_graphs->filter());
-    m_statsTimeline = new RangeStats();
-    m_statsBar = new RangeStatsMinMax();
+                                            m_graphs[CALL_VIEW]->filter());
+    m_statsTimeline[CALL_VIEW] = new RangeStats();
+    m_statsBar[CALL_VIEW] = new RangeStatsMinMax();
     m_timelineHelper = new TimelineHelper(callModel);
 
-    qmlRegisterType<BarGraph>("DataVis", 1, 0, "BarGraph");
-    qmlRegisterType<TimelineGraph>("DataVis", 1, 0, "TimelineGraph");
     auto view = new QQuickWidget(this);
     QQmlContext *ctxt = view->rootContext();
-    ctxt->setContextProperty("viewType", 1);
-    ctxt->setContextProperty("axisCPU", m_axisCPU);
-    ctxt->setContextProperty("axisGPU", m_axisGPU);
-    ctxt->setContextProperty("statsBar", m_statsBar);
-    ctxt->setContextProperty("statsTimeline", m_statsTimeline);
+    ctxt->setContextProperty("viewType", CALL_VIEW);
+    ctxt->setContextProperty("axisCPU", m_axisCPU[CALL_VIEW]);
+    ctxt->setContextProperty("axisGPU", m_axisGPU[CALL_VIEW]);
+    ctxt->setContextProperty("statsBar", m_statsBar[CALL_VIEW]);
+    ctxt->setContextProperty("statsTimeline", m_statsTimeline[CALL_VIEW]);
     ctxt->setContextProperty("timelineHelper", m_timelineHelper);
     ctxt->setContextProperty("programs", QVariant::fromValue(m_dataFilterUnique));
-    ctxt->setContextProperty("graphs", m_graphs);
-    ctxt->setContextProperty("timelinedata", m_timelineData);
+    ctxt->setContextProperty("graphs", m_graphs[CALL_VIEW]);
+    ctxt->setContextProperty("timelinedata", m_timelineData[CALL_VIEW]);
     QSurfaceFormat format(view->format());
-	format.setVersion(3,2);
+    format.setVersion(3,2);
     view->setFormat(format);
     view->setResizeMode(QQuickWidget::SizeRootObjectToView);
     view->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     view->setSource(QUrl("qrc:/profiling/qml/main.qml"));
     graphsLayoutCall->addWidget(view);
+    m_scroll[CALL_VIEW] = view->rootObject()->findChild<QObject*>("scroll");
     view->show();
 
-    m_setup = true;
+    // Proxy model for grouping
+    // Initially grouping is disabled
+    m_callTableGroupProxy = new GroupProxyModel(callModel);
+    m_callTableGroupProxy->setSourceModel(callModel);
+
+    connect(view->rootObject(), SIGNAL(eventDoubleClicked(int)),
+            this, SLOT(focusEvent(int)));
+
+    tabWidget->setTabEnabled(CALL_VIEW, true);
+}
+
+void BackendProfileWindow::setupFrameView(MetricFrameDataModel* frameModel)
+{
+    m_frameModel = frameModel;
+
+    m_axisCPU[FRAME_VIEW] = new TimelineAxis(std::make_shared<TextureBufferData<GLuint>>(
+                *frameModel->frames().timestampHData(FrameStorage::TimestampCPU)),
+            std::make_shared<TextureBufferData<GLuint>>(
+                *frameModel->frames().timestampLData(FrameStorage::TimestampCPU)),
+            std::make_shared<TextureBufferData<GLfloat>>(*frameModel->durationDataCPU()));
+    m_axisGPU[FRAME_VIEW] = new TimelineAxis(std::make_shared<TextureBufferData<GLuint>>(
+                *frameModel->frames().timestampHData(FrameStorage::TimestampGPU)),
+            std::make_shared<TextureBufferData<GLuint>>(
+                *frameModel->frames().timestampLData(FrameStorage::TimestampGPU)),
+            std::make_shared<TextureBufferData<GLfloat>>(*frameModel->durationDataGPU()));
+
+    m_graphs[FRAME_VIEW] = new MetricGraphs(frameModel->metrics());
+    connect(frameModel, &QAbstractItemModel::columnsInserted,
+            m_graphs[FRAME_VIEW], &MetricGraphs::addGraphsData);
+
+    m_timelineData[FRAME_VIEW] = new TimelineGraphData(nullptr, 0, nullptr);
+    m_statsTimeline[FRAME_VIEW] = new RangeStats();
+    m_statsBar[FRAME_VIEW] = new RangeStatsMinMax();
+
+    auto view = new QQuickWidget(this);
+    QQmlContext *ctxt = view->rootContext();
+    ctxt->setContextProperty("viewType", FRAME_VIEW);
+    ctxt->setContextProperty("axisCPU", m_axisCPU[FRAME_VIEW]);
+    ctxt->setContextProperty("axisGPU", m_axisGPU[FRAME_VIEW]);
+    ctxt->setContextProperty("statsBar", m_statsBar[FRAME_VIEW]);
+    ctxt->setContextProperty("statsTimeline", m_statsTimeline[FRAME_VIEW]);
+    ctxt->setContextProperty("graphs", m_graphs[FRAME_VIEW]);
+    ctxt->setContextProperty("timelinedata", m_timelineData[FRAME_VIEW]);
+    QSurfaceFormat format(view->format());
+    format.setVersion(3,2);
+    view->setFormat(format);
+    view->setResizeMode(QQuickWidget::SizeRootObjectToView);
+    view->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    view->setSource(QUrl("qrc:/profiling/qml/main.qml"));
+    graphsLayoutFrame->addWidget(view);
+    m_scroll[FRAME_VIEW] = view->rootObject()->findChild<QObject*>("scroll");
+    view->show();
+
+    connect(view->rootObject(), SIGNAL(eventDoubleClicked(int)),
+            this, SLOT(focusEvent(int)));
+
+    tabWidget->setTabEnabled(FRAME_VIEW, true);
 }

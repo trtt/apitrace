@@ -441,6 +441,7 @@ Timer {
 
 Item {
     id: scroll
+    objectName: "scroll"
     anchors.left: view.left
     anchors.right: view.right
     anchors.bottom: statspanel.top
