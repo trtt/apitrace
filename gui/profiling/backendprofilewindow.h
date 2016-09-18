@@ -48,6 +48,9 @@ public:
     bool isSetuped() const { return m_setup; }
     void updateViews();
 
+public slots:
+    void focusEvent(int id);
+
 private:
     enum ViewType {
         FRAME_VIEW,

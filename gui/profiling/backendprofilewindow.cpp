@@ -110,6 +110,25 @@ void BackendProfileWindow::tabChange(int tab) {
     if (floating) dockWidget->setFloating(true);
 }
 
+void BackendProfileWindow::focusEvent(int id) {
+    // scroll to and select event in the table view
+    QModelIndex index;
+    if (tabWidget->currentIndex() == FRAME_VIEW) {
+        // frames in table
+        index = m_metricTableSortProxy->mapFromSource(m_frameModel->index(id, 0));
+    } else if (none_radio->isChecked()) {
+        // calls (raw) in table
+        index = m_metricTableSortProxy->mapFromSource(m_callModel->index(id, 0));
+    } else {
+        // calls (grouped) in table
+        index = m_callTableGroupProxy->mapFromSource(m_callModel->index(id, 0));
+        index = m_metricTableSortProxy->mapFromSource(index);
+    }
+    metricTreeView->scrollTo(index);
+    metricTreeView->selectionModel()->select(index,
+            QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
+}
+
 void BackendProfileWindow::setup(MetricCallDataModel* callModel,
                                  MetricFrameDataModel* frameModel)
 {

@@ -32,6 +32,8 @@ id: root
 property bool coarsed: true
 property alias timelineView: timelineView
 
+signal eventDoubleClicked(int id)
+
 function setCoarsed() {
     if (!coarsed) coarsed = true
     finetimer.restart()
@@ -242,6 +244,7 @@ MouseArea {
     height: flick.height-2
     property int oldX
     property bool dragged: false
+    property int eventUnderCursor: -1
     hoverEnabled: true
     onPressed: {
         oldX = mouse.x
@@ -251,6 +254,7 @@ MouseArea {
         tooltip_event.visible = false
         tooltip_stats.visible = false
         tooltip.visible = false
+        eventUnderCursor = -1
         if (dragged) {
             scroll.position -= (mouse.x-oldX) / view.width * (axisCPU.dispEndTime-axisCPU.dispStartTime)/(axisGPU.endTime-axisCPU.startTime)
             if (scroll.position < 0) scroll.position = 0
@@ -285,6 +289,7 @@ MouseArea {
                     } else {
                         tooltip_event.eventId = id
                     }
+                    eventUnderCursor = id
                     tooltip_event.eventStart = start * 1e-9
                     tooltip_event.eventDuration = duration * 1e-9
                     tooltip_event.yAvailable = false
@@ -318,6 +323,11 @@ MouseArea {
         tooltip_stats.visible = false
         tooltip.visible = false
     }
+    onDoubleClicked: {
+        if (eventUnderCursor != -1) {
+            root.eventDoubleClicked(eventUnderCursor)
+        }
+    }
 }
 
 MouseArea {
@@ -329,6 +339,7 @@ MouseArea {
     height: flick.height-2
     property int oldX
     property bool dragged: false
+    property int eventUnderCursor: -1
     hoverEnabled: true
     onPressed: {
         oldX = mouse.x
@@ -338,6 +349,7 @@ MouseArea {
         tooltip_event.visible = false
         tooltip_stats.visible = false
         tooltip.visible = false
+        eventUnderCursor = -1
         if (dragged) {
             scroll.position -= (mouse.x-oldX) / view.width * (axisCPU.dispEndTime-axisCPU.dispStartTime)/(axisGPU.endTime-axisCPU.startTime)
             if (scroll.position < 0) scroll.position = 0
@@ -371,6 +383,7 @@ MouseArea {
                     } else {
                         tooltip_event.eventId = id
                     }
+                    eventUnderCursor = id
                     tooltip_event.eventStart = start * 1e-9
                     tooltip_event.eventDuration = duration * 1e-9
                     tooltip_event.eventValue = statsBar.graph.data.eventYValue(id)
@@ -407,6 +420,11 @@ MouseArea {
         tooltip_event.visible = false
         tooltip_stats.visible = false
         tooltip.visible = false
+    }
+    onDoubleClicked: {
+        if (eventUnderCursor != -1) {
+            root.eventDoubleClicked(eventUnderCursor)
+        }
     }
 }
 
