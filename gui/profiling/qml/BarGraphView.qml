@@ -154,7 +154,15 @@ ScrollView {
                             anchors.verticalCenter: parent.verticalCenter
 
                             clip: true
+                            elide: Text.ElideRight
                             text: " " + graphCaption
+
+                            Button {
+                                anchors.fill: parent
+
+                                opacity: 0 // sadly normal tooltips are avail only in 5.7
+                                tooltip: parent.text
+                            }
                         }
                         Rectangle {
                             id: expandSwitch
