@@ -59,7 +59,7 @@ public:
     MetricStorage(MetricStorage&& ms) : data(ms.data), item(ms.item) { ms.data = nullptr; }
 
     void addMetricData(float data);
-    float getMetricData(unsigned index) const { return (*data)[index]; }
+    inline float getMetricData(unsigned index) const { return (*data)[index]; }
     MetricItem* metric() const { return item; }
     const std::vector<float>* vector() const { return data; }
 
@@ -201,6 +201,8 @@ private:
     bool init;
     unsigned durationCPUIndexInMetrics;
     unsigned durationGPUIndexInMetrics;
+    unsigned timestampCPUIndexInMetrics;
+    unsigned timestampGPUIndexInMetrics;
 };
 
 
@@ -241,4 +243,6 @@ private:
     bool init;
     unsigned durationCPUIndexInMetrics;
     unsigned durationGPUIndexInMetrics;
+    unsigned timestampCPUIndexInMetrics;
+    unsigned timestampGPUIndexInMetrics;
 };

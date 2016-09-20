@@ -48,12 +48,14 @@ qlonglong FrameStorage::getTimestamp(unsigned index, TimestampType type) const {
 
 int MetricFrameDataModel::rowCount(const QModelIndex &parent) const
 {
-    return m_frames.size();
+    if (parent.isValid()) return 0;
+    else return m_frames.size();
 }
 
 int MetricFrameDataModel::columnCount(const QModelIndex &parent) const
 {
-    return COLUMN_METRICS_BEGIN + m_metrics.size();
+    if (parent.isValid()) return 0;
+    else return COLUMN_METRICS_BEGIN + m_metrics.size();
 }
 
 QVariant MetricFrameDataModel::headerData(int section, Qt::Orientation orientation,
@@ -80,10 +82,10 @@ QVariant MetricFrameDataModel::data(const QModelIndex &index, int role) const
         case COLUMN_ID:
             return QVariant(index.row());
         default:
-            auto name = m_metrics[index.column() - COLUMN_METRICS_BEGIN].metric()->getName();
-            if (name == QLatin1String("CPU Start")) {
+            unsigned metricIndex = index.column() - COLUMN_METRICS_BEGIN;
+            if (metricIndex == timestampCPUIndexInMetrics) {
                 return 1e-9 * m_frames.getTimestamp(index.row(), FrameStorage::TimestampCPU);
-            } else if (name == QLatin1String("GPU Start")) {
+            } else if (metricIndex == timestampGPUIndexInMetrics) {
                 return 1e-9 * m_frames.getTimestamp(index.row(), FrameStorage::TimestampGPU);
             } else {
                 return m_metrics[index.column() - COLUMN_METRICS_BEGIN].getMetricData(index.row());
@@ -117,6 +119,10 @@ void MetricFrameDataModel::addMetricsData(QTextStream &stream,
                 durationCPUIndexInMetrics = m_metrics.size() - 1;
             } else if (item->getName() == QLatin1String("GPU Duration")) {
                 durationGPUIndexInMetrics = m_metrics.size() - 1;
+            } else if (item->getName() == QLatin1String("CPU Start")) {
+                timestampCPUIndexInMetrics = m_metrics.size() - 1;
+            } else if (item->getName() == QLatin1String("GPU Start")) {
+                timestampGPUIndexInMetrics = m_metrics.size() - 1;
             }
             i++;
         }
@@ -135,9 +141,9 @@ void MetricFrameDataModel::addMetricsData(QTextStream &stream,
         for (auto b = lookup.begin(); b != lookup.end(); ++b) {
             for (int j = 0; j < b.value().size(); ++j) {
                 const QString &token = tokens.at(i-oldMetricsSize);
-                if (m_metrics[i-COLUMN_METRICS_BEGIN].metric()->getName() == QLatin1String("CPU Start")) {
+                if (i-COLUMN_METRICS_BEGIN == timestampCPUIndexInMetrics) {
                     m_frames.addTimestamp(token.toLongLong(), FrameStorage::TimestampCPU);
-                } else if (m_metrics[i-COLUMN_METRICS_BEGIN].metric()->getName() == QLatin1String("GPU Start")) {
+                } else if (i-COLUMN_METRICS_BEGIN == timestampGPUIndexInMetrics) {
                     m_frames.addTimestamp(token.toLongLong(), FrameStorage::TimestampGPU);
                 }
                 else if (token == QString("-")) {
@@ -145,8 +151,9 @@ void MetricFrameDataModel::addMetricsData(QTextStream &stream,
                 } else {
                     MetricNumType nType = m_metrics[i-COLUMN_METRICS_BEGIN].metric()->getNumType();
                     double mult = 1.;
-                    if ((m_metrics[i-COLUMN_METRICS_BEGIN].metric()->getName() == QLatin1String("CPU Duration"))
-                        || (m_metrics[i-COLUMN_METRICS_BEGIN].metric()->getName() == QLatin1String("GPU Duration"))) {
+                    if ((i-COLUMN_METRICS_BEGIN == durationCPUIndexInMetrics) ||
+                        (i-COLUMN_METRICS_BEGIN == durationGPUIndexInMetrics))
+                    {
                         mult = 1e-9;
                     }
                     switch(nType) {
@@ -156,8 +163,6 @@ void MetricFrameDataModel::addMetricsData(QTextStream &stream,
                         case CNT_NUM_BOOL: m_metrics[i-COLUMN_METRICS_BEGIN].addMetricData(static_cast<QVariant>(token).toBool()); break;
                         case CNT_NUM_UINT64: m_metrics[i-COLUMN_METRICS_BEGIN].addMetricData(token.toULongLong() * mult); break;
                         case CNT_NUM_INT64: m_metrics[i-COLUMN_METRICS_BEGIN].addMetricData(token.toLongLong() * mult); break;
-                    }
-                    if (m_metrics[i-COLUMN_METRICS_BEGIN].metric()->getName() == QLatin1String("GPU Duration")) {
                     }
                 }
                 i++;
@@ -198,12 +203,14 @@ qlonglong DrawcallStorage::getTimestamp(unsigned index, TimestampType type) cons
 
 int MetricCallDataModel::rowCount(const QModelIndex &parent) const
 {
-    return m_calls.size();
+    if (parent.isValid()) return 0;
+    else return m_calls.size();
 }
 
 int MetricCallDataModel::columnCount(const QModelIndex &parent) const
 {
-    return COLUMN_METRICS_BEGIN + m_metrics.size();
+    if (parent.isValid()) return 0;
+    else return COLUMN_METRICS_BEGIN + m_metrics.size();
 }
 
 QVariant MetricCallDataModel::headerData(int section, Qt::Orientation orientation,
@@ -242,10 +249,10 @@ QVariant MetricCallDataModel::data(const QModelIndex &index, int role) const
         case COLUMN_NAME:
             return QString::fromStdString(m_calls.name(index.row()));
         default:
-            auto name = m_metrics[index.column() - COLUMN_METRICS_BEGIN].metric()->getName();
-            if (name == QLatin1String("CPU Start")) {
+            unsigned metricIndex = index.column() - COLUMN_METRICS_BEGIN;
+            if (metricIndex == timestampCPUIndexInMetrics) {
                 return 1e-9 * m_calls.getTimestamp(index.row(), DrawcallStorage::TimestampCPU);
-            } else if (name == QLatin1String("GPU Start")) {
+            } else if (metricIndex == timestampGPUIndexInMetrics) {
                 return 1e-9 * m_calls.getTimestamp(index.row(), DrawcallStorage::TimestampGPU);
             } else {
                 return m_metrics[index.column() - COLUMN_METRICS_BEGIN].getMetricData(index.row());
@@ -279,6 +286,10 @@ void MetricCallDataModel::addMetricsData(QTextStream &stream,
                 durationCPUIndexInMetrics = m_metrics.size() - 1;
             } else if (item->getName() == QLatin1String("GPU Duration")) {
                 durationGPUIndexInMetrics = m_metrics.size() - 1;
+            } else if (item->getName() == QLatin1String("CPU Start")) {
+                timestampCPUIndexInMetrics = m_metrics.size() - 1;
+            } else if (item->getName() == QLatin1String("GPU Start")) {
+                timestampGPUIndexInMetrics = m_metrics.size() - 1;
             }
             i++;
         }
@@ -303,9 +314,9 @@ void MetricCallDataModel::addMetricsData(QTextStream &stream,
         for (auto b = lookup.begin(); b != lookup.end(); ++b) {
             for (int j = 0; j < b.value().size(); ++j) {
                 const QString &token = tokens.at(i-oldMetricsSize);
-                if (m_metrics[i-COLUMN_METRICS_BEGIN].metric()->getName() == QLatin1String("CPU Start")) {
+                if (i-COLUMN_METRICS_BEGIN == timestampCPUIndexInMetrics) {
                     m_calls.addTimestamp(token.toLongLong(), DrawcallStorage::TimestampCPU);
-                } else if (m_metrics[i-COLUMN_METRICS_BEGIN].metric()->getName() == QLatin1String("GPU Start")) {
+                } else if (i-COLUMN_METRICS_BEGIN == timestampGPUIndexInMetrics) {
                     m_calls.addTimestamp(token.toLongLong(), DrawcallStorage::TimestampGPU);
                 }
                 else if (token == QString("-")) {
@@ -313,8 +324,9 @@ void MetricCallDataModel::addMetricsData(QTextStream &stream,
                 } else {
                     MetricNumType nType = m_metrics[i-4].metric()->getNumType();
                     double mult = 1.;
-                    if ((m_metrics[i-COLUMN_METRICS_BEGIN].metric()->getName() == QLatin1String("CPU Duration"))
-                        || (m_metrics[i-COLUMN_METRICS_BEGIN].metric()->getName() == QLatin1String("GPU Duration"))) {
+                    if ((i-COLUMN_METRICS_BEGIN == durationCPUIndexInMetrics) ||
+                        (i-COLUMN_METRICS_BEGIN == durationGPUIndexInMetrics))
+                    {
                         mult = 1e-9;
                     }
                     switch(nType) {
@@ -324,8 +336,6 @@ void MetricCallDataModel::addMetricsData(QTextStream &stream,
                         case CNT_NUM_BOOL: m_metrics[i-COLUMN_METRICS_BEGIN].addMetricData(static_cast<QVariant>(token).toBool()); break;
                         case CNT_NUM_UINT64: m_metrics[i-COLUMN_METRICS_BEGIN].addMetricData(token.toULongLong() * mult); break;
                         case CNT_NUM_INT64: m_metrics[i-COLUMN_METRICS_BEGIN].addMetricData(token.toLongLong() * mult); break;
-                    }
-                    if (m_metrics[i-COLUMN_METRICS_BEGIN].metric()->getName() == QLatin1String("GPU Duration")) {
                     }
                 }
                 i++;

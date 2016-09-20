@@ -139,6 +139,7 @@ void BackendProfileWindow::setup(MetricCallDataModel* callModel,
     // Proxy model for sorting
     m_metricTableSortProxy = new QSortFilterProxyModel(this);
     metricTreeView->setModel(m_metricTableSortProxy);
+    metricTreeView->setUniformRowHeights(true);
     metricTreeView->sortByColumn(0, Qt::AscendingOrder);
 
     connect(tabWidget, &QTabWidget::currentChanged,
