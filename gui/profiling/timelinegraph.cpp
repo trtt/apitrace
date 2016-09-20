@@ -58,7 +58,8 @@ GLuint TimelineGraphRenderer::m_vao = 0;
 unsigned TimelineGraphRenderer::m_numInstances = 0;
 
 TimelineGraphRenderer::TimelineGraphRenderer(TimelineGraph* item)
-    : AbstractGraphRenderer(item), m_coloredCopy(item->m_colored)
+    : AbstractGraphRenderer(item), m_coloredCopy(item->m_colored),
+      m_doublePrecisionCopy(item->m_doublePrecision)
 {
     m_numInstances++;
 }
@@ -77,6 +78,7 @@ TimelineGraphRenderer::~TimelineGraphRenderer() {
 void TimelineGraphRenderer::synchronizeAfter(QQuickFramebufferObject* item) {
     TimelineGraph* i = static_cast<TimelineGraph*>(item);
     m_coloredCopy = i->m_colored;
+    m_doublePrecisionCopy = i->m_doublePrecision;
 }
 
 void TimelineGraphRenderer::render() {
@@ -88,7 +90,7 @@ void TimelineGraphRenderer::render() {
     if (!m_GLinit) {
         initializeOpenGLFunctions();
         if (m_win->openglContext()->hasExtension("GL_ARB_gpu_shader_fp64")) {
-            m_doublePrecision = true;
+            m_doublePrecisionAvailable = true;
             glUniform1d = reinterpret_cast<glUniform1dType>(
                 m_win->openglContext()->getProcAddress("glUniform1d")
             );
@@ -96,7 +98,6 @@ void TimelineGraphRenderer::render() {
         m_GLinit = true;
     }
     if (!m_programs[PROGRAM_NOFILTNOCOLOR_FP32]) {
-        if (!m_doublePrecision) {
         fp32vshader = new QOpenGLShader(QOpenGLShader::Vertex,
                         m_programs[PROGRAM_NOFILTNOCOLOR_FP32]);
         fp32vshader->compileSourceCode(
@@ -125,7 +126,7 @@ void TimelineGraphRenderer::render() {
                 "   positioned += vec2(2.*(positionH-relStartTime) - 1, -1);\n"
                 "   gl_Position = vec4(positioned,0,1);\n"
                 "}");
-        } else {
+        if (m_doublePrecisionAvailable) {
         fp64vshader = new QOpenGLShader(QOpenGLShader::Vertex,
                         m_programs[PROGRAM_NOFILTNOCOLOR_FP64]);
         fp64vshader->compileSourceCode(
@@ -216,12 +217,12 @@ void TimelineGraphRenderer::render() {
                 "   outColor = color;\n"
                 "}");
 
-        for (int i = (m_doublePrecision?0:PROGRAM_SIZE/2); i < PROGRAM_SIZE; i++)
+        for (int i = (m_doublePrecisionAvailable?0:PROGRAM_SIZE/2); i < PROGRAM_SIZE; i++)
         {
             m_programs[i] = new QOpenGLShaderProgram();
         }
 
-        if (m_doublePrecision) {
+        if (m_doublePrecisionAvailable) {
             m_programs[PROGRAM_NOFILTNOCOLOR_FP64]->addShader(fp64vshader);
             m_programs[PROGRAM_FILTNOCOLOR_FP64]->addShader(fp64vshader);
             m_programs[PROGRAM_NOFILTCOLOR_FP64]->addShader(fp64vshader);
@@ -243,7 +244,7 @@ void TimelineGraphRenderer::render() {
         m_programs[PROGRAM_FILTNOCOLOR_FP32]->addShader(filtnocolorfshader);
         m_programs[PROGRAM_FILTCOLOR_FP32]->addShader(filtcolorfshader);
 
-        for (int i = (m_doublePrecision?0:PROGRAM_SIZE/2); i < PROGRAM_SIZE; i++)
+        for (int i = (m_doublePrecisionAvailable?0:PROGRAM_SIZE/2); i < PROGRAM_SIZE; i++)
         {
             m_programs[i]->link();
         }
@@ -262,7 +263,7 @@ void TimelineGraphRenderer::render() {
 
         m_vertexBuffer.bind();
         m_vertexBuffer.allocate(quad, 4 * 2 * sizeof(float));
-        for (int i = (m_doublePrecision?0:PROGRAM_SIZE/2); i < PROGRAM_SIZE; i++)
+        for (int i = (m_doublePrecisionAvailable?0:PROGRAM_SIZE/2); i < PROGRAM_SIZE; i++)
         {
             m_programs[i]->setAttributeBuffer("vertex", GL_FLOAT, 0, 2);
             m_programs[i]->enableAttributeArray("vertex");
@@ -282,7 +283,7 @@ void TimelineGraphRenderer::render() {
     } else {
         programNum = PROGRAM_NOFILTNOCOLOR_FP64;
     }
-    if (!m_doublePrecision) programNum += PROGRAM_SIZE / 2;
+    if (!m_doublePrecisionCopy) programNum += PROGRAM_SIZE / 2;
     m_program = m_programs[programNum];
 
     if (!m_needsUpdating || !m_axisCopy || !m_dataCopy) return;
@@ -330,7 +331,7 @@ void TimelineGraphRenderer::render() {
         m_program->setUniformValue("texFilter", 4);
         m_program->setUniformValue("filterId", (GLint)m_filterCopy);
     }
-    if (!m_doublePrecision) {
+    if (!m_doublePrecisionCopy) {
     m_program->setUniformValue("scaleInv", (m_dispEndTimeCopy - m_dispStartTimeCopy) * (float)1e-9);
     m_program->setUniformValue("relStartTime",
         (float) (m_dispStartTimeCopy / (double)(m_dispEndTimeCopy - m_dispStartTimeCopy)) );

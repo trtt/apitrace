@@ -52,6 +52,7 @@ ScrollView {
     property var flickable: flick
     property bool expandable: true
     property bool colored: true
+    property bool doublePrecision: false
     property var axes: [axisCPU, axisGPU]
     property var axesModel:
         ListModel {
@@ -144,6 +145,7 @@ ScrollView {
                     axis: graphAxis
                     data: timelinedata
                     numElements: Math.max(width * (coarsed ? coarse : (localCoarsed ? coarse : fine)), 0)
+                    doublePrecision: scrollview.doublePrecision
                 }
                 Rectangle {
                     color: "gray"

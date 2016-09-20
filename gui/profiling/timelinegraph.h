@@ -76,7 +76,7 @@ private:
     };
 
     bool m_GLinit = false;
-    bool m_doublePrecision = false;
+    bool m_doublePrecisionAvailable = false;
     QOpenGLShaderProgram* m_program;
     static QOpenGLShaderProgram* m_programs[PROGRAM_SIZE];
     static QGLBuffer m_vertexBuffer;
@@ -84,6 +84,7 @@ private:
     static unsigned m_numInstances;
 
     bool m_coloredCopy;
+    bool m_doublePrecisionCopy;
 };
 
 
@@ -91,6 +92,7 @@ class TimelineGraph : public AbstractGraph
 {
     Q_OBJECT
     Q_PROPERTY(bool colored MEMBER m_colored)
+    Q_PROPERTY(bool doublePrecision MEMBER m_doublePrecision)
 
     friend class TimelineGraphRenderer;
 
@@ -102,4 +104,5 @@ public:
 
 private:
     bool m_colored = true;
+    bool m_doublePrecision = false;
 };

@@ -51,6 +51,7 @@ ScrollView {
     property var fine
     property var flickable: flick
     property bool expandable: true
+    property bool doublePrecision: false
 
     verticalScrollBarPolicy: Qt.ScrollBarAlwaysOn
 
@@ -129,6 +130,7 @@ ScrollView {
                     axis: graphAxis
                     data: graphData
                     numElements: Math.max(width * (coarsed ? coarse : (localCoarsed ? coarse : fine)), 0)
+                    doublePrecision: scrollview.doublePrecision
                 }
                 Rectangle {
                     color: "gray"

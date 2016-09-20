@@ -84,16 +84,24 @@ public:
     void synchronizeAfter(QQuickFramebufferObject* item);
 
 private:
+    enum ProgramType {
+        PROGRAM_NOFILT_FP64,
+        PROGRAM_FILT_FP64,
+        PROGRAM_NOFILT_FP32,
+        PROGRAM_FILT_FP32,
+        PROGRAM_SIZE
+    };
+
     bool m_GLinit = false;
-    bool m_doublePrecision = false;
+    bool m_doublePrecisionAvailable = false;
     QOpenGLShaderProgram* m_program;
-    static QOpenGLShaderProgram* m_filtProgram;
-    static QOpenGLShaderProgram* m_nofiltProgram;
+    static QOpenGLShaderProgram* m_programs[PROGRAM_SIZE];
     static QGLBuffer m_vertexBuffer;
     static GLuint m_vao;
     static unsigned m_numInstances;
 
     GLfloat m_maxYCopy;
+    bool m_doublePrecisionCopy;
 };
 
 
@@ -101,6 +109,7 @@ class BarGraph : public AbstractGraph
 {
     Q_OBJECT
     Q_PROPERTY(float maxY READ maxY WRITE setMaxY NOTIFY maxYChanged)
+    Q_PROPERTY(bool doublePrecision MEMBER m_doublePrecision)
 
     friend class BarGraphRenderer;
 
@@ -125,6 +134,7 @@ public slots:
 
 private:
     bool m_needsUpdatingMaxY = false;
+    bool m_doublePrecision = false;
 
     GLfloat m_maxY;
 };

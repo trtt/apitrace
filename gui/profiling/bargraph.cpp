@@ -141,23 +141,24 @@ void BarGraph::updateMaxY() {
 }
 
 
-QOpenGLShaderProgram* BarGraphRenderer::m_filtProgram = nullptr;
-QOpenGLShaderProgram* BarGraphRenderer::m_nofiltProgram = nullptr;
+QOpenGLShaderProgram* BarGraphRenderer::m_programs[BarGraphRenderer::PROGRAM_SIZE] = { nullptr };
 QGLBuffer BarGraphRenderer::m_vertexBuffer = QGLBuffer(QGLBuffer::VertexBuffer);
 GLuint BarGraphRenderer::m_vao = 0;
 unsigned BarGraphRenderer::m_numInstances = 0;
 
-BarGraphRenderer::BarGraphRenderer(BarGraph* item) : AbstractGraphRenderer(item) {
+BarGraphRenderer::BarGraphRenderer(BarGraph* item)
+    : AbstractGraphRenderer(item), m_doublePrecisionCopy(item->m_doublePrecision)
+{
     m_numInstances++;
 }
 
 BarGraphRenderer::~BarGraphRenderer() {
     if (!(--m_numInstances)) {
         glDeleteVertexArrays(1, &m_vao);
-        delete m_filtProgram;
-        delete m_nofiltProgram;
-        m_filtProgram = nullptr;
-        m_nofiltProgram = nullptr;
+        for (auto& p : m_programs) {
+            if (p) delete p;
+            p = nullptr;
+        }
     }
 }
 
@@ -170,6 +171,7 @@ void BarGraphRenderer::synchronizeAfter(QQuickFramebufferObject* item) {
     }
 
     m_maxYCopy = i->m_maxY;
+    m_doublePrecisionCopy = i->m_doublePrecision;
 }
 
 void BarGraphRenderer::render() {
@@ -180,16 +182,16 @@ void BarGraphRenderer::render() {
     if (!m_GLinit) {
         initializeOpenGLFunctions();
         if (m_win->openglContext()->hasExtension("GL_ARB_gpu_shader_fp64")) {
-            m_doublePrecision = true;
+            m_doublePrecisionAvailable = true;
             glUniform1d = reinterpret_cast<glUniform1dType>(
                 m_win->openglContext()->getProcAddress("glUniform1d")
             );
         }
         m_GLinit = true;
     }
-    if (!m_filtProgram) {
-        if (!m_doublePrecision) {
-        fp32vshader = new QOpenGLShader(QOpenGLShader::Vertex, m_filtProgram);
+    if (!m_programs[PROGRAM_NOFILT_FP32]) {
+        fp32vshader = new QOpenGLShader(QOpenGLShader::Vertex,
+                        m_programs[PROGRAM_NOFILT_FP32]);
         fp32vshader->compileSourceCode(
                 "#version 140\n"
                 "in vec2 vertex;\n"
@@ -219,8 +221,9 @@ void BarGraphRenderer::render() {
                 "   positioned += vec2(2.*(positionH-relStartTime) - 1, -1);\n"
                 "   gl_Position = vec4(positioned,0,1);\n"
                 "}");
-        } else {
-        fp64vshader = new QOpenGLShader(QOpenGLShader::Vertex, m_filtProgram);
+        if (m_doublePrecisionAvailable) {
+        fp64vshader = new QOpenGLShader(QOpenGLShader::Vertex,
+                        m_programs[PROGRAM_NOFILT_FP64]);
         fp64vshader->compileSourceCode(
                 "#version 140\n"
                 "#extension GL_ARB_gpu_shader_fp64 : enable\n"
@@ -251,7 +254,8 @@ void BarGraphRenderer::render() {
                 "   gl_Position = vec4(positioned,0,1);\n"
                 "}");
         }
-        filtfshader = new QOpenGLShader(QOpenGLShader::Fragment, m_filtProgram);
+        filtfshader = new QOpenGLShader(QOpenGLShader::Fragment,
+                        m_programs[PROGRAM_NOFILT_FP32]);
         filtfshader->compileSourceCode(
                 "#version 140\n"
                 "uniform vec4 color;\n"
@@ -265,7 +269,8 @@ void BarGraphRenderer::render() {
                 "		discard;\n"
                 "   outColor = color;\n"
                 "}");
-        nofiltfshader = new QOpenGLShader(QOpenGLShader::Fragment, m_filtProgram);
+        nofiltfshader = new QOpenGLShader(QOpenGLShader::Fragment,
+                            m_programs[PROGRAM_NOFILT_FP32]);
         nofiltfshader->compileSourceCode(
                 "#version 140\n"
                 "uniform vec4 color;\n"
@@ -276,20 +281,28 @@ void BarGraphRenderer::render() {
                 "   outColor = color;\n"
                 "}");
 
-        m_filtProgram = new QOpenGLShaderProgram();
-        m_nofiltProgram = new QOpenGLShaderProgram();
-        if (m_doublePrecision) {
-            m_filtProgram->addShader(fp64vshader);
-            m_nofiltProgram->addShader(fp64vshader);
-        } else {
-            m_filtProgram->addShader(fp32vshader);
-            m_nofiltProgram->addShader(fp32vshader);
+        for (int i = (m_doublePrecisionAvailable?0:PROGRAM_SIZE/2); i < PROGRAM_SIZE; i++)
+        {
+            m_programs[i] = new QOpenGLShaderProgram();
         }
-        m_filtProgram->addShader(filtfshader);
-        m_nofiltProgram->addShader(nofiltfshader);
+        if (m_doublePrecisionAvailable) {
+            m_programs[PROGRAM_NOFILT_FP64]->addShader(fp64vshader);
+            m_programs[PROGRAM_FILT_FP64]->addShader(fp64vshader);
 
-        m_filtProgram->link();
-        m_nofiltProgram->link();
+            m_programs[PROGRAM_NOFILT_FP64]->addShader(nofiltfshader);
+            m_programs[PROGRAM_FILT_FP64]->addShader(filtfshader);
+        }
+
+        m_programs[PROGRAM_NOFILT_FP32]->addShader(fp32vshader);
+        m_programs[PROGRAM_FILT_FP32]->addShader(fp32vshader);
+
+        m_programs[PROGRAM_NOFILT_FP32]->addShader(nofiltfshader);
+        m_programs[PROGRAM_FILT_FP32]->addShader(filtfshader);
+
+        for (int i = (m_doublePrecisionAvailable?0:PROGRAM_SIZE/2); i < PROGRAM_SIZE; i++)
+        {
+            m_programs[i]->link();
+        }
 
         static GLfloat const quad[] = {
             -1.0f,  -1.0f,
@@ -305,20 +318,24 @@ void BarGraphRenderer::render() {
 
         m_vertexBuffer.bind();
         m_vertexBuffer.allocate(quad, 4 * 2 * sizeof(float));
-        m_filtProgram->setAttributeBuffer("vertex", GL_FLOAT, 0, 2);
-        m_nofiltProgram->setAttributeBuffer("vertex", GL_FLOAT, 0, 2);
-        m_filtProgram->enableAttributeArray("vertex");
-        m_nofiltProgram->enableAttributeArray("vertex");
+        for (int i = (m_doublePrecisionAvailable?0:PROGRAM_SIZE/2); i < PROGRAM_SIZE; i++)
+        {
+            m_programs[i]->setAttributeBuffer("vertex", GL_FLOAT, 0, 2);
+            m_programs[i]->enableAttributeArray("vertex");
+        }
         m_vertexBuffer.release();
 
         glBindVertexArray(0);
-        m_program = m_nofiltProgram;
     }
+
+    int programNum;
     if (m_filteredCopy) {
-        m_program = m_filtProgram;
+        programNum = PROGRAM_FILT_FP64;
     } else {
-        m_program = m_nofiltProgram;
+        programNum = PROGRAM_NOFILT_FP64;
     }
+    if (!m_doublePrecisionCopy) programNum += PROGRAM_SIZE / 2;
+    m_program = m_programs[programNum];
 
     if (!m_needsUpdating || !m_axisCopy || !m_dataCopy) return;
 
@@ -354,7 +371,7 @@ void BarGraphRenderer::render() {
         m_program->setUniformValue("texFilter", 4);
         m_program->setUniformValue("filterId", (GLint)m_filterCopy);
     }
-    if (!m_doublePrecision) {
+    if (!m_doublePrecisionCopy) {
     m_program->setUniformValue("scaleInv", (m_dispEndTimeCopy - m_dispStartTimeCopy) * (float)1e-9);
     m_program->setUniformValue("relStartTime",
         (float) (m_dispStartTimeCopy / (double)(m_dispEndTimeCopy - m_dispStartTimeCopy)) );

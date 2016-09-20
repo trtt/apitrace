@@ -30,6 +30,8 @@ import QtQuick.Layouts 1.0
 Item {
 id: root
 property bool coarsed: true
+// Using double precision shaders if <= 1e-6 sec per pixel
+property bool doublePrecision: 1. / view.width * (axisCPU.dispEndTime - axisCPU.dispStartTime) <= 1e3
 property alias timelineView: timelineView
 
 signal eventDoubleClicked(int id)
@@ -218,6 +220,7 @@ SplitView {
         fine: fine.value
         expandable: viewType==1
         colored: viewType==1
+        doublePrecision: root.doublePrecision
     }
 
     BarGraphView {
@@ -232,6 +235,7 @@ SplitView {
         coarse: coarse.value
         fine: fine.value
         expandable: viewType==1
+        doublePrecision: root.doublePrecision
     }
 }
 
