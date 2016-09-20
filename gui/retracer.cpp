@@ -11,6 +11,7 @@
 #include <QVariant>
 #include <QList>
 #include <QImage>
+#include <QFile>
 
 #include "qubjson.h"
 
@@ -472,11 +473,11 @@ void Retracer::run()
 
     QProcess process;
 
-    process.start(prog, arguments, QIODevice::ReadOnly);
-    if (!process.waitForStarted(-1)) {
-        emit finished(QLatin1String("Could not start process"));
-        return;
-    }
+    //process.start(prog, arguments, QIODevice::ReadOnly);
+    //if (!process.waitForStarted(-1)) {
+        //emit finished(QLatin1String("Could not start process"));
+        //return;
+    //}
 
     /*
      * Process standard output
@@ -487,7 +488,7 @@ void Retracer::run()
     trace::Profile* profile = NULL;
 
     process.setReadChannel(QProcess::StandardOutput);
-    if (process.waitForReadyRead(-1)) {
+    if (1) {
         BlockingIODevice io(&process);
 
         if (m_captureState) {
@@ -563,11 +564,17 @@ void Retracer::run()
         } else if (isListingMetrics()) {
             if (!m_backendMetrics) {
                 process.waitForFinished(-1);
-                m_backendMetrics = new MetricSelectionModel(process);
+                QFile file("metricselection");
+                if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+                    return;
+                m_backendMetrics = new MetricSelectionModel(file);
             }
         } else if (isProfilingWithBackends()) {
             process.waitForFinished(-1);
-            QTextStream stream(&process);
+            QFile file("metricdata");
+            if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+                return;
+            QTextStream stream(&file);
             auto m_frameMetrics = m_backendMetrics->selectedForFrames();
             if (!m_frameMetrics.empty()) {
                 m_frameMetricsModel.addMetricsData(stream, m_frameMetrics);
@@ -591,37 +598,37 @@ void Retracer::run()
 
     process.waitForFinished(-1);
 
-    if (process.exitStatus() != QProcess::NormalExit) {
-        msg = QLatin1String("Process crashed");
-    } else if (process.exitCode() != 0) {
-        msg = QLatin1String("Process exited with non zero exit code");
-    }
+    //if (process.exitStatus() != QProcess::NormalExit) {
+        //msg = QLatin1String("Process crashed");
+    //} else if (process.exitCode() != 0) {
+        //msg = QLatin1String("Process exited with non zero exit code");
+    //}
 
     /*
      * Parse errors.
      */
 
-    QList<ApiTraceError> errors;
-    process.setReadChannel(QProcess::StandardError);
-    QRegExp regexp("(^\\d+): +(\\b\\w+\\b): ([^\\r\\n]+)[\\r\\n]*$");
-    while (!process.atEnd()) {
-        QString line = process.readLine();
-        if (regexp.indexIn(line) != -1) {
-            ApiTraceError error;
-            error.callIndex = regexp.cap(1).toInt();
-            error.type = regexp.cap(2);
-            error.message = regexp.cap(3);
-            errors.append(error);
-        } else if (!errors.isEmpty()) {
-            // Probably a multiligne message
-            ApiTraceError &previous = errors.last();
-            if (line.endsWith("\n")) {
-                line.chop(1);
-            }
-            previous.message.append('\n');
-            previous.message.append(line);
-        }
-    }
+    //QList<ApiTraceError> errors;
+    //process.setReadChannel(QProcess::StandardError);
+    //QRegExp regexp("(^\\d+): +(\\b\\w+\\b): ([^\\r\\n]+)[\\r\\n]*$");
+    //while (!process.atEnd()) {
+        //QString line = process.readLine();
+        //if (regexp.indexIn(line) != -1) {
+            //ApiTraceError error;
+            //error.callIndex = regexp.cap(1).toInt();
+            //error.type = regexp.cap(2);
+            //error.message = regexp.cap(3);
+            //errors.append(error);
+        //} else if (!errors.isEmpty()) {
+            //// Probably a multiligne message
+            //ApiTraceError &previous = errors.last();
+            //if (line.endsWith("\n")) {
+                //line.chop(1);
+            //}
+            //previous.message.append('\n');
+            //previous.message.append(line);
+        //}
+    //}
 
     /*
      * Emit signals
@@ -654,9 +661,9 @@ void Retracer::run()
         m_profileWithBackends = false;
     }
 
-    if (!errors.isEmpty()) {
-        emit retraceErrors(errors);
-    }
+    //if (!errors.isEmpty()) {
+        //emit retraceErrors(errors);
+    //}
 
     emit finished(msg);
 }
