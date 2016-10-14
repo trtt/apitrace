@@ -152,7 +152,7 @@ ScrollView {
                         Text {
                             id: caption
                             anchors.left: parent.left
-                            width: (parent.width - expandSwitch.implicitWidth)/2
+                            width: (parent.width - expandSwitch.implicitWidth)/2-10
                             anchors.verticalCenter: parent.verticalCenter
 
                             clip: true

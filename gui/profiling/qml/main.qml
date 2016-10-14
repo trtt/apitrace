@@ -260,11 +260,17 @@ MouseArea {
         tooltip.visible = false
         eventUnderCursor = -1
         if (dragged) {
+            vertcursor.visible = false
+
+            statspanel.xtime = axisCPU.dispStartTime + mouse.x / view.width * (axisCPU.dispEndTime - axisCPU.dispStartTime) * 1e-9
+            statspanel.resolution = 1. / view.width * (axisCPU.dispEndTime - axisCPU.dispStartTime) * 1e-9
+
             scroll.position -= (mouse.x-oldX) / view.width * (axisCPU.dispEndTime-axisCPU.dispStartTime)/(axisGPU.endTime-axisCPU.startTime)
             if (scroll.position < 0) scroll.position = 0
             if (scroll.position + scroll.size > 1) scroll.position = 1 - scroll.size
             oldX = mouse.x
         } else {
+            vertcursor.visible = true
             vertcursor.x = view.x + mouse.x
             var graph = timelineView.findGraph(mouse.x, flick.contentY + mouse.y)
             if (!graph) return
@@ -318,6 +324,16 @@ MouseArea {
             if (scroll.position < 0) scroll.position = 0
             scroll.size -= scroll.size*wheel.angleDelta.y/120/16
             if (scroll.size > 1 - scroll.position) scroll.size = 1 - scroll.position
+        } else if (wheel.modifiers & Qt.ShiftModifier) {
+            vertcursor.visible = false
+            tooltip_event.visible = false
+            tooltip_stats.visible = false
+            tooltip.visible = false
+            statspanel.xtime = axisCPU.dispStartTime + oldX / view.width * (axisCPU.dispEndTime - axisCPU.dispStartTime) * 1e-9
+            statspanel.resolution = 1. / view.width * (axisCPU.dispEndTime - axisCPU.dispStartTime) * 1e-9
+
+            scroll.position += scroll.size*wheel.angleDelta.y/120/16
+            scroll.position = Math.min(Math.max(scroll.position, 0), 1-scroll.size)
         } else {
             wheel.accepted = false
         }
@@ -355,11 +371,17 @@ MouseArea {
         tooltip.visible = false
         eventUnderCursor = -1
         if (dragged) {
+            vertcursor.visible = false
+
+            statspanel.xtime = axisCPU.dispStartTime + mouse.x / view.width * (axisCPU.dispEndTime - axisCPU.dispStartTime) * 1e-9
+            statspanel.resolution = 1. / view.width * (axisCPU.dispEndTime - axisCPU.dispStartTime) * 1e-9
+
             scroll.position -= (mouse.x-oldX) / view.width * (axisCPU.dispEndTime-axisCPU.dispStartTime)/(axisGPU.endTime-axisCPU.startTime)
             if (scroll.position < 0) scroll.position = 0
             if (scroll.position + scroll.size > 1) scroll.position = 1 - scroll.size
             oldX = mouse.x
         } else {
+            vertcursor.visible = true
             vertcursor.x = view.x + mouse.x
             var graph = barview.findGraph(mouse.x, flick.contentY + mouse.y)
             if (!graph) return
@@ -414,6 +436,13 @@ MouseArea {
             scroll.size -= scroll.size*wheel.angleDelta.y/120/16
             if (scroll.size > 1 - scroll.position) scroll.size = 1 - scroll.position
         } else if (wheel.modifiers & Qt.ShiftModifier) {
+            vertcursor.visible = false
+            tooltip_event.visible = false
+            tooltip_stats.visible = false
+            tooltip.visible = false
+            statspanel.xtime = axisCPU.dispStartTime + oldX / view.width * (axisCPU.dispEndTime - axisCPU.dispStartTime) * 1e-9
+            statspanel.resolution = 1. / view.width * (axisCPU.dispEndTime - axisCPU.dispStartTime) * 1e-9
+
             scroll.position += scroll.size*wheel.angleDelta.y/120/16
             scroll.position = Math.min(Math.max(scroll.position, 0), 1-scroll.size)
         } else {
@@ -444,14 +473,14 @@ Row {
         id: coarse
         minimumValue: 1
         maximumValue: 10
-        value: 5
+        value: 300
     }
     Slider {
         width: parent.width / 3 - 200/3
         id: fine
         minimumValue: 1000
         maximumValue: 100000
-        value: 1000
+        value: 10000
     }
 }
 
