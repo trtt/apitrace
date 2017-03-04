@@ -72,6 +72,7 @@ set(qapitrace_profiling_SRCS
    profiling/metric_graphs.cpp
    profiling/backendprofilewindow.cpp
    profiling/groupproxymodel.cpp
+   profiling/freezetreewidget.cpp
 )
 
 qt5_add_resources(qapitrace_SRCS qapitrace.qrc profiling.qrc)
