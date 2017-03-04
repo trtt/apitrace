@@ -280,7 +280,7 @@
       </layout>
      </item>
      <item>
-      <widget class="QTreeView" name="metricTreeView">
+      <widget class="FreezeTreeWidget" name="metricTreeView" native="true">
        <property name="itemsExpandable" stdset="0">
         <bool>true</bool>
        </property>
@@ -293,6 +293,13 @@
    </widget>
   </widget>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>FreezeTreeWidget</class>
+   <extends>QWidget</extends>
+   <header>profiling/freezetreewidget.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

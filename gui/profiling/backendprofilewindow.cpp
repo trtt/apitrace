@@ -84,6 +84,7 @@ void BackendProfileWindow::tabChange(int tab) {
         frameGraphTab->addDockWidget(Qt::BottomDockWidgetArea, dockWidget);
         groupBox->setEnabled(false);
         statsComboBox->setEnabled(false);
+        metricTreeView->setColumnsFrozen(MetricFrameDataModel::COLUMN_METRICS_BEGIN);
         m_metricTableSortProxy->setSourceModel(m_frameModel);
         // sync displayed time range
         if (m_axisCPU[CALL_VIEW]) {
@@ -95,6 +96,7 @@ void BackendProfileWindow::tabChange(int tab) {
     } else { // Change to call tab
         callGraphTab->addDockWidget(Qt::BottomDockWidgetArea, dockWidget);
         groupBox->setEnabled(true);
+        metricTreeView->setColumnsFrozen(MetricCallDataModel::COLUMN_METRICS_BEGIN);
         if (none_radio->isChecked()) {
             m_metricTableSortProxy->setSourceModel(m_callModel);
         } else {
