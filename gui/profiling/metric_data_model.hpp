@@ -172,6 +172,11 @@ class MetricFrameDataModel : public QAbstractTableModel
     Q_OBJECT
 
 public:
+    enum PreColumns {
+        COLUMN_ID = 0,
+        COLUMN_METRICS_BEGIN
+    };
+
     explicit MetricFrameDataModel(QObject *parent = 0)
         : init(false), durationCPUIndexInMetrics(0), durationGPUIndexInMetrics(0) {}
 
@@ -191,11 +196,6 @@ public:
     bool hasData() const { return m_frames.size() > 0; }
 
 private:
-    enum PreColumns {
-        COLUMN_ID = 0,
-        COLUMN_METRICS_BEGIN
-    };
-
     std::vector<MetricStorage> m_metrics;
     FrameStorage m_frames;
     bool init;
@@ -211,6 +211,14 @@ class MetricCallDataModel : public QAbstractTableModel
     Q_OBJECT
 
 public:
+    enum PreColumns {
+        COLUMN_ID = 0,
+        COLUMN_PROGRAM,
+        COLUMN_FRAME,
+        COLUMN_NAME,
+        COLUMN_METRICS_BEGIN
+    };
+
     explicit MetricCallDataModel(QObject *parent = 0)
         : init(false), durationCPUIndexInMetrics(0), durationGPUIndexInMetrics(0) {}
 
@@ -230,14 +238,6 @@ public:
     bool hasData() const { return m_calls.size() > 0; }
 
 private:
-    enum PreColumns {
-        COLUMN_ID = 0,
-        COLUMN_PROGRAM,
-        COLUMN_FRAME,
-        COLUMN_NAME,
-        COLUMN_METRICS_BEGIN
-    };
-
     std::vector<MetricStorage> m_metrics;
     DrawcallStorage m_calls;
     bool init;

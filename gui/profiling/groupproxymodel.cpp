@@ -24,7 +24,10 @@
  **************************************************************************/
 
 #include "groupproxymodel.h"
+#include "metric_data_model.hpp"
 #include <algorithm>
+#include <numeric>
+#include <QDebug>
 
 inline uint qHash(const QVariant& key) {
     switch (key.type())
@@ -45,7 +48,8 @@ inline uint qHash(const QVariant& key) {
 
 
 GroupProxyModel::GroupProxyModel(QObject *parent)
-        : QAbstractProxyModel(parent), m_groupBy(GROUP_BY_INVALID)
+        : QAbstractProxyModel(parent), m_groupBy(GROUP_BY_INVALID),
+          m_statsOp(OP_INVALID)
 {
 }
 
@@ -142,6 +146,8 @@ QVariant GroupProxyModel::data(const QModelIndex &index, int role) const {
             // take from first child
             QModelIndex child = this->index(0, 0, index);
             return sourceModel()->data(mapToSource(child));
+        } else if (m_statsOp != OP_INVALID) {
+            return stats(index);
         } else {
             return QVariant();
         }
@@ -190,4 +196,66 @@ void GroupProxyModel::setGroupBy(GroupBy field) {
     endResetModel();
 }
 
+class GroupValuesIterator {
+public:
+    GroupValuesIterator(const std::vector<int>* sourceRows, unsigned sourceColumn,
+            const QAbstractItemModel* source, unsigned index)
+        : sourceRows(sourceRows), sourceColumn(sourceColumn), source(source),
+          index(index) {}
+
+    inline GroupValuesIterator& operator++() { ++index; return *this; }
+
+    inline bool operator!=(const GroupValuesIterator& rhs)
+    {
+        return (this->index != rhs.index);
+    }
+
+    inline bool operator==(const GroupValuesIterator& rhs)
+    {
+        return (this->index == rhs.index);
+    }
+
+    inline float operator*() {
+        return source->data(source->index((*sourceRows)[index], sourceColumn)).toFloat();
+    }
+
+private:
+    const std::vector<int>* sourceRows;
+    unsigned sourceColumn;
+    const QAbstractItemModel* source;
+    unsigned index;
+};
+
+QVariant GroupProxyModel::stats(const QModelIndex &index) const {
+    if (!hasChildren(index) || index.column() < MetricCallDataModel::COLUMN_METRICS_BEGIN)
+        return QVariant();
+
+    auto begin = GroupValuesIterator(&m_groupedSourceRows[index.row()],
+        index.column(), sourceModel(), 0);
+    auto end = GroupValuesIterator(&m_groupedSourceRows[index.row()],
+        index.column(), sourceModel(),
+        m_groupedSourceRows[index.row()].size());
+
+    switch(m_statsOp) {
+        case OP_SUM:
+            return std::accumulate(begin, end, 0.);
+        case OP_MAX:
+            return *std::max_element(begin, end);
+        case OP_MIN:
+            return *std::min_element(begin, end);
+        case OP_AVG:
+            return std::accumulate(begin, end, 0.) /
+                m_groupedSourceRows[index.row()].size();
+        default:
+            return QVariant();
+    }
+}
+
+void GroupProxyModel::addStats(StatsOperation op) {
+    if (m_statsOp == op) return;
+    m_statsOp = op;
+    emit dataChanged(index(0, MetricCallDataModel::COLUMN_METRICS_BEGIN),
+                     index(rowCount(QModelIndex()), columnCount(QModelIndex())),
+                           { Qt::DisplayRole });
+}
 

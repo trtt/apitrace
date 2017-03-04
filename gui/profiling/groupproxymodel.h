@@ -39,6 +39,14 @@ public:
         GROUP_BY_INVALID
     };
 
+    enum StatsOperation {
+        OP_SUM,
+        OP_MAX,
+        OP_MIN,
+        OP_AVG,
+        OP_INVALID
+    };
+
     GroupProxyModel(QObject *parent = Q_NULLPTR);
 
     void setSourceModel(QAbstractItemModel *sourceModel);
@@ -51,7 +59,7 @@ public:
 
     int rowCount(const QModelIndex& parent) const;
 
-    QModelIndex index(int row, int column, const QModelIndex& parent) const;
+    QModelIndex index(int row, int column, const QModelIndex& parent = QModelIndex()) const;
 
     QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const;
 
@@ -65,6 +73,8 @@ public:
 
     void setGroupBy(GroupBy field);
 
+    void addStats(StatsOperation op);
+
 public slots:
     void beginInsertColumnsSlot(const QModelIndex &parent, int first, int last);
 
@@ -72,6 +82,9 @@ public slots:
 
 private:
     GroupBy m_groupBy;
+    StatsOperation m_statsOp;
     QHash<QVariant, int> m_groupLookup;
     std::vector<std::vector<int>> m_groupedSourceRows;
+
+    QVariant stats(const QModelIndex &index) const;
 };

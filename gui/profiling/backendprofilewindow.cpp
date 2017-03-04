@@ -83,6 +83,7 @@ void BackendProfileWindow::tabChange(int tab) {
     if (tab == 0) { // Change to frame tab
         frameGraphTab->addDockWidget(Qt::BottomDockWidgetArea, dockWidget);
         groupBox->setEnabled(false);
+        statsComboBox->setEnabled(false);
         m_metricTableSortProxy->setSourceModel(m_frameModel);
         // sync displayed time range
         if (m_axisCPU[CALL_VIEW]) {
@@ -98,6 +99,7 @@ void BackendProfileWindow::tabChange(int tab) {
             m_metricTableSortProxy->setSourceModel(m_callModel);
         } else {
             m_metricTableSortProxy->setSourceModel(m_callTableGroupProxy);
+            statsComboBox->setEnabled(true);
         }
         // sync displayed time range
         if (m_axisCPU[FRAME_VIEW]) {
@@ -175,12 +177,22 @@ void BackendProfileWindow::setup(MetricCallDataModel* callModel,
             });
     connect(none_radio, &QRadioButton::toggled, [=](bool b) {
                 if (b) {
-                    m_metricTableSortProxy->setSourceModel(callModel);
+                    m_metricTableSortProxy->setSourceModel(m_callModel);
                     restoreCallTableSelection(false);
+                    statsComboBox->setEnabled(false);
                 } else {
                     saveCallTableSelection(false);
                     m_metricTableSortProxy->setSourceModel(m_callTableGroupProxy);
+                    statsComboBox->setEnabled(true);
                 }
+            });
+
+    connect(statsComboBox,
+            static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
+            [=](int index) {
+                m_callTableGroupProxy->addStats(
+                        static_cast<GroupProxyModel::StatsOperation>(index)
+                );
             });
 
     m_setup = true;
