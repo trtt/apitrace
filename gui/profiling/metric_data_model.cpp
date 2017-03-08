@@ -111,9 +111,16 @@ void MetricFrameDataModel::addMetricsData(QTextStream &stream,
     beginInsertColumns(QModelIndex(), columnCount(),
                        columnCount() + tokens.size() - 1 - COLUMN_METRICS_BEGIN);
     // returned order of backends should be sorted (same as requested)
-    for (auto b = lookup.begin(); b != lookup.end(); ++b) {
+    MetricOutputLookup use;
+    if (!lookup[lookup.begin().key()][tokens.at(1)]) {
+        use[lookup.begin().key()] = (++lookup.begin()).value();
+        use[(++lookup.begin()).key()] = lookup.begin().value();
+    } else {
+        use = lookup;
+    }
+    for (auto b = use.begin(); b != use.end(); ++b) {
         for (int j = 0; j < b.value().size(); ++j) {
-            MetricItem* item = lookup[b.key()][tokens.at(i)];
+            MetricItem* item = use[b.key()][tokens.at(i)];
             m_metrics.emplace_back(item);
             if (item->getName() == QLatin1String("CPU Duration")) {
                 durationCPUIndexInMetrics = m_metrics.size() - 1;
@@ -138,7 +145,7 @@ void MetricFrameDataModel::addMetricsData(QTextStream &stream,
         }
 
         i = COLUMN_METRICS_BEGIN + oldMetricsSize;
-        for (auto b = lookup.begin(); b != lookup.end(); ++b) {
+        for (auto b = use.begin(); b != use.end(); ++b) {
             for (int j = 0; j < b.value().size(); ++j) {
                 const QString &token = tokens.at(i-oldMetricsSize);
                 if (i-COLUMN_METRICS_BEGIN == timestampCPUIndexInMetrics) {
@@ -278,9 +285,16 @@ void MetricCallDataModel::addMetricsData(QTextStream &stream,
     beginInsertColumns(QModelIndex(), columnCount(),
                        columnCount() + tokens.size() - 1 - COLUMN_METRICS_BEGIN);
     // returned order of backends should be sorted (same as requested)
-    for (auto b = lookup.begin(); b != lookup.end(); ++b) {
+    MetricOutputLookup use;
+    if (!lookup[lookup.begin().key()][tokens.at(COLUMN_METRICS_BEGIN)]) {
+        use[lookup.begin().key()] = (++lookup.begin()).value();
+        use[(++lookup.begin()).key()] = lookup.begin().value();
+    } else {
+        use = lookup;
+    }
+    for (auto b = use.begin(); b != use.end(); ++b) {
         for (int j = 0; j < b.value().size(); ++j) {
-            MetricItem* item = lookup[b.key()][tokens.at(i)];
+            MetricItem* item = use[b.key()][tokens.at(i)];
             m_metrics.emplace_back(item);
             if (item->getName() == QLatin1String("CPU Duration")) {
                 durationCPUIndexInMetrics = m_metrics.size() - 1;
@@ -311,7 +325,7 @@ void MetricCallDataModel::addMetricsData(QTextStream &stream,
         }
 
         i = COLUMN_METRICS_BEGIN + oldMetricsSize;
-        for (auto b = lookup.begin(); b != lookup.end(); ++b) {
+        for (auto b = use.begin(); b != use.end(); ++b) {
             for (int j = 0; j < b.value().size(); ++j) {
                 const QString &token = tokens.at(i-oldMetricsSize);
                 if (i-COLUMN_METRICS_BEGIN == timestampCPUIndexInMetrics) {
